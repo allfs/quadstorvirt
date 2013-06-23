@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# QUADStor init script 
+# chkconfig: 345 84 16
+# description: QUADStor Data Protection 
+#
+
+# PROVIDE: quadstor
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+name="quadstor"
+start_cmd="quadstor_start"
+stop_cmd="quadstor_stop"
+status_cmd="quadstor_status"
+rcvar=`set_rcvar`
+
+quadstor_stop() {
+
+	if [ -f /quadstor/etc/iscsit ]; then
+		/quadstor/etc/iscsit stop > /dev/null 2>&1
+	fi
+
+	pkill ncdaemon
+	while [ 1 ]; do
+		ncdaemonpid=`/quadstor/bin/pidof /quadstor/sbin/ncdaemon 2> /dev/null`
+		if [ "$ncdaemonpid" = "" ]; then
+			break;
+		fi
+		sleep 2
+	done
+	rm -f /quadstor/.mdaemon
+
+	/sbin/kldunload iscsit > /dev/null 2>&1
+	/sbin/kldunload ldev > /dev/null 2>&1
+	/sbin/kldunload coredev > /dev/null 2>&1
+}
+
+check_error() {
+	if [ "$?" != "0" ]; then
+		echo "$1"
+		quadstor_stop
+		exit 1
+	fi
+}
+
+quadstor_start() {
+
+	daemonpid=`/quadstor/bin/pidof /quadstor/sbin/ncdaemon 2> /dev/null`
+	if [ "$ncaemonpid" != "" ]; then
+		echo "QUADStor Client Daemon already running..."
+		exit 1
+	fi
+	
+        echo -n $"Starting $prog: "
+
+	/sbin/kldload /quadstor/lib/modules/coredev.ko > /dev/null 2>&1
+	check_error "Failed to insert core module"
+
+	/sbin/kldload /quadstor/lib/modules/ldev.ko > /dev/null 2>&1 
+	check_error "Failed to insert ldev module"
+
+	if [ -f /quadstor/lib/modules/iscsit.ko ]; then
+		/sbin/kldload /quadstor/lib/modules/iscsit.ko > /dev/null 2>&1
+		check_error "Failed to insert iscsi target module"
+		/quadstor/etc/iscsit start
+	fi
+
+	pkill ncdaemon
+	export PATH=$PATH:/quadstor/bin
+	/quadstor/sbin/ncdaemon > /dev/null 2>&1
+	check_error "Cannot start node client daemon"
+}
+
+quadstor_status() {
+	ncdaemonpid=`/quadstor/bin/pidof /quadstor/sbin/ncdaemon 2> /dev/null`
+	ietdpid=`/quadstor/bin/pidof /quadstor/sbin/ietd 2> /dev/null`
+	if [ "${ncdaemonpid}" != "" -o "${ietdpid}" != "" ] ; then 
+		echo "QUADStor node client daemon is running..."
+		exit 1
+	else
+		echo "QUADStor node client daemon is stopped"
+		exit 1
+	fi
+	
+}
+
+load_rc_config $name
+
+: ${quadstor_enable:="NO"}
+
+run_rc_command "$1"
+

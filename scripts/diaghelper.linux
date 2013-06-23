@@ -1,0 +1,166 @@
+#!/bin/sh
+#Diagnostics utility
+set -x
+dirname=$1
+
+if [ "$dirname" = "" ]; then
+	echo "Diagnostics directory name not specified"
+	exit 1
+fi
+
+get_interface_stats() {
+	iname=$1
+
+	echo -e "\ninterface output for $iname" >> $dirname/iface.txt
+	echo      "*************************" >> $dirname/iface.txt
+	/sbin/ifconfig $iname >> $dirname/iface.txt 2>&1
+	/sbin/ethtool $iname >> $dirname/iface.txt 2>&1
+}
+
+dump_interface_stats() {
+	list=` /sbin/ifconfig  | cut -f 1 -d' '`
+	for i in $list; do
+		if [ "$i" != "" ]; then
+			get_interface_stats $i
+		fi
+	done
+}
+
+dump_interface_stats
+
+get_hdparm_info() {
+	dev=$i
+
+	echo -e "\nhdparm output for $dev" >> $dirname/scsi.txt
+	echo      "**********************" >> $dirname/scsi.txt
+	/sbin/hdparm -i $dev >> $dirname/scsi.txt 2>&1
+}
+
+dump_scsi_info() {
+	echo -e "\nproc scsi output" >> $dirname/scsi.txt
+	echo      "****************" >> $dirname/scsi.txt
+	cat /proc/scsi/scsi >> $dirname/scsi.txt
+
+	echo -e "\nsg map output" >> $dirname/scsi.txt
+	echo      "*************" >> $dirname/scsi.txt
+	/quadstor/bin/sg_map -i >> $dirname/scsi.txt
+
+	disklist=`/quadstor/bin/sg_map -sd | cut -f 3 -d' '`
+	for i in $disklist; do
+		get_hdparm_info $i
+	done
+}
+
+dump_scsi_info
+
+get_md_info() {
+	dev="/dev/$1"
+
+	echo -e "\nmdstat output for $dev" >> $dirname/md.txt
+	echo      "************************" >> $dirname/md.txt
+	/sbin/mdadm --detail $dev >> $dirname/md.txt 2>&1
+}
+
+dump_mdstats() {
+	echo -e "\nproc mdstat output" >> $dirname/md.txt
+	echo      "******************" >> $dirname/md.txt
+	cat /proc/mdstat >> $dirname/md.txt
+
+	mdlist=`cat /proc/mdstat | grep "^md" | cut -f 1 -d' '`
+	for i in $mdlist; do
+		get_md_info $i
+	done
+}
+
+dump_mdstats
+
+dump_lvm() {
+	echo "pvs output" > $dirname/lvm.txt
+	echo      "******************" >> $dirname/lvm.txt
+	pvs >> $dirname/lvm.txt
+
+	echo -e "\nlvs output" >> $dirname/lvm.txt
+	echo      "******************" >> $dirname/lvm.txt
+	lvs >> $dirname/lvm.txt
+}
+
+dump_lvm
+
+dump_sysinfo() {
+	echo -e "\nuname output" >> $dirname/sys.txt
+	echo "****************" >> $dirname/sys.txt
+	uname -a >> $dirname/sys.txt
+
+	echo -e "\nredhat release output" >> $dirname/sys.txt
+	echo "****************" >> $dirname/sys.txt
+	cat /etc/redhat-release >> $dirname/sys.txt 2>&1
+
+	echo -e "\nproc cpuinfo output" >> $dirname/sys.txt
+	echo       "******************" >> $dirname/sys.txt
+	cat /proc/cpuinfo >> $dirname/sys.txt
+
+	echo -e "\nproc cmdline output" >> $dirname/sys.txt
+	echo       "******************" >> $dirname/sys.txt
+	cat /proc/cmdline >> $dirname/sys.txt
+
+	echo -e "\nproc devices output" >> $dirname/sys.txt
+	echo       "******************" >> $dirname/sys.txt
+	cat /proc/devices >> $dirname/sys.txt
+
+	echo -e "\nproc interrupts output" >> $dirname/sys.txt
+	echo       "*********************" >> $dirname/sys.txt
+	cat /proc/interrupts >> $dirname/sys.txt
+
+	echo -e "\nproc diskstats output" >> $dirname/sys.txt
+	echo    "***********************" >> $dirname/sys.txt
+	cat /proc/diskstats >> $dirname/sys.txt
+
+	echo -e "\nprocess information" >> $dirname/sys.txt
+	echo    "*********************" >> $dirname/sys.txt
+	ps axu >> $dirname/sys.txt
+
+	echo -e "\nprocess tree information" >> $dirname/sys.txt
+	echo    "**************************" >> $dirname/sys.txt
+	ps axjf >> $dirname/sys.txt
+
+	echo -e "\nvmstat information" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	vmstat >> $dirname/sys.txt
+
+	echo -e "\nlsmod output" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	/sbin/lsmod >> $dirname/sys.txt
+}
+
+dump_sysinfo
+
+dump_meminfo() {
+	echo -e "\nproc meminfo output" >> $dirname/mem.txt
+	echo      "*******************" >> $dirname/mem.txt
+	cat /proc/meminfo >> $dirname/mem.txt
+
+	echo -e "\nproc slabinfo output" >> $dirname/mem.txt
+	echo      "********************" >> $dirname/mem.txt
+	cat /proc/slabinfo >> $dirname/mem.txt
+
+	echo -e "\nproc slab_allocators output" >> $dirname/mem.txt
+	echo      "***************************" >> $dirname/mem.txt
+	cat /proc/slab_allocators >> $dirname/mem.txt
+
+	echo -e "\nfree cmd output" >> $dirname/mem.txt
+	echo      "***************" >> $dirname/mem.txt
+	free >> $dirname/mem.txt
+	echo -e "\n" >> $dirname/mem.txt
+	free -m >> $dirname/mem.txt
+
+}
+
+dump_meminfo
+dmesg -s 2097152  > $dirname/dmesg.txt
+rpm -qa > $dirname/rpmdb.txt
+tail -n 32768 /var/log/messages > $dirname/messages.txt 2>&1
+cat /quadstor/etc/quadstor.log > $dirname/quadstor.log.txt 2>&1
+cp -f /quadstor/etc/*.conf $dirname/
+if [ -f /var/log/syslog ]; then
+	tail -n 32768 /var/log/syslog > $dirname/syslog.txt 2>&1
+fi

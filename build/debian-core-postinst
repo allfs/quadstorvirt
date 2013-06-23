@@ -1,0 +1,19 @@
+#!/bin/sh
+
+cat /quadstor/LICENSE
+echo ""
+echo "Performing post install. Please wait..."
+sleep 4
+if [ ! -d /quadstor/pgsql/data ]; then
+	/quadstor/pgsql/scripts/pgpost.sh
+fi
+
+/quadstor/pgsql/scripts/pgpatch.sh > /dev/null 2>&1
+
+update-rc.d quadstor defaults
+
+/usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
+mkdir -p /quadstor/etc
+echo "3.0.38 for Debian" > /quadstor/etc/quadstor-core-version
+
+exit 0

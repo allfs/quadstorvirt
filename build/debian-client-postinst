@@ -1,0 +1,12 @@
+#!/bin/sh
+
+cat /quadstor/LICENSE
+echo ""
+echo "Performing post install. Please wait..."
+sleep 4
+
+update-rc.d quadstor defaults
+
+/usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
+
+exit 0

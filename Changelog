@@ -1,0 +1,353 @@
+Release 3.0.37
+	* Fix for a major issue where in trying to delete an offline VDisk
+	  deletes an active VDisk
+	  Dont allow deletion of an offline VDisk or a VDisk which is being
+	  deleted
+
+Release 3.0.36
+	* Added Infiniband (srpt) target driver
+	* Added support for 16 Gb FC (RHEL/Centos 6.x, Debian 7, SLES SP2 only)
+	* Added Debian 7 support
+	* Added FreeBSD 9.1 and 8.4 support
+
+Release 3.0.35
+	* Fix possiblity of double frees
+	* Fix possiblity of manipulating lists when still accessed by another
+	  thread/handler
+
+Release 3.0.34
+	* Hotfix for kernel panic when using 512e VDisks with ESXi, Xen etc
+	* List mirror configuration and configuration files in diagnostics
+	* Warn if mirror fence configuration was not found
+
+Release 3.0.33
+	* Fix read errors on FreeBSD when compression is enabled due to
+	  bogus pages
+	* Fix slow read/write performance on FreeBSD when compression is
+	  enabled
+	* Reduce number of bio allocations for md raid 5 devices (linux)
+	  This should improve write performance for md raid 5
+	* More sanity checks in the dedupe code
+	* Improvements to dedupe ratio
+	* Fix possible hung tasks during synchronous mirroring error recovery
+	* Fix possible hung tasks during block allocation when storage space
+	  is less
+	* Handle extra spaces in configuration files
+
+Release 3.0.32
+	* Handle cases where one node can compress a block while the other 
+	  node cannot
+	* Improve read performance for local block devices
+	* Check only /etc/fstab for automounting VDisks on Linux
+	* Fixed bug where FC interface may report 1 LUN less than asked for.
+	* Remove FC rules for a VDisk from kernel module when its deleted
+
+Release 3.0.31
+	* Speed up deletion of large VDisks. Deletion was too slow on Linux
+	* Reduce memory utilization during VDisk deletion and cloning
+
+Release 3.0.30
+	* Minor changes to format of strings in trap notifications
+	* Display better mirror status information
+	* Synchronous mirroring bugfixes
+
+Release 3.0.29
+	* qmirrorcheck add -t "manual"
+	* Fix qmirrorcheck parser errors for -t "ignore"
+	* Add /quadstor/bin/qsync program to manually switch VDisk roles
+	* Fix possible infinite wait during recovery of a peer failure
+	* Add 'Compression Hits' stats which can be used to determine the
+	  compression ratio 
+
+Release 3.0.28
+	* Run service restart using 'at now + 1 minute'. This fixes
+	  the hang when restarting the service through the GUI
+	* Fix possible failures running pgpatch due to write permission
+	  of /tmp/qstorpgdb.log
+
+Release 3.0.27
+	* Fix regression where in VDisks setup for synchronous
+	  mirroring have different serial numbers
+
+Release 3.0.26
+	* Allow restarting system from GUI
+	* Allow restarting service from GUI
+	* Allow VDisk iSCSI IQN modification from GUI
+	* Fix for a small memory leak when loading disk metadata
+	* Allow specifying destination Pool when cloning a VDisk
+	* Check for conflicts for custom default pool name 
+	* Compact "System Managment" page using a multi column layout 
+	* Compact "Modify VDisk" page using a multi column layout
+	* If a memory allocation failure occurs during a read, while
+	  the command terminates with errors, further reads/writes can 
+	  indefintely block. This has been fixed
+	* Send notifications as SNMP traps
+
+Release 3.0.25
+	* Improve diagnostics reports
+	* Add diagnostics for node clients
+	* Run mount on VDisk attach and umount on VDisk delete/shutdown
+	  http://www.quadstor.com/support/139-automounting-a-filesystem-created-on-a-vdisk.html
+	* Fix kernel crash if a read command times out on a controller node
+	* Fix infinite waits during metadata sync (shared storage HA)
+	* Fix metadata warnings during HA takeover (shared storage HA)
+	* Specifying a fence command is now mandatory for shared storage HA
+	* Increase the number of dedupe worker threads
+	* Improve startup performance
+	* Fix connect failures during mirroring setup
+
+Release 3.0.24
+	* FC drivers updated
+	* Fix issues in cloning, resyncing mirroring slaves and deletion of
+	  VDisks. Certain LBA calculations can mean that trailing blocks are
+	  not cloned from the source, resycned to a mirroring slave or freed
+	  during delete.
+	  http://www.quadstor.com/support/downloads/Release-3.0.24.txt
+	* Provide packages for FreeBSD 8.3 in addition to 8.2
+
+Release 3.0.23
+	* Handle deadlocks during writes for VDisks whose pool
+	  depends on the Default pool for logging. This bug is
+	  easily reproducible during large unmap/discard operations
+	* Remove warnings during dedupe operations due to stale
+	  entries for disks which were previously unconfigured 
+	* Handle log replay failure if any of the log entries contain
+	  references to a disk which was previously unconfigured 
+	* Fix buffer overflows during mirroring setup
+
+Release 3.0.22
+	* Fix synchronous mirroring timeouts
+	* Improve error handling on mirroring timeouts
+	* Fix false out of space errors
+	* Fix/allow addition of SATA disks on FreeBSD 9
+
+Release 3.0.21
+	* Synchronous mirroring bug fixes
+
+Release 3.0.20
+	* Fix timeouts during synchronous mirroring
+	* Speed up VDisk deletion
+	* Fix deadlock after a VDisk size reduction
+
+Release 3.0.19
+	* Fix for bugs in synchronous mirroring switch over from master
+	  to slave and vice versa.
+	* Fix for regression where resync write data when a slave node is
+	  back online does not happen
+	* Fix for possible deadlock in mirroring, clustering code when a 
+	  remote node exits
+	* Fix slowness in read/write when quadstor starts and vdisks are
+	  accessible but dedupe tables are still being read from disk
+	* Added udev rules to create /dev/quadstor/<VDisk Name> links on
+	  linux
+
+Release 3.0.18
+	* Fix quadstor-client package dependencies
+	* Run builtitf during post install of quadstor-itf package
+
+Release 3.0.17
+	* Return SPACE ALLOCATION FAILED... sense on out of space condition
+	* Allow configuration of Soft Threshold 
+	* Send Thin Provisoning Soft Threshold alerts
+	* Fix regressions in mirroring and clustering code leading to possible
+	  deadlocks
+	* Allow reset of VDisk stats in UI
+	* Allow configuration of disk unmap and write caching in UI
+	* Fix kernel crash during metadata sync (shared storage HA)
+
+Release 3.0.16
+	* Allow resize and rename of VDisk from the GUI
+	* Allow rename of Pool fro the GUI (non Default pools only)
+	* Fix possible deadlocks in write code 
+
+Release 3.0.15
+	* Handle case where group/user scdbuser already exists when installing
+	  for the very first time
+	* Support for ZFS zvol (experimental). Refer System Requirements
+	* Support and use LZ4 compression
+	* Significant improvement in write peformance
+	* Fix warnings during HA switchover
+
+Release 3.0.14
+	* Handle updates to RecvAddr in ndrecv.conf for VDisks with 
+	  mirroring configured
+	* Handle conditions where a VDisk is not sure of its mirror role
+	* Fix possible deadlock when a Persistent Reserve OUT command is
+	  received simultaneously by both VDisk mirror peers
+
+Release 3.0.13
+	* Reduce memory usage by core data structures
+	* Fixed client node crash when VDisk properties are modified
+	* Improve dedupe ratio when using EXTENDED COPY (XCOPY) and qclone
+	* Fixed clone target VDisk data integrity issues if the source VDisk
+	  has compressed blocks 
+	* Fixed possible race condition during shutdown causing infinite 
+	  wait on kernel thread shutdown
+	* Fixed bug in XCOPY implementation when source and dest of copy are
+	  different VDisks leads to data integrity issues. This was a
+	  regression introduced by 3.0.12
+
+Release 3.0.12
+	* For linux local block devices, a rescan-scsi-bus.sh used to 
+	  list many virtual disks than available. This is now fixed
+	* xcopy fixed to consider storage pools
+	* Issue UNMAP/TRIM to underlying physical storage when required
+	  (Linux only as of now)
+	* Allow addition of disk partitions as physical storage
+	* Allow addition of Linux LVM volumes as physical storage.
+	* Fixed poor performance of the qla2xxx driver in initiator mode
+	* iSCSI auto reconnect to targets after reboot/restart. Previously
+	  on a reboot/restart, a rescan HBA was required on ESX
+	* Skip display of swap, PVS devices in the physical storage html page
+	* Storage Pool Statistics
+	* Background VDisk deletion.
+	* Allow VDisk resize to be lesser than current size.
+	* Remove target-mode for qla23xx and older cards.
+	* FreeBSD 9.0 support
+	* Support for node fencing for shared storage clustering HA 
+	* Many bugs fixed in HA and clustering code
+
+Release 3.0.11
+	* Remove beta tags for releases
+	* Fix autoconnect to VDisks on quadstor/system restart
+	* Added SLES 11 SP2 builds
+
+Release 3.0.10
+	* Hotfix for kernel panic when FC interface is connected
+
+Release 3.0.9
+	* Fix remote mdaemon segfault when a mirror operation is started
+	* Add -g <pool name> option for qmirror command
+	* Handle SATA controller disks which do not respond to serial number
+	  INQUIRY
+	* Rework qla2xxx driver for RHEL/CentOS 6.x to merge linux mainline
+	  target implementation. qla23xx/qla22xx support is dropped for 
+	  CentOS 6.x driver. SLES and Debian to follow soon
+
+Release 3.0.8
+	* Fix kernel panic on VDisk delete when using FC interface
+	* Fix HA takeover by controller from client
+	* Fix ndconfig printing of invalid nodes on node client
+
+Release 3.0.7
+	* Fix temporary CPU hang of node master during HA switch when
+	  node controller has crashed
+	* Ensure data consistency during HA takeover when controller has
+	  crashed
+	* Fix warnings generated during metadata sync in a HA setup
+	* Ensure pgsql database is really stopped before install/upgrade
+	* Check and warn for iscsi_trgt kernel module on linux installations
+	  before starting quadstor
+
+Release 3.0.6
+	* Fix for invalid locking/unlocking which lead to issues during
+	  mirroring, deleting of a physical disk when a controller-master
+	  pair is setup 
+
+Release 3.0.5
+	* Storage Pools feature
+	* ndconfig (/quadstor/bin/ndconfig) utility for displaying clustering
+	* configuration
+	* New HTML UI layout using yui3 library.
+	* When log recovery is in progress, a system crash or reboot should
+	  restart the recovery again on next startup 
+
+Release 3.0.4
+	* VDisk resize feature
+	* Do not display VDisk under physical storage after a rescan
+	* Miscellaneous fixes
+
+Release 3.0.3
+	* Log disk addition/removal cleanups
+	* Removed debugs and code cleanups
+
+Release 3.0.2
+	* HA and Clustering bugfix release. Many issues were fixed
+
+Release 3.0.1
+	* database recovery fixes
+	* fix for data integrity issues when multiple physical disks are configured
+
+Release 3.0.0
+	* Clustering
+	* High Availability
+	* Cloning
+	* Mirroring
+	* Miscellaneous bugfixes and performance enhancements
+
+Release 2.0.45
+	* Checks for offline master disk, when adding a new disk
+	* No longer display or consider disks of size <= 4GB
+	* Deleting empty VDisks did not reclaim all the space back. This is
+	  fixed now
+
+Release 2.0.44
+	* Fix SVMotion failures which eventually lead to ESXi reporting
+	 datastores as corrupt
+
+Release 2.0.43
+	* FreeBSD build only. Fixed incorrect reads via local block device (NFS)
+	* for VDisks with 512e enabled
+
+Release 2.0.42
+	* Fixed random crash while adding a new physical disk
+
+Release 2.0.41
+	* Added support for HP Smart Array disks controlled by cciss driver
+	* NOTE: Once a disk controlled by cciss driver is added to quadstor
+	* it will not be recognized if at a later point the disk is controlled
+	* by the hpsa driver. This behavior may be fixed in later versions
+	* Packages are not rebuilt for FreeBSD as it is not required
+
+Release 2.0.40
+	* Fixed incorrect reporting of capacity used for physical disks >= 2TB
+	  NOTE: Users are advised to do a fresh install rather than an upgrade
+	  if any of the physical disks used were of capacity >= 2TB
+	* Fixed incorrect capacity displayed for physical disks with 4K sectors 
+
+Release 2.0.39
+	* Release specific to Linux
+	* Changed builditf installation to install qla2xxx driver and
+	  update initrd. Similarly on quadstor-itf uninstall original
+	  qla2xxx driver is restored and initrd is updated again
+
+Release 2.0.38
+	* FC driver fixes
+	* Debian Squeeze (6.04) initial packages
+
+Release 2.0.37
+	* iSCSI read performance fixes and fix for iSCSI command time outs
+	  and I/O failures reported by VMware
+
+Release 2.0.36
+	* Primarily FC target mode fixes. FC targets did not work under certain
+	  conditions
+
+Release 2.0.35
+	* Fix rescan physical storage logic. Earlier under certain conditions
+	  the physical disks displayed contained duplicates, the number of 
+	  duplicates increase on every rescan
+	* Send addtional ctio for cmd overrun/underrun conditions. Fixes FC
+	  targets not being detected
+
+Release 2.0.34
+	* RHEL/CentOS 6 packages now available
+	* Rescan of "Physical Storage" also lists created VDisks on Linux.
+	  This has been fixed
+	* Fixed default runlevels for quadstor etc script on RHEL/CentOS 5/6
+	* Use netlink_kernel_release for newer linux kernels. Fixes crash
+	  during shutdown on RHEL 6
+	* Fixed vmware virtual disk detection on quadstor restart, physical
+	  storage rescan, system reboot
+
+Release 2.0.33
+	* Hotfix for kernel crash introduced by 2.0.32, due to delete VDisk
+	  changes
+
+Release 2.0.32
+	* VDisks are now reported as Non-SSD disks. On certain initiators/hosts
+	  (for example recent linux kernels) this can lead to a read
+	  performance degradation if the underlying physical storage 
+	  isn't fully SSD.
+	* Deletion of VDisks earlier had a high CPU utilization 
+	* Fixed installation failure in SLES packages 

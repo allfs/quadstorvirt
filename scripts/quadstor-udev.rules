@@ -1,0 +1,1 @@
+KERNEL=="sd*" SUBSYSTEM=="block" ATTRS{vendor}=="QUADSTOR" ACTION=="add|change" PROGRAM="/quadstor/bin/qmapping $tempnode" SYMLINK+="quadstor/%c %c"

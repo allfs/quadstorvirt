@@ -1,0 +1,148 @@
+#!/bin/sh
+#Diagnostics utility
+set -x
+dirname=$1
+
+rm -f $dirname/iface.txt
+rm -f $dirname/scsi.txt
+rm -f $dirname/vinum.txt
+rm -f $dirname/sys.txt
+rm -f $dirname/mem.txt
+
+if [ "$dirname" = "" ]; then
+	echo "Diagnostics directory name not specified"
+	exit 1
+fi
+
+get_interface_stats() {
+	iname=$1
+
+	echo -e "\ninterface output for $iname" >> $dirname/iface.txt
+	echo      "*************************" >> $dirname/iface.txt
+	/sbin/ifconfig $iname >> $dirname/iface.txt 2>&1
+}
+
+dump_interface_stats() {
+	list=`/sbin/ifconfig | grep "flags=" | cut -f 1 -d':'`
+	for i in $list; do
+		if [ "$i" != "" ]; then
+			get_interface_stats $i
+		fi
+	done
+}
+
+dump_interface_stats
+
+get_disk_info() {
+	dev="/dev/$i"
+
+	echo -e "\ndiskinfo output for $dev" >> $dirname/scsi.txt
+	echo      "**********************" >> $dirname/scsi.txt
+	/usr/sbin/diskinfo -v $dev >> $dirname/scsi.txt 2>&1
+}
+
+dump_scsi_info() {
+	echo -e "\ncamcontrol devlist -v output" >> $dirname/scsi.txt
+	echo      "****************" >> $dirname/scsi.txt
+	/sbin/camcontrol devlist -v >> $dirname/scsi.txt
+
+	echo -e "\ncamcontrol devlist" >> $dirname/scsi.txt
+	echo      "****************" >> $dirname/scsi.txt
+	/sbin/camcontrol devlist >> $dirname/scsi.txt
+
+	disklist=`/sbin/camcontrol devlist | cut -f 2 -d'(' | cut -f 1 -d','`
+	for i in $disklist; do
+		get_disk_info $i
+	done
+
+	echo -e "\natacontrol list output" >> $dirname/scsi.txt
+	echo      "****************" >> $dirname/scsi.txt
+	/sbin/atacontrol list >> $dirname/scsi.txt
+
+	disklist=`/sbin/atacontrol list | grep ad | cut -f 2 -d':' | cut -f 1 -d'<' | sed -e "s: ::g"`
+	for i in $disklist; do
+		get_disk_info $i
+	done
+}
+
+dump_scsi_info
+
+get_vinum_info() {
+	dev="/dev/gvinum/$1"
+
+	echo -e "\ndiskinfo output for $dev" >> $dirname/vinum.txt
+	echo      "************************" >> $dirname/vinum.txt
+	/usr/sbin/diskinfo -v $dev >> $dirname/vinum.txt 2>&1
+}
+
+dump_gvinum() {
+	echo -e "\ngvinum -v output" >> $dirname/vinum.txt
+	echo      "******************" >> $dirname/vinum.txt
+	gvinum list -v >> $dirname/vinum.txt
+
+	echo -e "\ngvinum output" >> $dirname/vinum.txt
+	echo      "******************" >> $dirname/vinum.txt
+	gvinum list >> $dirname/vinum.txt
+
+	vinumlist=`/sbin/gvinum list | grep "^V" | cut -f 2 -d ' '`
+	for i in $vinumlist; do
+		get_vinum_info $i
+	done
+}
+
+dump_gvinum
+
+dump_sysinfo() {
+	echo -e "\nuname output" >> $dirname/sys.txt
+	echo "****************" >> $dirname/sys.txt
+	uname -a >> $dirname/sys.txt
+
+	echo -e "\npkg info output" >> $dirname/sys.txt
+	echo "****************" >> $dirname/sys.txt
+	pkg_info >> $dirname/sys.txt 2>&1
+
+	echo -e "\nprocess information" >> $dirname/sys.txt
+	echo    "*********************" >> $dirname/sys.txt
+	ps avxf >> $dirname/sys.txt
+
+	echo -e "\nprocstat information" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	procstat -kk -a >> $dirname/sys.txt
+
+	echo -e "\nvmstat information" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	vmstat >> $dirname/sys.txt
+
+	echo -e "\nmount information" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	mount >> $dirname/sys.txt
+
+	echo -e "\nrc.conf information" >> $dirname/sys.txt 
+	echo    "********************" >> $dirname/sys.txt
+	cat /etc/rc.conf >> $dirname/sys.txt
+
+	echo -e "\nkldstat information" >> $dirname/sys.txt
+	echo    "********************" >> $dirname/sys.txt
+	/sbin/kldstat >> $dirname/sys.txt
+}
+
+dump_sysinfo
+
+dump_meminfo() {
+	echo -e "\nvmstat slabinfo output" >> $dirname/mem.txt
+	echo      "********************" >> $dirname/mem.txt
+	vmstat -z >> $dirname/mem.txt
+
+	echo -e "\nfree cmd output" >> $dirname/mem.txt
+	echo      "***************" >> $dirname/mem.txt
+	/quadstor/bin/free >> $dirname/mem.txt
+}
+
+dump_meminfo
+
+sysctl -a > $dirname/sysctl.txt
+cat /boot/device.hints > $dirname/devicehints.txt
+dmesg -a > $dirname/dmesg.txt
+tail -n 32768 /var/log/messages > $dirname/messages.txt 2>&1
+cat /quadstor/etc/quadstor.log > $dirname/quadstor.log.txt 2>&1
+cp -f /quadstor/etc/*.conf $dirname/

@@ -1,0 +1,34 @@
+QUADSTOR-REG DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY, enterprises, OBJECT-IDENTITY
+		FROM SNMPv2-SMI
+	TEXTUAL-CONVENTION
+		FROM SNMPv2-TC
+	;
+
+quadstor MODULE-IDENTITY
+	LAST-UPDATED "201008311200Z"
+	ORGANIZATION "QUADStor Systems"
+	CONTACT-INFO
+		"support@quadstor.com"
+	DESCRIPTION
+		"The root node of quadstor applicances."
+	REVISION "201302151200Z" -- 15 Feb 2013 12:00
+	DESCRIPTION
+		"Sanity Check MIB for syntax errors"
+	::= { enterprises 35815 }
+
+quadstorRegistration OBJECT-IDENTITY
+	STATUS current
+	DESCRIPTION
+		"This module contains the common and top level object definitions"
+	::= {quadstor 1}	
+
+quadstorMIBs	OBJECT-IDENTITY
+	STATUS current
+	DESCRIPTION
+		"The node under which the MIBs are to be defined"
+	::= {quadstor 2}
+
+END
