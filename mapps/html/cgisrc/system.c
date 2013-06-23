@@ -66,9 +66,6 @@ int main()
 
 	cgi_print_header("System Information", NULL, 1);
 
-	cgi_print_div_container(48, "left");
-	cgi_print_div_padding(4);
-
 	cgi_print_thdr("System Information");
 
 	cgi_print_table_div("system-table");
@@ -77,14 +74,14 @@ int main()
 	printf("<form id=\"restartservice\" action=\"restart.cgi\" method=\"post\" onSubmit=\"return confirm('Do you want to restart the service?');\">\n");
 	printf("<input type=\"submit\" class=\"yui3-button\" name=\"restartsrv\" value=\"Restart Service\"/>\n");
 	cgi_print_form_end();
-	printf("</div>\n");
+	cgi_print_div_end();
 
 	printf("<div style=\"text-align: center;margin-top: 4px;margin-bottom: 4px;\">\n");
 	printf("<form id=\"restartssystem\" action=\"restart.cgi\" method=\"post\" onSubmit=\"return confirm('Do you want to restart the system?');\">\n");
 	printf ("<input type=\"hidden\" name=\"restartsys\" value=\"1\">\n");
 	printf("<input type=\"submit\" class=\"yui3-button\" name=\"restartsys\" value=\"Restart System\"/>\n");
 	cgi_print_form_end();
-	printf("</div>\n");
+	cgi_print_div_end();
 
 	cgi_print_thdr("Run Diagnostics");
 	cgi_print_div_start("center");
@@ -93,9 +90,6 @@ int main()
 	cgi_print_submit_button("submit", "Submit");
 	cgi_print_form_end();
 
-	cgi_print_div_end();
-
-	cgi_print_div_end();
 	cgi_print_div_end();
 
 	cgi_print_div_trailer();
