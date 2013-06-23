@@ -26,7 +26,7 @@ rm -f core.ko corelib.o
 if [ "$os" = "FreeBSD" ]; then
 	ld  -d -warn-common -r -d -o corelib.o `ls *.o`
 else
-	ld -m elf_x86_64 -r -o corelib.o `ls *.o`
+	ld -m elf_x86_64 -r -o corelib.o `ls *.o` `ls util/*.o`
 fi
 
 #objcopy --strip-debug corelib.o
