@@ -5,7 +5,7 @@ SRCS = opt_cam.h ldev_geom.c
 
 QUADSTOR_ROOT := /quadstor/quadstor/
 CFLAGS = -I. -DFREEBSD
-CFLAGS += -O2
+#CFLAGS += -O2
 #CFLAGS += -g
 #DEBUG_FLAGS = -g
 #CFLAGS += -DENABLE_STATS

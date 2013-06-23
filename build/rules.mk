@@ -2,7 +2,7 @@ ifeq ($(QUADSTOR_ROOT),)
 	QUADSTOR_ROOT := /quadstor/quadstor
 endif
 ENABLE_STDERR := 0
-RELEASE_BUILD := 1
+RELEASE_BUILD := 0
 
 UNAME := $(shell uname)
 

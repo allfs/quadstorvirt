@@ -1,3 +1,8 @@
+Release 3.0.38
+	* Open source release
+	* Remove licensing restrictions
+	* Build with debug enabled by default
+
 Release 3.0.37
 	* Fix for a major issue where in trying to delete an offline VDisk
 	  deletes an active VDisk

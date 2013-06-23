@@ -29,7 +29,7 @@ else
 	ld -m elf_x86_64 -r -o corelib.o `ls *.o`
 fi
 
-objcopy --strip-debug corelib.o
-objcopy --strip-unneeded corelib.o
+#objcopy --strip-debug corelib.o
+#objcopy --strip-unneeded corelib.o
 mkdir -p /quadstor/lib/modules/
 cp -f corelib.o /quadstor/lib/modules/

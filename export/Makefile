@@ -21,7 +21,7 @@ coredev-objs := core_linux.o corelib.o
 
 EXTRA_CFLAGS += -I. -DLINUX -DEXPORT_SYMTAB -I$(KDIR)/drivers/scsi -I$(QUADSTOR_ROOT)/common -I$(QUADSTOR_ROOT)/export
 
-#EXTRA_CFLAGS += -g
+EXTRA_CFLAGS += -g
 #EXTRA_CFLAGS += -O2
 
 #EXTRA_CFLAGS += -DENABLE_STATS
@@ -30,8 +30,8 @@ else
 default:
 	cp /quadstor/lib/modules/corelib.o $(PWD)
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
-	strip --strip-debug *.ko
-	strip --strip-unneeded *.ko
+#	strip --strip-debug *.ko
+#	strip --strip-unneeded *.ko
 endif
 
 clean:

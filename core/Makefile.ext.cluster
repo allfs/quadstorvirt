@@ -13,8 +13,8 @@ ASM1 = $(SRCS:.S=.o)
 #CFLAGS := -nostdinc -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-builtin -fno-strict-aliasing -fno-common -Wstrict-prototypes -Wundef -Werror-implicit-function-declaration -fno-delete-null-pointer-checks -fwrapv -mtune=generic -m64 -mno-red-zone -mcmodel=kernel -pipe -fno-reorder-blocks -Wno-sign-compare -fno-asynchronous-unwind-tables -funit-at-a-time -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -fomit-frame-pointer -fno-stack-protector -Wdeclaration-after-statement -Wno-pointer-sign -Werror -Winit-self -I. -I/quadstor/quadstor/export -Wno-unused-value
 #CFLAGS += -Wno-unused
 CFLAGS := -nostdinc -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-builtin -fno-strict-aliasing -fno-common -Wstrict-prototypes -Wundef -Werror-implicit-function-declaration -fno-delete-null-pointer-checks -fwrapv -mtune=generic -m64 -mno-red-zone -mcmodel=kernel -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables -funit-at-a-time -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -fomit-frame-pointer -fno-stack-protector -Wdeclaration-after-statement -Wno-pointer-sign -Werror -Winit-self -I. -I/quadstor/quadstor/export
-#CFLAGS += -g
-CFLAGS += -O2
+CFLAGS += -g
+#CFLAGS += -O2
 #CFLAGS += -DENABLE_STATS
 
 all: $(ASM) $(ASM1) $(OBJ)

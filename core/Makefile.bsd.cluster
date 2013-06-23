@@ -4,7 +4,7 @@ KMOD = core
 SRCS := vnode_if.h amap.c bdevmgr.c ddtable.c ddthread.c fastlog.c gdevq.c log_group.c rcache.c tcache.c qs_lib.c reservation.c tdisk.c vdevdefs.c kernint.c corebsd.c sha256.c sha256-x86_64.s lzf_c.c lzf_d.c lz4.c cluster.c node_master.c node_client.c tdisk_client.c bdev_client.c node_sock.c rep_send.c clone.c rep_recv.c node_sync.c node_ha.c bdevgroup.c node_mirror.c node_usr.c delete.c
 
 CFLAGS = -DFREEBSD -I/quadstor/quadstor/export
-CFLAGS += -O2
+#CFLAGS += -O2
 #CFLAGS += -Wunused -Wunused-parameter -Wextra
 #CFLAGS += -g
 #DEBUG_FLAGS = -g

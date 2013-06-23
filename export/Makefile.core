@@ -6,7 +6,7 @@ OBJS = corelib.o
 
 QUADSTOR_ROOT := /quadstor/quadstor
 CFLAGS = -I. -DFREEBSD -I$(QUADSTOR_ROOT)/common
-CFLAGS += -O2
+#CFLAGS += -O2
 #CFLAGS += -g
 #DEBUG_FLAGS = -g
 #CFLAGS += -DENABLE_STATS
