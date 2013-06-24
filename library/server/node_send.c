@@ -84,6 +84,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 		clone_info->status = MIRROR_STATUS_ERROR;
 		tl_msg_free_message(resp);
 		tl_msg_free_connection(comm);
+		return -1;
 	}
 
 	memcpy(mirror_spec, resp->msg_data, sizeof(*mirror_spec));
