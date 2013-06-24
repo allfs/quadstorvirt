@@ -442,7 +442,7 @@ struct bdevint * bdev_find(uint32_t bid);
 static inline struct bdevint *
 bdev_find(uint32_t bid)
 {
-	if (bid <= TL_MAX_DISKS)
+	if (bid < TL_MAX_DISKS)
 		return bint_list[bid];
 	else
 		return NULL;

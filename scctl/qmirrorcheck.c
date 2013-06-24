@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 	int c;
 	int list = 0;
 	char value[128];
-	char mirror_host[40];
+	char mirror_host[20];
 	int attach = 0, detach = 0;
 	struct mirror_check_spec mirror_check_spec;
 
