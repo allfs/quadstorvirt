@@ -608,6 +608,8 @@ node_client_process_request(int clientfd, struct sockaddr_in *client_addr)
 		node_client_process_group_removed(&comm, msg);
 		pthread_mutex_unlock(&daemon_lock);
 		break;
+	default:
+		tl_server_msg_invalid(&comm, msg);
 	}
 }
 
@@ -1105,8 +1107,11 @@ node_client_setup_bdev()
 	if (!resp)
 		return 1;
 
-	if (resp->msg_resp != MSG_RESP_OK)
+	if (resp->msg_resp != MSG_RESP_OK) {
+		tl_msg_free_message(resp);
+		tl_msg_free_connection(comm);
 		return 1;
+	}
 
 	count = resp->msg_len / sizeof(*bdev_spec);
 	bdev_spec = (struct bdev_spec *)resp->msg_data;

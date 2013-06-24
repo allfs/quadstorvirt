@@ -465,6 +465,8 @@ node_controller_process_request(int clientfd, struct sockaddr_in *client_addr)
 	case NODE_MSG_PING:
 		node_msg_ping(&comm, msg, client_addr);
 		break;
+	default:
+		tl_msg_free_message(msg);
 	}
 }
 

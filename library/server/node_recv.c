@@ -193,6 +193,8 @@ node_recv_process_request(int clientfd, struct sockaddr_in *client_addr)
 		node_msg_handle_new_vdisk(&comm, msg);
 		pthread_mutex_unlock(&daemon_lock);
 		break;
+	default:
+		tl_msg_free_message(msg);
 	}
 }
 

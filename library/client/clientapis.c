@@ -456,6 +456,7 @@ tl_client_get_target_data(struct tl_msg *msg, void *ptr, int len)
 	retval = tl_msg_send_message(tl_comm, msg);
 	free(msg->msg_data);
 	if (retval != 0) {
+		tl_msg_free_connection(tl_comm);
 		fprintf(stderr, "message transfer failed\n");
 		return -1;
 	}
@@ -673,6 +674,7 @@ tl_client_get_data(int msg_id, void *reply, int msg_len)
 
 	retval = tl_msg_send_message(tl_comm, &msg);
 	if (retval != 0) {
+		tl_msg_free_connection(tl_comm);
 		fprintf(stderr, "message transfer failed\n");
 		return -1;
 	}
@@ -720,6 +722,7 @@ tl_client_send_data(int msg_id, void *msg_data, int msg_len)
 
 	retval = tl_msg_send_message(tl_comm, &msg);
 	if (retval != 0) {
+		tl_msg_free_connection(tl_comm);
 		fprintf(stderr, "message transfer failed\n");
 		return -1;
 	}
