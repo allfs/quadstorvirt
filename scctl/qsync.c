@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 			strncpy(dest_host, optarg, 20); 
 			break;
 		case 'm':
-			strncpy(role, optarg, 40);
+			strncpy(role, optarg, 20);
 			break;
 		case 'l':
 			list = 1;
