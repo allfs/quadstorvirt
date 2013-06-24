@@ -1601,10 +1601,10 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 	void __user *userp = (void __user *)arg;
 	int err = 0;
 	int retval = 0;
-	struct bdev_info *bdev_info = NULL; 
-	struct tdisk_info *tdisk_info = NULL;
+	struct bdev_info *bdev_info;
+	struct tdisk_info *tdisk_info;
 	struct mdaemon_info mdaemon_info;
-	struct node_config *node_config = NULL;
+	struct node_config *node_config;
 	struct clone_config clone_config;
 	struct group_conf *group_conf = NULL;
 	struct fc_rule_config fc_rule_config;
@@ -1651,8 +1651,10 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 		}
 
 		if (cmd == TLTARGIOCNODECONFIG) {
-			if ((retval = copyin(userp, node_config, sizeof(*node_config))) != 0)
+			if ((retval = copyin(userp, node_config, sizeof(*node_config))) != 0) {
+				free(node_config, M_QUADSTOR);
 				break;
+			}
 			retval = (*kcbs.node_config)(node_config);
 		}
 		else if (cmd == TLTARGIOCNODESTATUS) {
@@ -1660,6 +1662,7 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			if (retval == 0)
 				retval = copyout(node_config, userp, sizeof(*node_config));
 		}
+		free(node_config, M_QUADSTOR);
 		break;
 	case TLTARGIOCADDFCRULE:
 	case TLTARGIOCREMOVEFCRULE:
@@ -1725,8 +1728,8 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			break;
 		}
 
-		if ((retval = copyin(userp, bdev_info, sizeof(struct bdev_info))) != 0)
-		{
+		if ((retval = copyin(userp, bdev_info, sizeof(struct bdev_info))) != 0) {
+			free(bdev_info, M_QUADSTOR);
 			break;
 		}
 
@@ -1750,6 +1753,7 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			retval = copyout(bdev_info, userp, sizeof(struct bdev_info));
 		else
 			err = copyout(bdev_info, userp, sizeof(struct bdev_info));
+		free(bdev_info, M_QUADSTOR);
 		break;
 	case TLTARGIOCLOADDONE:
 		retval = (*kcbs.coremod_load_done)();
@@ -1769,8 +1773,10 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			break;
 		}
 
-		if ((retval = copyin(userp, group_conf, sizeof(*group_conf))) != 0)
+		if ((retval = copyin(userp, group_conf, sizeof(*group_conf))) != 0) {
+			free(group_conf, M_QUADSTOR);
 			break;
+		}
 
 		if (cmd == TLTARGIOCADDGROUP)
 			retval = (*kcbs.bdev_add_group)(group_conf);
@@ -1800,8 +1806,8 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			break;
 		}
 
-		if ((retval = copyin(userp, tdisk_info, offsetof(struct tdisk_info, q_entry))) != 0)
-		{
+		if ((retval = copyin(userp, tdisk_info, offsetof(struct tdisk_info, q_entry))) != 0) {
+			free(tdisk_info, M_QUADSTOR);
 			break;
 		}
 
@@ -1833,24 +1839,12 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 			retval = (*kcbs.target_rename_vdisk)(tdisk_info, (unsigned long)arg);
 		else if (cmd == TLTARGIOCSETMIRRORROLE)
 			retval = (*kcbs.target_set_role)(tdisk_info, (unsigned long)arg);
+		free(tdisk_info, M_QUADSTOR);
 		break;
 	default:
 		break;
 	}
 	sx_xunlock(&ioctl_lock);
-
-	/* move the frees above */
-	if (node_config)
-		free(node_config, M_QUADSTOR);
-
-	if (bdev_info)
-		free(bdev_info, M_QUADSTOR);
-
-	if (linfo)
-		free(linfo, M_QUADSTOR);
-
-	if (tdisk_info)
-		free(tdisk_info, M_QUADSTOR);
 
 	return retval;
 }

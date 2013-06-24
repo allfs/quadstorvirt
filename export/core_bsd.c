@@ -30,12 +30,12 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 {
 	void __user *userp = (void __user *)arg;
 	int retval = 0;
-	struct bdev_info *bdev_info = NULL; 
-	struct tdisk_info *tdisk_info = NULL;
+	struct bdev_info *bdev_info;
+	struct tdisk_info *tdisk_info;
 	struct mdaemon_info mdaemon_info;
-	struct node_config *node_config = NULL;
+	struct node_config *node_config;
 	struct clone_config clone_config;
-	struct group_conf *group_conf = NULL;
+	struct group_conf *group_conf;
 	struct fc_rule_config fc_rule_config;
 
 	sx_xlock(&ioctl_lock);
@@ -60,6 +60,7 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 			retval = (*kcbs.node_status)(node_config);
 			memcpy(userp, node_config, sizeof(*node_config));
 		}
+		free(node_config, M_COREBSD);
 		break;
 	case TLTARGIOCREMOVEFCRULE:
 		memcpy(&fc_rule_config, arg, sizeof(fc_rule_config));
@@ -140,6 +141,7 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 		else if (cmd == TLTARGIOCWCCONFIG)
 			retval = (*kcbs.bdev_wc_config)(bdev_info);
 		memcpy(userp, bdev_info, sizeof(struct bdev_info));
+		free(bdev_info, M_COREBSD);
 		break;
 	case TLTARGIOCLOADDONE:
 		retval = (*kcbs.coremod_load_done)();
@@ -216,24 +218,12 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 			retval = (*kcbs.target_rename_vdisk)(tdisk_info, (unsigned long)arg);
 		else if (cmd == TLTARGIOCSETMIRRORROLE)
 			retval = (*kcbs.target_set_role)(tdisk_info, (unsigned long)arg);
+		free(tdisk_info, M_COREBSD);
 		break;
 	default:
 		break;
 	}
 	sx_xunlock(&ioctl_lock);
-
-	/* move the frees above */
-	if (node_config)
-		free(node_config, M_COREBSD);
-
-	if (bdev_info)
-		free(bdev_info, M_COREBSD);
-
-	if (linfo)
-		free(linfo, M_COREBSD);
-
-	if (tdisk_info)
-		free(tdisk_info, M_COREBSD);
 
 	if (retval == -1)
 		retval = (EIO);
