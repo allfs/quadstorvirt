@@ -25,7 +25,7 @@ int main()
 	int retval;
 	int op;
 	char *tmp;
-	char cmd[128];
+	char cmd[256];
 	char *dest, *dest_host, *pool;
 	struct mirror_spec mirror_spec;
 	char reply[512];
