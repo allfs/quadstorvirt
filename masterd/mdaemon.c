@@ -90,7 +90,6 @@ gvinum_init()
  * Initialize the server
  */
 
-extern struct lstate_info lstate_info;
 int main(int argc, char *argv[])
 {
 	int retval;

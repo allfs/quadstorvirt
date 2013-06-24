@@ -31,7 +31,6 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 	void __user *userp = (void __user *)arg;
 	int retval = 0;
 	struct bdev_info *bdev_info = NULL; 
-	struct lstate_info *linfo = NULL;
 	struct tdisk_info *tdisk_info = NULL;
 	struct mdaemon_info mdaemon_info;
 	struct node_config *node_config = NULL;

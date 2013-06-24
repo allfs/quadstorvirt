@@ -1602,7 +1602,6 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 	int err = 0;
 	int retval = 0;
 	struct bdev_info *bdev_info = NULL; 
-	struct lstate_info *linfo = NULL;
 	struct tdisk_info *tdisk_info = NULL;
 	struct mdaemon_info mdaemon_info;
 	struct node_config *node_config = NULL;
