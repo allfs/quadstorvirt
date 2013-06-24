@@ -21,9 +21,9 @@
 #include <getopt.h>
 #include <tlclntapi.h>
 
+char path[256];
 int main(int argc, char *argv[])
 {
-	char path[256];
 	char reply[256];
 	int retval;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	strcpy(path, argv[1]);
+	strncpy(path, argv[1], sizeof(path) - 1);
 
 	retval = tl_client_dev_mapping(path, reply);
 	if (retval != 0) {
