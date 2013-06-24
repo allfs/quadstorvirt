@@ -829,9 +829,7 @@ load_blkdev(struct tl_blkdevinfo *blkdev)
 	struct bdev_info binfo;
 	struct group_info *group_info;
 	int error;
-	uint64_t usize;
 
-	usize = blkdev->disk.size;
 	memset(&binfo, 0, sizeof(struct bdev_info));
 	binfo.bid = blkdev->bid;
 	strcpy(binfo.devpath, blkdev->devname);
@@ -2823,7 +2821,6 @@ tl_server_get_pool_configured_disks(struct tl_comm *comm, struct tl_msg *msg)
 static int
 tl_server_delete_disk(struct tl_comm *comm, struct tl_msg *msg)
 {
-	uint64_t usize = 0;
 	struct tl_blkdevinfo *blkdev = NULL, *tmp;
 	struct bdev_info binfo;
 	int retval;
@@ -2866,7 +2863,6 @@ tl_server_delete_disk(struct tl_comm *comm, struct tl_msg *msg)
 		return -1;
 	}
 
-	usize = binfo.usize;
 	tcount = group_get_tdisk_count(blkdev->group);
 	if (count > 1) {
 		if (blkdev->ddmaster) {
