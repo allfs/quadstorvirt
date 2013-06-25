@@ -1104,8 +1104,10 @@ node_client_setup_bdev()
 	}
 
 	resp = tl_msg_recv_message(comm);
-	if (!resp)
+	if (!resp) {
+		tl_msg_free_connection(comm);
 		return 1;
+	}
 
 	if (resp->msg_resp != MSG_RESP_OK) {
 		tl_msg_free_message(resp);
