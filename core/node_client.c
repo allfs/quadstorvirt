@@ -2161,8 +2161,7 @@ node_client_handle_resp(struct node_sock *sock, struct raw_node_msg *raw)
 	wait_complete_all(msg->completion);
 	return 0;
 err:
-	if (resp)
-		node_msg_free(resp);
+	node_msg_free(resp);
 	return -1;
 }
 
