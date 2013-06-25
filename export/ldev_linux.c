@@ -492,5 +492,7 @@ ldev_exit(void)
 	return;
 }
 
+MODULE_AUTHOR("Shivaram Upadhyayula, QUADStor Systems");
+MODULE_LICENSE("GPL");
 module_init(ldev_init);
 module_exit(ldev_exit);

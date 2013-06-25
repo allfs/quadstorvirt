@@ -1968,6 +1968,7 @@ coremod_exit(void)
 }
 
 MODULE_AUTHOR("Shivaram Upadhyayula, QUADStor Systems");
+MODULE_LICENSE("GPL");
 module_init (coremod_init);
 module_exit (coremod_exit);
 EXPORT_SYMBOL(kern_interface_init);
