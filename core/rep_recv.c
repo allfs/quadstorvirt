@@ -424,7 +424,8 @@ static int node_recv_thr(void *data)
 				chan_wakeup(recv_wait);
 				break;
 			}
-			node_master_cleanup(recv_root, &recv_queue_list, recv_queue_lock);
+			if (recv_root)
+				node_master_cleanup(recv_root, &recv_queue_list, recv_queue_lock);
 			atomic_clear_bit(MASTER_IN_CLEANUP, &recv_flags);
 			chan_wakeup(recv_wait);
 		}

@@ -2018,7 +2018,7 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 	}
 
 	if (tdisk_mirror_master(tdisk)) {
-		tdisk_mirror_sync_reservations(tdisk);
+		retval = tdisk_mirror_sync_reservations(tdisk);
 		if (unlikely(retval != 0)) {
 			tdisk_mirror_load_done(tdisk, NODE_MSG_MIRROR_LOAD_ERROR, recovery);
 			tdisk_mirroring_disable(tdisk);

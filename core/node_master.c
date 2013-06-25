@@ -3197,7 +3197,8 @@ static int node_master_sync_thr(void *data)
 				chan_wakeup(master_sync_wait);
 				break;
 			}
-			node_master_cleanup(sync_root, NULL, NULL);
+			if (sync_root)
+				node_master_cleanup(sync_root, NULL, NULL);
 			atomic_clear_bit(MASTER_IN_CLEANUP, &master_sync_flags);
 			chan_wakeup(master_sync_wait);
 		}
