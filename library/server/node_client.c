@@ -165,7 +165,7 @@ node_client_query_iscsiconf(struct vdisk_spec *vdisk_spec, struct iscsiconf *con
 	char buf[32];
 	int retval;
 
-	sprintf(buf, "target_id: %u", vdisk_spec->target_id);
+	snprintf(buf, sizeof(buf), "target_id: %u", vdisk_spec->target_id);
 	msg.msg_id = NODE_MSG_ISCSI_CONF;
 	msg.msg_data = buf;
 	msg.msg_len = strlen(buf) + 1;

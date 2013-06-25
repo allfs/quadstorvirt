@@ -44,7 +44,7 @@ server_log_trim()
 
 	fclose(fp);
 	unlink(QUADSTOR_SYSTEM_LOG1);
-	sprintf(cmd, "cp -f %s %s", QUADSTOR_SYSTEM_LOG, QUADSTOR_SYSTEM_LOG1);
+	snprintf(cmd, sizeof(cmd), "cp -f %s %s", QUADSTOR_SYSTEM_LOG, QUADSTOR_SYSTEM_LOG1);
 	system(cmd);
 	fp = fopen(QUADSTOR_SYSTEM_LOG, "w");
 }

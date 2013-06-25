@@ -34,7 +34,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 
 	comm = tl_msg_remote_connection(mirror_spec->dest_host, mirror_spec->src_host, NODE_MIRROR_RECV_PORT, mirror_connect_timeout);
 	if (!comm) {
-		sprintf(clone_info->errmsg, "Cannot connect to %s\n", mirror_spec->dest_host);
+		snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Cannot connect to %s\n", mirror_spec->dest_host);
 		DEBUG_WARN_SERVER("Cannot connect to %s\n", mirror_spec->dest_host);
 		clone_info->status = MIRROR_STATUS_ERROR;
 		return -1;
@@ -46,7 +46,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 
 	retval = tl_msg_send_message(comm, &msg);
 	if (retval != 0) {
-		sprintf(clone_info->errmsg, "Failure communicating with %s\n", mirror_spec->dest_host);
+		snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Failure communicating with %s\n", mirror_spec->dest_host);
 		DEBUG_WARN_SERVER("Failure communicating with %s\n", mirror_spec->dest_host);
 		clone_info->status = MIRROR_STATUS_ERROR;
 		tl_msg_free_connection(comm);
@@ -55,7 +55,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 
 	resp = tl_msg_recv_message(comm);
 	if (!resp) {
-		sprintf(clone_info->errmsg, "Failure to receive a response from %s\n", mirror_spec->dest_host);
+		snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Failure to receive a response from %s\n", mirror_spec->dest_host);
 		DEBUG_WARN_SERVER("Failure to receive a response from %s\n", mirror_spec->dest_host);
 		clone_info->status = MIRROR_STATUS_ERROR;
 		tl_msg_free_connection(comm);
@@ -69,7 +69,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 			DEBUG_WARN_SERVER("Server returned non zero status %x %s\n", resp->msg_resp, clone_info->errmsg);
 		}
 		else {
-			sprintf(clone_info->errmsg, "Server returned non zero status %x\n", resp->msg_resp);
+			snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Server returned non zero status %x\n", resp->msg_resp);
 			DEBUG_WARN_SERVER("Server returned non zero status %x\n", resp->msg_resp);
 		}
 		clone_info->status = MIRROR_STATUS_ERROR;
@@ -79,7 +79,7 @@ node_send_msg(struct mirror_spec *mirror_spec, struct clone_info *clone_info, in
 	}
 
 	if (resp->msg_len < sizeof(*mirror_spec)) {
-		sprintf(clone_info->errmsg, "Server returned invalid resp len %d\n", resp->msg_len);
+		snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Server returned invalid resp len %d\n", resp->msg_len);
 		DEBUG_WARN_SERVER("Server returned invalid resp len %d\n", resp->msg_len);
 		clone_info->status = MIRROR_STATUS_ERROR;
 		tl_msg_free_message(resp);
@@ -228,7 +228,7 @@ node_send_thread(void *arg)
 
 	retval = tl_ioctl(TLTARGIOCMIRRORVDISK, &clone_config);
 	if (retval != 0) {
-		sprintf(clone_info->errmsg, "Mirror failed to start for %s", mirror_spec->src_tdisk);
+		snprintf(clone_info->errmsg, sizeof(clone_info->errmsg), "Mirror failed to start for %s", mirror_spec->src_tdisk);
 		DEBUG_WARN("Mirror failed to start for %s", mirror_spec->src_tdisk);
 		clone_info->status = MIRROR_STATUS_ERROR;
 		goto out;
@@ -294,7 +294,7 @@ tl_server_remove_mirror(struct tl_comm *comm, struct tl_msg *msg)
 	struct mirror_spec mirror_spec;
 	struct clone_config clone_config;
 	struct tdisk_info *src_info;
-	char errmsg[512];
+	char errmsg[256];
 
 	if (msg->msg_len < sizeof(mirror_spec)) {
 		tl_server_msg_failure(comm, msg);
@@ -309,7 +309,7 @@ tl_server_remove_mirror(struct tl_comm *comm, struct tl_msg *msg)
 		src_info = find_tdisk(mirror_spec.src_target_id);
 	
 	if (!src_info) {
-		sprintf(errmsg, "Cannot find source VDisk %s target id %u", mirror_spec.src_tdisk, mirror_spec.src_target_id);
+		snprintf(errmsg, sizeof(errmsg), "Cannot find source VDisk %s target id %u", mirror_spec.src_tdisk, mirror_spec.src_target_id);
 		tl_server_msg_failure2(comm, msg, errmsg);
 		return -1;
 	}
@@ -319,7 +319,7 @@ tl_server_remove_mirror(struct tl_comm *comm, struct tl_msg *msg)
 
 	retval = source_mirror_cancel(src_info->name);
 	if (retval != 0) {
-		sprintf(errmsg, "Cannot cancel pending mirror operations for %s", mirror_spec.src_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "Cannot cancel pending mirror operations for %s", mirror_spec.src_tdisk);
 		tl_server_msg_failure(comm, msg);
 		return -1;
 	}
@@ -328,7 +328,7 @@ tl_server_remove_mirror(struct tl_comm *comm, struct tl_msg *msg)
 	clone_config.src_target_id = src_info->target_id;
 	retval = tl_ioctl(TLTARGIOCMIRRORREMOVE, &clone_config);
 	if (retval != 0) {
-		sprintf(errmsg, "Cannot remove mirror configuration for %s", mirror_spec.src_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "Cannot remove mirror configuration for %s", mirror_spec.src_tdisk);
 		tl_server_msg_failure2(comm, msg, errmsg);
 		return -1;
 	}
@@ -394,7 +394,7 @@ tl_server_start_mirror(struct tl_comm *client_comm, struct tl_msg *client_msg)
 	else
 		src_info = find_tdisk(mirror_spec.src_target_id);
 	if (!src_info) {
-		sprintf(errmsg, "Cannot find source VDisk %s target id %u", mirror_spec.src_tdisk, mirror_spec.src_target_id);
+		snprintf(errmsg, sizeof(errmsg), "Cannot find source VDisk %s target id %u", mirror_spec.src_tdisk, mirror_spec.src_target_id);
 		goto err;
 	}
 
@@ -402,22 +402,22 @@ tl_server_start_mirror(struct tl_comm *client_comm, struct tl_msg *client_msg)
 	mirror_spec.src_target_id = src_info->target_id;
 
 	if (!src_info->v2_format) {
-		sprintf(errmsg, "Cannot mirror older format VDisk %s", mirror_spec.src_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "Cannot mirror older format VDisk %s", mirror_spec.src_tdisk);
 		goto err;
 	}
 
 	valid = source_mirror_valid(mirror_spec.src_tdisk);
 	if (valid < 0) {
-		sprintf(errmsg, "Failure getting existing mirroring information");
+		snprintf(errmsg, sizeof(errmsg), "Failure getting existing mirroring information");
 		goto err;
 	}
 	else if (!valid) {
-		sprintf(errmsg, "A mirroring operation exists for source VDisk %s", mirror_spec.src_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "A mirroring operation exists for source VDisk %s", mirror_spec.src_tdisk);
 		goto err;
 	}
 
 	if (mirror_spec.attach && (!node_recv_inited || !recv_host[0] || !ipaddr_valid(recv_host))) {
-		sprintf(errmsg, "This node is unable to receive mirror messages. Check if ndrecv.conf is setup properly\n");
+		snprintf(errmsg, sizeof(errmsg), "This node is unable to receive mirror messages. Check if ndrecv.conf is setup properly\n");
 		goto err;
 	}
 
@@ -426,7 +426,7 @@ tl_server_start_mirror(struct tl_comm *client_comm, struct tl_msg *client_msg)
 	}
 
 	if (strcmp(mirror_spec.src_host, mirror_spec.dest_host) == 0) {
-		sprintf(errmsg, "Source and Destination host cannot be the same. Host specified %s\n", mirror_spec.src_host);
+		snprintf(errmsg, sizeof(errmsg), "Source and Destination host cannot be the same. Host specified %s\n", mirror_spec.src_host);
 		goto err;
 	}
 
@@ -445,7 +445,7 @@ tl_server_start_mirror(struct tl_comm *client_comm, struct tl_msg *client_msg)
 	clone_info = alloc_buffer(sizeof(*clone_info));
 	if (!clone_info) {
 		DEBUG_WARN_SERVER("Memory allocation failure\n");
-		sprintf(errmsg, "Memory allocation failure\n");
+		snprintf(errmsg, sizeof(errmsg), "Memory allocation failure\n");
 		goto err;
 	}
 
@@ -486,7 +486,7 @@ tl_server_start_mirror(struct tl_comm *client_comm, struct tl_msg *client_msg)
 		if (clone_config.errmsg[0])
 			strcpy(errmsg, clone_config.errmsg);
 		else
-			sprintf(errmsg, "Mirror failed to start for %s", mirror_spec.src_tdisk);
+			snprintf(errmsg, sizeof(errmsg), "Mirror failed to start for %s", mirror_spec.src_tdisk);
 		DEBUG_WARN_SERVER("Mirror failed to start for %s", mirror_spec.src_tdisk);
 		goto err;
 	}

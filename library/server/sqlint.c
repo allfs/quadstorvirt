@@ -105,11 +105,11 @@ sql_add_blkdev(struct physdisk *disk, uint32_t *ret_bid)
 	}
 
 	if (!bid) {
-		sprintf(sqlcmd, "INSERT INTO PHYSSTOR (VENDOR, PRODUCT, IDFLAGS, T10ID, NAAID, EUI64ID, UNKNOWNID, ISRAID, RAIDDEV, PID) VALUES ('%.8s', '%.16s', '%u', '%s', '%s', '%s', '%s', '%d', '%s', '%d')", device->vendor, device->product, device->idflags, t10esc, naaesc, euiesc, unesc, disk->raiddisk, disk->raiddisk ? device->devname : "", disk->partid);
+		snprintf(sqlcmd, cmdlen, "INSERT INTO PHYSSTOR (VENDOR, PRODUCT, IDFLAGS, T10ID, NAAID, EUI64ID, UNKNOWNID, ISRAID, RAIDDEV, PID) VALUES ('%.8s', '%.16s', '%u', '%s', '%s', '%s', '%s', '%d', '%s', '%d')", device->vendor, device->product, device->idflags, t10esc, naaesc, euiesc, unesc, disk->raiddisk, disk->raiddisk ? device->devname : "", disk->partid);
 		bid = pgsql_exec_query3(conn, sqlcmd, 1, &error, "PHYSSTOR", "BID");
 	}
 	else {
-		sprintf(sqlcmd, "INSERT INTO PHYSSTOR (BID, VENDOR, PRODUCT, IDFLAGS, T10ID, NAAID, EUI64ID, UNKNOWNID, ISRAID, RAIDDEV, PID) VALUES ('%u', '%.8s', '%.16s', '%u', '%s', '%s', '%s', '%s', '%d', '%s', '%d')", bid, device->vendor, device->product, device->idflags, t10esc, naaesc, euiesc, unesc, disk->raiddisk, disk->raiddisk ? device->devname : "", disk->partid);
+		snprintf(sqlcmd, cmdlen, "INSERT INTO PHYSSTOR (BID, VENDOR, PRODUCT, IDFLAGS, T10ID, NAAID, EUI64ID, UNKNOWNID, ISRAID, RAIDDEV, PID) VALUES ('%u', '%.8s', '%.16s', '%u', '%s', '%s', '%s', '%s', '%d', '%s', '%d')", bid, device->vendor, device->product, device->idflags, t10esc, naaesc, euiesc, unesc, disk->raiddisk, disk->raiddisk ? device->devname : "", disk->partid);
 		pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	}
 
@@ -160,7 +160,7 @@ sql_delete_blkdev(struct tl_blkdevinfo *binfo)
 	char sqlcmd[100];
 	int error;
 
-	sprintf (sqlcmd, "DELETE FROM PHYSSTOR WHERE BID='%u'", binfo->bid);
+	snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM PHYSSTOR WHERE BID='%u'", binfo->bid);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error != 0)
 	{
@@ -176,7 +176,7 @@ sql_update_iscsiconf(uint32_t target_id, struct iscsiconf *iscsiconf)
 	char sqlcmd[512];
 	int error;
 
-	sprintf(sqlcmd, "UPDATE ISCSICONF SET INCOMINGUSER='%s', INCOMINGPASSWD='%s', OUTGOINGUSER='%s', OUTGOINGPASSWD='%s', IQN='%s' WHERE TDISKID='%u'", iscsiconf->IncomingUser, iscsiconf->IncomingPasswd, iscsiconf->OutgoingUser, iscsiconf->OutgoingPasswd, iscsiconf->iqn, target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE ISCSICONF SET INCOMINGUSER='%s', INCOMINGPASSWD='%s', OUTGOINGUSER='%s', OUTGOINGPASSWD='%s', IQN='%s' WHERE TDISKID='%u'", iscsiconf->IncomingUser, iscsiconf->IncomingPasswd, iscsiconf->OutgoingUser, iscsiconf->OutgoingPasswd, iscsiconf->iqn, target_id);
 	DEBUG_INFO("cmd %s\n", sqlcmd);
 
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
@@ -193,7 +193,7 @@ sql_add_iscsiconf(PGconn *conn, uint32_t target_id, struct iscsiconf *iscsiconf)
 	char sqlcmd[512];
 	int error;
 
-	sprintf(sqlcmd, "INSERT INTO ISCSICONF (TDISKID, INCOMINGUSER, INCOMINGPASSWD, OUTGOINGUSER, OUTGOINGPASSWD, IQN) VALUES ('%u', '%s', '%s', '%s', '%s', '%s')", target_id, iscsiconf->IncomingUser, iscsiconf->IncomingPasswd, iscsiconf->OutgoingUser, iscsiconf->OutgoingPasswd, iscsiconf->iqn);
+	snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO ISCSICONF (TDISKID, INCOMINGUSER, INCOMINGPASSWD, OUTGOINGUSER, OUTGOINGPASSWD, IQN) VALUES ('%u', '%s', '%s', '%s', '%s', '%s')", target_id, iscsiconf->IncomingUser, iscsiconf->IncomingPasswd, iscsiconf->OutgoingUser, iscsiconf->OutgoingPasswd, iscsiconf->iqn);
 
 	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	if (error != 0)
@@ -212,7 +212,7 @@ sql_query_iscsiconf(uint32_t target_id, char *name, struct iscsiconf *iscsiconf)
 	PGresult *res;
 	int nrows;
 
-	sprintf(sqlcmd, "SELECT INCOMINGUSER, INCOMINGPASSWD, OUTGOINGUSER, OUTGOINGPASSWD, IQN FROM ISCSICONF WHERE TDISKID='%u'", target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT INCOMINGUSER, INCOMINGPASSWD, OUTGOINGUSER, OUTGOINGPASSWD, IQN FROM ISCSICONF WHERE TDISKID='%u'", target_id);
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL)
 	{
@@ -238,7 +238,7 @@ sql_query_iscsiconf(uint32_t target_id, char *name, struct iscsiconf *iscsiconf)
 	memcpy(iscsiconf->OutgoingPasswd, PQgetvalue(res, 0, 3), PQgetlength(res, 0, 3));
 	memcpy(iscsiconf->iqn, PQgetvalue(res, 0, 4), PQgetlength(res, 0, 4));
 	if (!iscsiconf->iqn[0]) {
-		sprintf(iscsiconf->iqn, "iqn.2006-06.com.quadstor.vdisk.%s", name);
+		snprintf(iscsiconf->iqn, sizeof(iscsiconf->iqn), "iqn.2006-06.com.quadstor.vdisk.%s", name);
 	}
 	PQclear(res);
 	PQfinish(conn);
@@ -252,9 +252,9 @@ sql_add_fc_rule(struct fc_rule *fc_rule)
 	int error = -1;
 
 	if (fc_rule->vdisk)
-		sprintf(sqlcmd, "INSERT INTO FCCONFIG (WWPN, WWPN1, TDISKID, RULE) VALUES ('%s', '%s', '%u', '%d')", fc_rule->wwpn, fc_rule->wwpn1, fc_rule->vdisk->target_id, fc_rule->rule);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO FCCONFIG (WWPN, WWPN1, TDISKID, RULE) VALUES ('%s', '%s', '%u', '%d')", fc_rule->wwpn, fc_rule->wwpn1, fc_rule->vdisk->target_id, fc_rule->rule);
 	else
-		sprintf(sqlcmd, "INSERT INTO FCCONFIG (WWPN, WWPN1, TDISKID, RULE) VALUES ('%s', '%s', '%u', '%d')", fc_rule->wwpn, fc_rule->wwpn1, 0U, fc_rule->rule);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO FCCONFIG (WWPN, WWPN1, TDISKID, RULE) VALUES ('%s', '%s', '%u', '%d')", fc_rule->wwpn, fc_rule->wwpn1, 0U, fc_rule->rule);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	return error;
 }
@@ -266,9 +266,9 @@ sql_delete_fc_rule(struct fc_rule *fc_rule)
 	int error = -1;
 
 	if (fc_rule->vdisk)
-		sprintf(sqlcmd, "DELETE FROM FCCONFIG WHERE WWPN='%s' AND WWPN1='%s' AND TDISKID='%u'", fc_rule->wwpn, fc_rule->wwpn1, fc_rule->vdisk->target_id);
+		snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM FCCONFIG WHERE WWPN='%s' AND WWPN1='%s' AND TDISKID='%u'", fc_rule->wwpn, fc_rule->wwpn1, fc_rule->vdisk->target_id);
 	else
-		sprintf(sqlcmd, "DELETE FROM FCCONFIG WHERE WWPN='%s' AND WWPN1='%s' AND TDISKID='%u'", fc_rule->wwpn, fc_rule->wwpn1, 0U);
+		snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM FCCONFIG WHERE WWPN='%s' AND WWPN1='%s' AND TDISKID='%u'", fc_rule->wwpn, fc_rule->wwpn1, 0U);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	return error;
 }
@@ -276,10 +276,10 @@ sql_delete_fc_rule(struct fc_rule *fc_rule)
 int
 sql_delete_tdisk_fc_rules(uint32_t target_id)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "DELETE FROM FCCONFIG WHERE TDISKID='%u'", target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM FCCONFIG WHERE TDISKID='%u'", target_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	return error;
 }
@@ -290,7 +290,7 @@ sql_add_mirror_check(struct mirror_check_spec *mirror_check_spec)
 	char sqlcmd[512];
 	int error = -1;
 
-	sprintf(sqlcmd, "INSERT INTO MIRRORCHECK (MIRRORHOST, CHECKTYPE, CHECKVALUE) VALUES ('%s', '%d', '%s')", mirror_check_spec->mirror_host, mirror_check_spec->type, mirror_check_spec->value);
+	snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO MIRRORCHECK (MIRRORHOST, CHECKTYPE, CHECKVALUE) VALUES ('%s', '%d', '%s')", mirror_check_spec->mirror_host, mirror_check_spec->type, mirror_check_spec->value);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	return error;
 }
@@ -305,7 +305,7 @@ sql_delete_mirror_check(struct mirror_check *mirror_check)
         memset(&in_addr, 0, sizeof(in_addr));
 	in_addr.sin_addr.s_addr = mirror_check->mirror_ipaddr;
 
-	sprintf(sqlcmd, "DELETE FROM MIRRORCHECK WHERE MIRRORHOST='%s' AND CHECKTYPE='%d' AND CHECKVALUE='%s'", inet_ntoa(in_addr.sin_addr), mirror_check->type, mirror_check->value);
+	snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM MIRRORCHECK WHERE MIRRORHOST='%s' AND CHECKTYPE='%d' AND CHECKVALUE='%s'", inet_ntoa(in_addr.sin_addr), mirror_check->type, mirror_check->value);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	return error;
 }
@@ -322,7 +322,7 @@ sql_query_fc_rules(struct fc_rule_list *fc_rule_list)
 	struct tdisk_info *info;
 	uint32_t target_id;
 
-	sprintf (sqlcmd, "SELECT WWPN,WWPN1,TDISKID,RULE FROM FCCONFIG ORDER BY TDISKID");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT WWPN,WWPN1,TDISKID,RULE FROM FCCONFIG ORDER BY TDISKID");
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL) {
 		DEBUG_ERR_SERVER("Error occurred in executing sqlcmd %s\n", sqlcmd); 
@@ -369,7 +369,7 @@ sql_query_mirror_checks(struct mirror_check_list *mirror_check_list)
 	int i;
 	struct mirror_check *mirror_check;
 
-	sprintf (sqlcmd, "SELECT MIRRORHOST,CHECKTYPE,CHECKVALUE FROM MIRRORCHECK ORDER BY MIRRORHOST");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT MIRRORHOST,CHECKTYPE,CHECKVALUE FROM MIRRORCHECK ORDER BY MIRRORHOST");
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL) {
 		DEBUG_ERR_SERVER("Error occurred in executing sqlcmd %s\n", sqlcmd); 
@@ -413,7 +413,7 @@ sql_query_groups(struct group_list *group_list)
 	int i, error = 0;
 	struct group_info *group_info;
 
-	sprintf (sqlcmd, "SELECT GROUPID,NAME,DEDUPEMETA,LOGDATA FROM STORAGEGROUP ORDER BY GROUPID");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT GROUPID,NAME,DEDUPEMETA,LOGDATA FROM STORAGEGROUP ORDER BY GROUPID");
 
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL) {
@@ -456,7 +456,7 @@ sql_query_tdisks(struct tdisk_list *tdisk_list)
 	int retval, error = 0;
 	struct tdisk_info *tdisk_info;
 
-	sprintf (sqlcmd, "SELECT TDISKID,NAME,DSIZE,BLOCK,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID FROM TDISK ORDER BY TDISKID");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT TDISKID,NAME,DSIZE,BLOCK,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID FROM TDISK ORDER BY TDISKID");
 
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL)
@@ -515,7 +515,7 @@ sql_query_blkdevs(struct blist *bdev_list)
 	int i;
 	struct tl_blkdevinfo *binfo;
 
-	sprintf (sqlcmd, "SELECT BID,VENDOR,PRODUCT,IDFLAGS,T10ID::bytea,NAAID::bytea,EUI64ID::bytea,UNKNOWNID::bytea,PID,ISRAID,RAIDDEV FROM PHYSSTOR");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT BID,VENDOR,PRODUCT,IDFLAGS,T10ID::bytea,NAAID::bytea,EUI64ID::bytea,UNKNOWNID::bytea,PID,ISRAID,RAIDDEV FROM PHYSSTOR");
 
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL)
@@ -670,10 +670,10 @@ err:
 int
 sql_update_tdisk_size(PGconn *conn, struct tdisk_info *tdisk_info)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET DSIZE='%"PRIx64"' WHERE TDISKID='%u'", tdisk_info->size, tdisk_info->target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET DSIZE='%"PRIx64"' WHERE TDISKID='%u'", tdisk_info->size, tdisk_info->target_id);
 	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -686,10 +686,10 @@ sql_update_tdisk_size(PGconn *conn, struct tdisk_info *tdisk_info)
 int
 sql_update_tdisk_block(PGconn *conn, struct tdisk_info *tdisk_info)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET BLOCK='%"PRIx64"' WHERE TDISKID='%u'", tdisk_info->block, tdisk_info->target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET BLOCK='%"PRIx64"' WHERE TDISKID='%u'", tdisk_info->block, tdisk_info->target_id);
 	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -702,10 +702,10 @@ sql_update_tdisk_block(PGconn *conn, struct tdisk_info *tdisk_info)
 int
 sql_update_tdisk(struct tdisk_info *tdisk_info)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET DEDUPLICATION='%d',COMPRESSION='%d',VERIFY='%d',INLINE='%d' WHERE TDISKID='%u'", tdisk_info->enable_deduplication, tdisk_info->enable_compression, tdisk_info->enable_verify, tdisk_info->force_inline, tdisk_info->target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET DEDUPLICATION='%d',COMPRESSION='%d',VERIFY='%d',INLINE='%d' WHERE TDISKID='%u'", tdisk_info->enable_deduplication, tdisk_info->enable_compression, tdisk_info->enable_verify, tdisk_info->force_inline, tdisk_info->target_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -719,10 +719,10 @@ sql_update_tdisk(struct tdisk_info *tdisk_info)
 int
 sql_rename_vdisk(uint32_t target_id, char *name)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET NAME='%s' WHERE TDISKID='%u'", name, target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET NAME='%s' WHERE TDISKID='%u'", name, target_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -735,10 +735,10 @@ sql_rename_vdisk(uint32_t target_id, char *name)
 int
 sql_rename_pool(uint32_t group_id, char *name)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE STORAGEGROUP SET NAME='%s' WHERE GROUPID='%u'", name, group_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE STORAGEGROUP SET NAME='%s' WHERE GROUPID='%u'", name, group_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -751,10 +751,10 @@ sql_rename_pool(uint32_t group_id, char *name)
 int
 sql_delete_group(uint32_t group_id)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "DELETE FROM STORAGEGROUP WHERE GROUPID='%u'", group_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM STORAGEGROUP WHERE GROUPID='%u'", group_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -768,10 +768,10 @@ sql_delete_group(uint32_t group_id)
 int
 sql_delete_tdisk(uint32_t target_id)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "DELETE FROM TDISK WHERE TDISKID='%u'", target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "DELETE FROM TDISK WHERE TDISKID='%u'", target_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -784,10 +784,10 @@ sql_delete_tdisk(uint32_t target_id)
 int
 sql_mark_tdisk_for_deletion(PGconn *conn, uint32_t target_id)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET DISABLED='%d' WHERE TDISKID='%u'", VDISK_DELETING, target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET DISABLED='%d' WHERE TDISKID='%u'", VDISK_DELETING, target_id);
 	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -800,10 +800,10 @@ sql_mark_tdisk_for_deletion(PGconn *conn, uint32_t target_id)
 int
 sql_disable_tdisk(uint32_t target_id)
 {
-	char sqlcmd[512];
+	char sqlcmd[128];
 	int error = -1;
 
-	sprintf(sqlcmd, "UPDATE TDISK SET DISABLED='%d', NAME='' WHERE TDISKID='%u'", VDISK_DELETED, target_id);
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET DISABLED='%d', NAME='' WHERE TDISKID='%u'", VDISK_DELETED, target_id);
 	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
 	if (error < 0)
 	{
@@ -816,15 +816,15 @@ sql_disable_tdisk(uint32_t target_id)
 int
 sql_add_group(PGconn *conn, struct group_info *group_info)
 {
-	char sqlcmd[512];
+	char sqlcmd[256];
 	int error = -1;
 
 	if (!group_info->group_id) {
-		sprintf(sqlcmd, "INSERT INTO STORAGEGROUP (NAME, DEDUPEMETA, LOGDATA) VALUES('%s', '%d', '%d')", group_info->name, group_info->dedupemeta, group_info->logdata);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO STORAGEGROUP (NAME, DEDUPEMETA, LOGDATA) VALUES('%s', '%d', '%d')", group_info->name, group_info->dedupemeta, group_info->logdata);
 		group_info->group_id = pgsql_exec_query3(conn, sqlcmd, 1, &error, "STORAGEGROUP", "GROUPID");
 	}
 	else {
-		sprintf(sqlcmd, "INSERT INTO STORAGEGROUP (GROUPID, NAME, DEDUPEMETA, LOGDATA) VALUES('%u', '%s', '%d', '%d')", group_info->group_id, group_info->name, group_info->dedupemeta, group_info->logdata);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO STORAGEGROUP (GROUPID, NAME, DEDUPEMETA, LOGDATA) VALUES('%u', '%s', '%d', '%d')", group_info->group_id, group_info->name, group_info->dedupemeta, group_info->logdata);
 		pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	}
 
@@ -841,11 +841,11 @@ sql_add_tdisk(PGconn *conn, struct tdisk_info *info)
 	int error = -1;
 
 	if (!info->target_id) {
-		sprintf(sqlcmd, "INSERT INTO TDISK (NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
 		info->target_id = pgsql_exec_query3(conn, sqlcmd, 1, &error, "TDISK", "TDISKID");
 	}
 	else {
-		sprintf(sqlcmd, "INSERT INTO TDISK (TDISKID, NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%u', '%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->target_id, info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (TDISKID, NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%u', '%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->target_id, info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
 		pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	}
 	if (info->target_id == 0 || error != 0)

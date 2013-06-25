@@ -182,9 +182,9 @@ static int
 __node_usr_mirror_check_fence(struct mirror_check *mirror_check)
 {
 	int retval;
-	char cmd[512];
+	char cmd[600];
 
-	sprintf(cmd, "%s > /dev/null 2>&1", mirror_check->value); 
+	snprintf(cmd, sizeof(cmd), "%s > /dev/null 2>&1", mirror_check->value); 
 	retval = system(cmd);
 	if (retval == 0)
 		return USR_RSP_OK;
@@ -250,7 +250,7 @@ __node_usr_mirror_check_daemon(struct mirror_check *mirror_check)
 	in_addr.sin_family = AF_INET;
 	in_addr.sin_addr.s_addr = inet_addr(mirror_check->value);
 
-	sprintf(cmd, "ping -W %d -c 1 %s > /dev/null 2>&1", MIRROR_CHECK_PING_TIMEOUT, inet_ntoa(in_addr.sin_addr));
+	snprintf(cmd, sizeof(cmd), "ping -W %d -c 1 %s > /dev/null 2>&1", MIRROR_CHECK_PING_TIMEOUT, inet_ntoa(in_addr.sin_addr));
 
 	status = system(cmd);
 	if (status == 0)
@@ -309,7 +309,7 @@ __node_usr_mirror_check(struct mirror_check *mirror_check)
 static void
 node_usr_fence_node(struct usr_msg *msg)
 {
-	char cmd[1024];
+	char cmd[600];
 	int retval;
 
 	if (!fence_cmd[0]) {
@@ -317,7 +317,7 @@ node_usr_fence_node(struct usr_msg *msg)
 		return;
 	}
 
-	sprintf(cmd, "%s > /dev/null 2>&1", fence_cmd);
+	snprintf(cmd, sizeof(cmd), "%s > /dev/null 2>&1", fence_cmd);
 	retval = system(cmd);
 	if (retval == 0)
 		msg->msg_rsp = USR_RSP_OK;
@@ -417,7 +417,7 @@ node_usr_mount_vdisk(char *name)
 	if (!fp) 
 		return;
 
-	sprintf(dev, "/dev/quadstor/%s", name); 
+	snprintf(dev, sizeof(dev), "/dev/quadstor/%s", name); 
 	while (fgets(buf, sizeof(buf) -1, fp) != NULL) {
 		tabdev[0] = 0;
 		sscanf(buf, "%s", tabdev);
@@ -433,9 +433,9 @@ node_usr_mount_vdisk(char *name)
 		return;
 
 #ifdef FREEBSD
-	sprintf(cmd, "mount -F %s %s > /dev/null 2>&1", QUADSTOR_FSTAB, dev);
+	snprintf(cmd, sizeof(cmd), "mount -F %s %s > /dev/null 2>&1", QUADSTOR_FSTAB, dev);
 #else
-	sprintf(cmd, "mount %s > /dev/null 2>&1", dev);
+	snprintf(cmd, sizeof(cmd), "mount %s > /dev/null 2>&1", dev);
 #endif
 
 	for (i = 0; i < 5; i++) {
@@ -537,7 +537,7 @@ node_usr_send_notification(int type, char *msg)
 	if (msg[len - 1] == '\n')
 		msg[len - 1] = 0;
 
-	sprintf(notifycmd, "snmptrap -v 2c -c public %s \"\" %s %s i %d %s s \"%s\"", host, QUADSTOR_NOTIFICATION_TRAP, QUADSTOR_NOTIFICATION_TYPE, type, QUADSTOR_NOTIFICATION_MESSAGE, msg);
+	snprintf(notifycmd, sizeof(notifycmd), "snmptrap -v 2c -c public %s \"\" %s %s i %d %s s \"%s\"", host, QUADSTOR_NOTIFICATION_TRAP, QUADSTOR_NOTIFICATION_TYPE, type, QUADSTOR_NOTIFICATION_MESSAGE, msg);
 	DEBUG_INFO("Executing %s\n", notifycmd);
 	system(notifycmd);
 	return;
@@ -563,7 +563,7 @@ node_usr_vdisk_threshold(struct usr_msg *msg, struct usr_notify *notify)
 		return;
 	}
 
-	sprintf(notifymsg, "Available space %llu in Pool %s below VDisk %s threshold of %d%%", avail, info->group->name, info->name, threshold);
+	snprintf(notifymsg, sizeof(notifymsg), "Available space %llu in Pool %s below VDisk %s threshold of %d%%", avail, info->group->name, info->name, threshold);
 	node_usr_send_notification(NOTIFICATION_TYPE_WARNING, notifymsg);
 	return;
 }

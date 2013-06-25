@@ -40,7 +40,7 @@ static void
 node_msg_handle_clone_status(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct mirror_spec *mirror_spec;
-	char errmsg[256];
+	char errmsg[128];
 	struct clone_info *clone_info, *ret = NULL;
 
 	if (msg->msg_len < sizeof(*mirror_spec)) {
@@ -58,13 +58,13 @@ node_msg_handle_clone_status(struct tl_comm *comm, struct tl_msg *msg)
 	}
 
 	if (!ret) {
-		sprintf(errmsg, "Destination VDisk %s not found\n", mirror_spec->dest_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "Destination VDisk %s not found\n", mirror_spec->dest_tdisk);
 		node_resp_error_msg(comm, msg, errmsg);
 		return;
 	}
 
 	if (clone_info->status == CLONE_STATUS_ERROR) {
-		sprintf(errmsg, "Cloning failed for destination VDisk %s\n", mirror_spec->dest_tdisk);
+		snprintf(errmsg, sizeof(errmsg), "Cloning failed for destination VDisk %s\n", mirror_spec->dest_tdisk);
 		node_resp_error(comm, msg);
 		return;
 	}
@@ -105,7 +105,7 @@ node_msg_handle_new_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 	struct mirror_spec *mirror_spec;
 	struct tdisk_info *dest_tdisk;
 	struct group_info *dest_group;
-	char errmsg[256];
+	char errmsg[128];
 
 	if (msg->msg_len < sizeof(*mirror_spec)) {
 		node_resp_error(comm, msg);
@@ -118,7 +118,7 @@ node_msg_handle_new_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 	dest_tdisk = find_tdisk_by_name(mirror_spec->dest_tdisk);
 	dest_group = find_group_by_name(mirror_spec->dest_group);
 	if (!dest_group) {
-		sprintf(errmsg, "Error cannot find Dest group %s\n", mirror_spec->dest_group);
+		snprintf(errmsg, sizeof(errmsg), "Error cannot find Dest group %s\n", mirror_spec->dest_group);
 		node_resp_error_msg(comm, msg, errmsg);
 		return;
 	}
@@ -132,25 +132,25 @@ node_msg_handle_new_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 	}
 	else {
 		if (memcmp(dest_tdisk->serialnumber, mirror_spec->src_serialnumber, sizeof(dest_tdisk->serialnumber))) {
-			sprintf(errmsg, "Dest exists, but mismatch in serialnumber src %.32s dest %.32s", mirror_spec->src_serialnumber, dest_tdisk->serialnumber);
+			snprintf(errmsg, sizeof(errmsg), "Dest exists, but mismatch in serialnumber src %.32s dest %.32s", mirror_spec->src_serialnumber, dest_tdisk->serialnumber);
 			node_resp_error_msg(comm, msg, errmsg);
 			return;
 		}
 
 		if (dest_tdisk->disabled) {
-			sprintf(errmsg, "VDisk %s is being deleted\n", dest_tdisk->name);
+			snprintf(errmsg, sizeof(errmsg), "VDisk %s is being deleted\n", dest_tdisk->name);
 			node_resp_error_msg(comm, msg, errmsg);
 			return;
 		}
 
 		if (dest_group != dest_tdisk->group) {
-			sprintf(errmsg, "Mismatch in pool, VDisk's pool is %s\n", dest_group->name);
+			snprintf(errmsg, sizeof(errmsg), "Mismatch in pool, VDisk's pool is %s\n", dest_group->name);
 			node_resp_error_msg(comm, msg, errmsg);
 			return;
 		}
 
 		if (dest_tdisk->size != mirror_spec->size) {
-			sprintf(errmsg, "Dest exists, but mismatch in size src %llu dest %llu", (unsigned long long)mirror_spec->size, (unsigned long long)dest_tdisk->size);
+			snprintf(errmsg, sizeof(errmsg), "Dest exists, but mismatch in size src %llu dest %llu", (unsigned long long)mirror_spec->size, (unsigned long long)dest_tdisk->size);
 			node_resp_error_msg(comm, msg, errmsg);
 			return;
 		}
