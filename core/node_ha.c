@@ -1399,11 +1399,9 @@ node_ha_tdisk_istate_sync(void)
 static int
 node_ha_monitor(struct ha_config *old_config, int graceful)
 {
-	struct ha_config ha_config;
-	int tries = 5, retval;
+	int retval;
 
 	debug_info("graceful %d\n", graceful);
-
 	debug_info("fence enabled %d\n", master_config.fence_enabled);
 	if (!graceful && master_config.fence_enabled) {
 		retval = ha_fence_node();
@@ -1425,22 +1423,6 @@ node_ha_monitor(struct ha_config *old_config, int graceful)
 		debug_error_notify("Not a graceful shutdown and fence command not specified. Cannot takeover\n");
 		return -1;
 	}
-
-	while (tries--) {
-		pause("psg", 1000);
-		retval = ha_read_config(&ha_config);
-		if (unlikely(retval != 0)) {
-			debug_warn("Failed to read HA config, cannot takeover\n");
-			return -1;
-		}
-
-		debug_info("ha config ipaddr %u master config ipaddr %u\n", ha_config.ipaddr, master_config.ha_bind_ipaddr);
-		if (ha_config.ipaddr != master_config.ha_bind_ipaddr) {
-			debug_warn("Lost quorum, cannot takeover\n");
-			return -1;
-		}
-	}
-	return 0;
 }
 
 int

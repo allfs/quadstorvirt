@@ -1243,6 +1243,8 @@ tl_common_scan_zvol(struct d_list *tmp_disk_list)
 	char *tmp;
 
 	fp = popen("ls -1R /dev/zvol/", "r");
+	if (!fp)
+		return -1;
 
 	strcpy(dirname, "/dev/zvol");
 	while (fgets(buf, sizeof(buf), fp) != NULL) {

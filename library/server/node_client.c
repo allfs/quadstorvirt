@@ -627,7 +627,7 @@ node_client_thread(void *arg)
 		pthread_exit(0);
 	}
 
-	if (setsockopt(client_accept_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1) {
+	if (setsockopt(client_accept_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) != 0) {
 		DEBUG_ERR_SERVER("Cannot set client thread sockopt SO_REUSEADDR\n");
 		close(client_accept_fd);
 		client_accept_fd = -1;
@@ -676,7 +676,11 @@ node_client_thread(void *arg)
 		}
 
 		opt = 1;
-		setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+		if (setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) != 0) {
+			DEBUG_WARN_SERVER("Setting TCP_NODELAY failed for %s\n", inet_ntoa(client_addr.sin_addr));
+			close(clientfd);
+			continue;
+		}
 		node_client_process_request(clientfd, &client_addr);
 	}
 out:
@@ -1211,7 +1215,7 @@ local_server_init(void * arg)
 		exit(EXIT_FAILURE);
 	}
 
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1) {
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) != 0) {
 		DEBUG_ERR_SERVER("Unable to setsockopt SO_REUSEADDR\n");
 		close(sockfd);
 		exit(EXIT_FAILURE);

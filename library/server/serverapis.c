@@ -747,7 +747,7 @@ char_to_wwpn(char *arr)
 void
 fc_rule_config_fill(struct fc_rule *fc_rule, struct fc_rule_config *fc_rule_config)
 {
-	memset(fc_rule_config, 0, sizeof(fc_rule_config));
+	memset(fc_rule_config, 0, sizeof(*fc_rule_config));
 	if (fc_rule->vdisk)
 		fc_rule_config->target_id = fc_rule->vdisk->target_id;
 	fc_rule_config->wwpn[0] = char_to_wwpn(fc_rule->wwpn);

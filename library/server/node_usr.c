@@ -420,7 +420,8 @@ node_usr_mount_vdisk(char *name)
 	snprintf(dev, sizeof(dev), "/dev/quadstor/%s", name); 
 	while (fgets(buf, sizeof(buf) -1, fp) != NULL) {
 		tabdev[0] = 0;
-		sscanf(buf, "%s", tabdev);
+		if (sscanf(buf, "%s", tabdev) != 1)
+			continue;
 		if (!tabdev[0])
 			continue;
 		if (strcmp(tabdev, dev))
@@ -682,7 +683,9 @@ node_usr_thread(void *arg)
 		}
 
 		opt = 1;
-		setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+		if (setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) != 0)
+			DEBUG_WARN_SERVER("Setting TCP_NODELAY failed on usr socket\n");
+
 		retval = pthread_create(&thread_id, NULL, node_usr_process_request, (void *)((unsigned long)clientfd));
 		if (retval != 0) {
 			DEBUG_ERR_SERVER("Cannot create node usr process request thread");
