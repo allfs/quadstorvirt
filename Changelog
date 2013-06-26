@@ -1,3 +1,7 @@
+Release 3.0.39
+	* Fix deadlock introduced in 3.0.37. 
+	* Fix defects reported by Coverity Scan
+
 Release 3.0.38
 	* Open source release
 	* Remove licensing restrictions
