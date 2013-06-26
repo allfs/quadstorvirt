@@ -860,7 +860,8 @@ tdisk_group_first(struct tdisk *tdisk)
 
 	mtx_lock(tdisk->group_list_lock);
 	group = TAILQ_FIRST(&tdisk->group_list);
-	tdisk_tail_group(tdisk, group);
+	TAILQ_REMOVE(&tdisk->group_list, group, g_list);
+	TAILQ_INSERT_TAIL(&tdisk->group_list, group, g_list);
 	mtx_unlock(tdisk->group_list_lock);
 	return group;
 }
