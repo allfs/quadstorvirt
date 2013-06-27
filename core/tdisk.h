@@ -1119,11 +1119,10 @@ struct operating_parameters {
 static inline int
 reached_eom(struct tdisk *tdisk, uint64_t lba, uint32_t transfer_length)
 {
-	if ((lba + transfer_length) > tdisk->end_lba)
+	if ((lba >= tdisk->end_lba) || (lba + transfer_length) > tdisk->end_lba)
 		return 1;
 	else
 		return 0;
-
 }
 
 int tdisk_cmd_access_ok(struct tdisk *tdisk, struct qsio_scsiio *ctio);
