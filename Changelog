@@ -1,3 +1,10 @@
+Release 3.0.40
+	* Fix regression introduced in 3.0.37 where rcache entries need to be
+	  zeroed on alloc. Caused for invalid page frees
+	* Persistent reservation fixes where service action CLEAR did not
+	  clear existing registrations and PREMPT did not clear existing
+	  reservation
+
 Release 3.0.39
 	* Fix deadlock introduced in 3.0.37. 
 	* Fix defects reported by Coverity Scan
