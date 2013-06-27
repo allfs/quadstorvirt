@@ -169,7 +169,7 @@ rcache_add_to_list(struct rcache_entry_list *lhead, struct pgdata *pgdata)
 	if (atomic_test_bit(SKIP_RCACHE_INSERT, &pgdata->flags))
 		return;
 
-	new = __uma_zalloc(rcache_entry_cache, Q_NOWAIT, sizeof(*new));
+	new = __uma_zalloc(rcache_entry_cache, Q_NOWAIT | Q_ZERO, sizeof(*new));
 	if (unlikely(!new))
 		return;
 	
