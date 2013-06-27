@@ -7850,6 +7850,7 @@ tdisk_check_cmd(uint8_t op)
 		case RELEASE:
 		case PERSISTENT_RESERVE_IN:
 		case PERSISTENT_RESERVE_OUT:
+		case REQUEST_SENSE:
 		case READ_CAPACITY:
 		case SERVICE_ACTION_IN:
 		case MODE_SENSE_6:
@@ -7858,16 +7859,16 @@ tdisk_check_cmd(uint8_t op)
 		case READ_10:
 		case READ_12:
 		case READ_16:
-		case WRITE_6:
-		case WRITE_10:
-		case WRITE_12:
-		case WRITE_16:
+		case WRITE_SAME:
+		case WRITE_SAME_16:
 		case UNMAP:
 		case EXTENDED_COPY:
 		case RECEIVE_COPY_RESULTS:
 		case COMPARE_AND_WRITE:
-		case WRITE_SAME:
-		case WRITE_SAME_16:
+		case WRITE_6:
+		case WRITE_10:
+		case WRITE_12:
+		case WRITE_16:
 		case REPORT_LUNS:
 		case VERIFY:
 		case VERIFY_12:
