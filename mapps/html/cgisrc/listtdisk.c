@@ -25,7 +25,8 @@ deleting_vdisks_present(struct tdisk_list *tdisk_list)
 	struct tdisk_info *tdisk_info;
 
 	TAILQ_FOREACH(tdisk_info, tdisk_list, q_entry) {
-		if (tdisk_info->disabled == VDISK_DELETING)
+		/* Include offline also */
+		if (!tdisk_info->online || tdisk_info->disabled == VDISK_DELETING)
 			return 1;
 	}
 	return 0;
