@@ -1402,6 +1402,37 @@ tl_common_scan_controller(char *start, char *vendor, char *product, char *grep, 
 }
 
 int
+tl_common_scan_generic(char *start, char *vendor, char *product, struct d_list *tmp_disk_list)
+{
+	FILE *fp;
+	char cmd[256];
+	char buf[512];
+	char devname[256];
+
+	snprintf(cmd, sizeof(cmd), "ls -1 /sys/block 2> /dev/null | grep %s", start);
+
+	fp = popen(cmd, "r");
+
+	if (!fp) {
+		DEBUG_ERR_SERVER("Unable to execute program %s\n", cmd);
+		return -1;
+	}
+
+	while (fgets(buf, sizeof(buf), fp) != NULL) {
+
+		buf[strlen(buf) - 1] = 0;
+		snprintf(devname, sizeof(devname), "/dev/%s", buf);
+
+		if (is_ignore_dev(devname))
+			continue;
+
+		add_disk(devname, vendor, product, NULL, 0, tmp_disk_list, 1, 1, 0, NULL, 0);
+	}
+	pclose(fp);
+	return 0;
+}
+
+int
 tl_common_scan_raiddisk(struct d_list *tmp_disk_list)
 {
 	FILE *fp;
@@ -1642,6 +1673,7 @@ tl_common_scan_physdisk(void)
 	tl_common_scan_controller("twed", "TWE", "TWE VOLUME", &tmp_disk_list);
 #else
 	tl_common_scan_controller("/dev/cciss", "HP", "Smart Array", "c[0-9].*d[0-9].*", &tmp_disk_list);
+	tl_common_scan_generic("fio", "FusionIO", "FusionIO", &tmp_disk_list);
 	tl_common_scan_lvs(&tmp_disk_list);
 #endif
 	tl_common_scan_zvol(&tmp_disk_list);
