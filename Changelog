@@ -1,3 +1,9 @@
+Release 3.0.41
+	* Fixes related to Persistent Reseveration All Registrants Type
+	* Fix for defects reported by Coverity Scan
+	* Add scanning of Fusion IO devices on Linux
+	* Improve speed of addition and deletion of physical disks
+
 Release 3.0.40
 	* Fix regression introduced in 3.0.37 where rcache entries need to be
 	  zeroed on alloc. Caused for invalid page frees

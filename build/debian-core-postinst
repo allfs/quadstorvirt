@@ -14,6 +14,6 @@ update-rc.d quadstor defaults
 
 /usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
 mkdir -p /quadstor/etc
-echo "3.0.40 for Debian" > /quadstor/etc/quadstor-core-version
+echo "3.0.41 for Debian" > /quadstor/etc/quadstor-core-version
 
 exit 0
