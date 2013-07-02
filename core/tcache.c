@@ -394,3 +394,46 @@ tcache_entry_rw(struct tcache *tcache, int rw)
 	}
 }
 #endif
+
+int
+tcache_zero_range(struct bdevint *bint, uint64_t b_start, int pages)
+{
+	pagestruct_t *page;
+	struct tcache *tcache;
+	struct tcache_list tcache_list;
+	int todo, retval;
+	int i;
+
+	SLIST_INIT(&tcache_list);
+	page = vm_pg_alloc(VM_ALLOC_ZERO);
+	if (!page) {
+		debug_warn("Page allocation failure\n");
+		return -1;
+	}
+
+	while (pages) {
+		todo = min_t(int, 1024, pages);
+		tcache = tcache_alloc(todo);
+		pages -= todo;
+		for (i = 0; i < todo; i++) {
+			retval = tcache_add_page(tcache, page, b_start, bint, LBA_SIZE, QS_IO_WRITE);
+			if (unlikely(retval != 0)) {
+				debug_warn("tcache add page failed\n");
+				tcache_put(tcache);
+				goto err;
+			}
+			b_start += (LBA_SIZE >> bint->sector_shift);
+		}
+		tcache_entry_rw(tcache, QS_IO_WRITE);
+		SLIST_INSERT_HEAD(&tcache_list, tcache, t_list);
+	}
+
+	retval = tcache_list_wait(&tcache_list);
+	vm_pg_free(page);
+	return retval;
+err:
+	tcache_list_wait(&tcache_list);
+	vm_pg_free(page);
+	return -1;
+}
+

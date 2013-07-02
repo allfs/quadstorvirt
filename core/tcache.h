@@ -97,5 +97,6 @@ tcache_list_wait(struct tcache_list *tcache_list)
 }
 void tcache_read_comp(struct tcache *tcache);
 
+int tcache_zero_range(struct bdevint *bint, uint64_t b_start, int pages);
 
 #endif

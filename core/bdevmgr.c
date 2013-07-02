@@ -929,8 +929,8 @@ bint_clear(struct bdevint *bint)
 {
 	pagestruct_t *page;
 	int retval;
-	int i;
 	uint64_t b_start;
+	int pages;
 
 	page = vm_pg_alloc(VM_ALLOC_ZERO);
 	if (unlikely(!page)) {
@@ -938,16 +938,23 @@ bint_clear(struct bdevint *bint)
 		return;
 	}
 
+	if (atomic_test_bit(GROUP_FLAGS_TAIL_META, &bint->group_flags)) {
+		b_start = bint->usize >> bint->sector_shift;
+		pages = BDEV_META_RESERVED >> LBA_SHIFT;
+		pages += (MAX_TDISKS + 1); /* 1 for BDEV META itself */
+		retval = tcache_zero_range(bint, b_start, pages);
+		if (unlikely(retval != 0))
+			debug_warn("Clear failed for vdisk meta and meta from b_start %llu\n", (unsigned long long)b_start);
+	}
+
 	retval = qs_lib_bio_lba(bint, bint->b_start, page, QS_IO_WRITE, TYPE_BINT);
 	if (unlikely(retval != 0))
 		debug_warn("Clear failed for bdev meta at b_start %llu\n", (unsigned long long)bint->b_start);
 
-	for (i = 0; i < TL_MAX_DEVICES; i++) {
-		b_start = bdev_get_disk_index_block(bint, i);
-		retval = qs_lib_bio_lba(bint, b_start, page, QS_IO_WRITE, TYPE_BINT);
-		if (unlikely(retval != 0))
-			debug_warn("Clear failed for vdisk meta at b_start %llu\n", (unsigned long long)b_start);
-	}
+	b_start = bdev_get_disk_index_block(bint, 0);
+	retval = tcache_zero_range(bint, b_start, MAX_TDISKS);
+	if (unlikely(retval != 0))
+		debug_warn("Clear failed for vdisk meta from b_start %llu\n", (unsigned long long)b_start);
 	vm_pg_free(page);
 }
 
@@ -2411,6 +2418,7 @@ bint_load(struct bdevint *bint)
 			debug_warn("raw size %llu mismatch with size %llu\n", (unsigned long long)raw_bint->usize, (unsigned long long)bint->usize);
 			goto err;
 		}
+		bint->usize = raw_bint->usize;
 	}
 
 	if (unlikely(raw_bint->b_start != bint->b_start)) {
@@ -4065,14 +4073,8 @@ bdev_add_new(struct bdev_info *binfo)
 			goto err;
 		}
 
-#if 0
-		master_bint = bint_get_group_master(bint);
-		if (!binfo->ddmaster && !master_bint) {
-			debug_warn("Master bint missing, cannot add new disk\n");
-			goto err;
-		}
-#endif
-
+		bint->usize -= BINT_TAIL_RESERVED;
+		atomic_set_bit(GROUP_FLAGS_TAIL_META, &bint->group_flags);
 		bint_clear(bint);
 		bint->ddbits = calc_ddbits();
 		dump_ddtable_global();
@@ -4081,11 +4083,6 @@ bdev_add_new(struct bdev_info *binfo)
 		if (unlikely(retval != 0)) {
 			goto err;
 		}
-#if 0 
-		if (bint->ddmaster || (master_bint && master_bint->log_disks < max_log_disks)) {
-			bint->log_disk = 1;
-		}
-#endif
 		if (binfo->enable_comp) {
 			if (bint->sector_shift != 9 && bint->sector_shift != 10)
 				binfo->enable_comp = 0;
@@ -4114,60 +4111,6 @@ bdev_add_new(struct bdev_info *binfo)
 		return 0;
 	}
 
-#if 0
-	retval = bint_initialize_groups(bint, binfo->isnew, 1);
-	if (unlikely(retval != 0)) {
-		debug_warn("failed to initialize groups\n");
-		bdev_remove(binfo);
-		return -1;
-	}
-
-	if (bint->log_disk) {
-		retval = bint_create_logs(bint, QS_IO_READ, MAX_LOG_PAGES, LOG_PAGES_OFFSET);
-		if (unlikely(retval != 0)) {
-			debug_warn("Failed to create/load log pages\n");
-			bdev_remove(binfo);
-			return -1;
-		}
-	}
-
-	if (bint->ddmaster) {
-		retval = ddtable_load(bint);
-
-		if (unlikely(retval != 0)) {
-			debug_warn("failed to create or load ddtable\n");
-			bdev_remove(binfo);
-			return -1;
-		}
-	}
-
-	retval = kernel_thread_create(bint_sync_thread, bint, bint->sync_task, "synct%u", bint->bid);
-	if (unlikely(retval != 0)) {
-		bdev_remove(binfo);
-		return -1;
-	}
-
-	retval = kernel_thread_create(bint_load_thread, bint, bint->load_task, "loadt%u", bint->bid);
-	if (unlikely(retval != 0)) {
-		bdev_remove(binfo);
-		return -1;
-	}
-
-	retval = kernel_thread_create(bint_free_thread, bint, bint->free_task, "bintfreet%u", bint->bid);
-	if (unlikely(retval != 0)) {
-		bdev_remove(binfo);
-		return -1;
-	}
-
-	if (bint->ddmaster) {
-		master_bint = bint;
-	}
-
-	atomic_set_bit(BINT_LOAD_START, &bint->flags);
-	chan_wakeup_one_nointr(bint->load_wait);
-	bdev_alloc_list_insert(bint);
-	bint->initialized = 1;
-#endif
 	return 0;
 
 err:
