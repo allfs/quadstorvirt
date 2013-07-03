@@ -851,6 +851,27 @@ vdisk_mirror_status(struct clone_config *config)
 	return 0;
 }
 
+static int
+vdisk_can_be_mirrored(struct tdisk *tdisk, struct clone_config *config, int internal)
+{
+	if (internal || !tdisk_mirroring_configured(tdisk))
+		return 1;
+
+	if (tdisk_mirroring_disabled(tdisk)) {
+		if (tdisk_mirror_master(tdisk))
+			return 1;
+		sprintf(config->errmsg, "Synchronous mirroring configured for %s, vdisk is in slave role but mirroring is currently disabled\n", tdisk_name(tdisk));
+		return 0;
+	}
+
+	if (tdisk_mirroring_need_resync(tdisk)) {
+		sprintf(config->errmsg, "Synchronous mirroring configured for %s, mirror resync needed/expected\n", tdisk_name(tdisk));
+		return 0;
+	}
+
+	return 1;
+}
+
 int
 __vdisk_mirror(struct clone_config *config, int internal)
 {
@@ -897,8 +918,7 @@ __vdisk_mirror(struct clone_config *config, int internal)
 		return -1;
 	}
 
-	if (!internal && tdisk_mirroring_configured(tdisk)) {
-		sprintf(config->errmsg, "Synchronous mirroring already enabled for %s\n", tdisk_name(tdisk));
+	if (!vdisk_can_be_mirrored(tdisk, config, internal)) {
 		tdisk_put(tdisk);
 		return -1;
 	}
