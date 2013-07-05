@@ -46,6 +46,8 @@ install -m 755 /quadstor/quadstor/mapps/html/cgisrc/*.png $DEBIAN_ROOT/var/www/q
 cp -pr /quadstor/quadstor/mapps/html/cgisrc/yui/ $DEBIAN_ROOT/var/www/quadstor/
 install -m 744 /quadstor/quadstor/scctl/scctl $DEBIAN_ROOT/quadstor/bin/scctl
 install -m 744 /quadstor/quadstor/scctl/vdconfig $DEBIAN_ROOT/quadstor/bin/vdconfig
+install -m 744 /quadstor/quadstor/scctl/spconfig $DEBIAN_ROOT/quadstor/bin/spconfig
+install -m 744 /quadstor/quadstor/scctl/bdconfig $DEBIAN_ROOT/quadstor/bin/bdconfig
 install -m 744 /quadstor/quadstor/scctl/fcconfig $DEBIAN_ROOT/quadstor/bin/fcconfig
 install -m 744 /quadstor/quadstor/scctl/qmapping $DEBIAN_ROOT/quadstor/bin/qmapping
 install -m 744 /quadstor/quadstor/scctl/qmirrorcheck $DEBIAN_ROOT/quadstor/bin/qmirrorcheck
@@ -63,6 +65,8 @@ install -m 444 /quadstor/quadstor/GPLv2 $DEBIAN_ROOT/quadstor/
 
 objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/scctl
 objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/vdconfig
+objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/spconfig
+objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/bdconfig
 objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/ndconfig
 objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/qclone
 objcopy --strip-unneeded $DEBIAN_ROOT/quadstor/bin/qmirror

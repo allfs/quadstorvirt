@@ -40,6 +40,8 @@ int tl_client_get_diskconf(uint32_t bid, struct physdisk *disk);
 int tl_client_set_diskconf(struct physdisk *physdisk, char *reply);
 int tl_client_get_mirrorconf(uint32_t target_id, struct mirror_state *mirror_state);
 int tl_client_list_groups(struct group_list *group_list, int msg_id);
+int tl_client_list_disks(struct d_list *d_list, int msg_id);
+int tl_client_list_vdisks(struct tdisk_list *tdisk_list, int msg_id);
 int tl_client_add_group(char *groupname, int dedupemeta, int logdata, char *reply);
 int tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, char *reply);
 int tl_client_modify_tdisk(uint32_t target_id, int dedupe, int comp, int verify, int force_inline);
@@ -59,5 +61,7 @@ int tl_client_list_target_generic(uint32_t target_id, char *tempfile, int msg_id
 int tl_client_get_data(int msg_id, void *reply, int msg_len);
 int tl_client_send_data(int msg_id, void *msg_data, int msg_len);
 int tl_client_dev_mapping(char *path, char *reply);
+int tl_client_get_target_id(char *name);
+int tl_client_get_group_id(char *name);
 
 #endif /* TLCLNTAPI_H_ */

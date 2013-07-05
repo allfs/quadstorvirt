@@ -9,7 +9,7 @@ LIBCAM = -lcam
 CAM = cam
 endif
 
-all: scctl $(CAM) dbrecover vdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping rundiag qsync 
+all: scctl $(CAM) dbrecover vdconfig spconfig bdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping rundiag qsync 
 
 dbrecover: dbrecover.c
 	$(CC) $(CFLAGS) -D_GNU_SOURCE -I../io/ -I../pgsql/include -I../library/server -o dbrecover dbrecover.c $(LDFLAGS) $(LIBGEOM) -ltlmsg -ltlsrv
@@ -24,6 +24,8 @@ install:
 	cp -f scctl /quadstor/bin;
 	cp -f dbrecover /quadstor/bin;
 	cp -f vdconfig /quadstor/bin;
+	cp -f spconfig /quadstor/bin;
+	cp -f bdconfig /quadstor/bin;
 	cp -f ndconfig /quadstor/bin;
 	cp -f qclone /quadstor/bin;
 	cp -f qmirror /quadstor/bin;
@@ -35,6 +37,6 @@ install:
 	cp -f cam /quadstor/bin;
 
 clean:
-	rm -f *.o scctl cam dbrecover vdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping qsync rundiag
+	rm -f *.o scctl cam dbrecover vdconfig spconfig bdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping qsync rundiag
 
 clobber: clean

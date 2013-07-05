@@ -567,19 +567,6 @@ load_tdisks(struct tl_blkdevinfo *blkdev)
 }
 
 static int
-target_name_valid(char *name)
-{
-	int i;
-	int len = strlen(name);
-
-	for (i = 0; i < len; i++) {
-		if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-')
-			return 0;
-	}
-	return 1;
-}
-
-static int
 iqn_name_valid(char *name)
 {
 	int i;
@@ -3111,7 +3098,7 @@ tl_server_set_vdiskconf(struct tl_comm *comm, struct tl_msg *msg)
 		return 0;
 	}
 
-	if (strcmp(newconf.name, tdisk_info->name)) {
+	if (newconf.name[0] && strcmp(newconf.name, tdisk_info->name)) {
 		retval = __tl_server_vdisk_rename(tdisk_info, newconf.name, errmsg);
 		if (retval != 0)
 			goto senderr;

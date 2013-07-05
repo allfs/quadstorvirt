@@ -50,6 +50,8 @@ cp -pr /quadstor/quadstor/mapps/html/cgisrc/yui/ $RPM_BUILD_ROOT/srv/www/htdocs/
 install -m 755 /quadstor/quadstor/mapps/html/cgisrc/index.html $RPM_BUILD_ROOT/srv/www/htdocs/qsindex.html
 install -m 755 /quadstor/quadstor/scctl/scctl $RPM_BUILD_ROOT/quadstor/bin/scctl
 install -m 755 /quadstor/quadstor/scctl/vdconfig $RPM_BUILD_ROOT/quadstor/bin/vdconfig
+install -m 755 /quadstor/quadstor/scctl/spconfig $RPM_BUILD_ROOT/quadstor/bin/spconfig
+install -m 755 /quadstor/quadstor/scctl/bdconfig $RPM_BUILD_ROOT/quadstor/bin/bdconfig
 install -m 755 /quadstor/quadstor/scctl/fcconfig $RPM_BUILD_ROOT/quadstor/bin/fcconfig
 install -m 755 /quadstor/quadstor/scctl/qmapping $RPM_BUILD_ROOT/quadstor/bin/qmapping
 install -m 755 /quadstor/quadstor/scctl/qmirrorcheck $RPM_BUILD_ROOT/quadstor/bin/qmirrorcheck
@@ -138,6 +140,8 @@ cd $RPM_BUILD_ROOT/quadstor/lib && ln -fs libtlmsg.so.%{libvers} libtlmsg.so
 /quadstor/sbin/mdaemon
 /quadstor/bin/scctl
 /quadstor/bin/vdconfig
+/quadstor/bin/spconfig
+/quadstor/bin/bdconfig
 /quadstor/bin/fcconfig
 /quadstor/bin/qmapping
 /quadstor/bin/qmirrorcheck

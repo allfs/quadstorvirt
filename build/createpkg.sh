@@ -63,6 +63,8 @@ echo "quadstor/bin/free" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/pidof" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/scctl" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/vdconfig" >> /quadstor/quadstor/build/pkg-plist
+echo "quadstor/bin/spconfig" >> /quadstor/quadstor/build/pkg-plist
+echo "quadstor/bin/bdconfig" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/fcconfig" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/qmirrorcheck" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/qsync" >> /quadstor/quadstor/build/pkg-plist

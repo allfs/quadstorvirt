@@ -325,4 +325,17 @@ enum {
 int get_config_value(char *path, char *name, char *value);
 void get_mirror_status_str(struct mirror_state *mirror_state, char *status);
 
+static inline int
+target_name_valid(char *name)
+{
+	int i;
+	int len = strlen(name);
+
+	for (i = 0; i < len; i++) {
+		if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-')
+			return 0;
+	}
+	return 1;
+}
+
 #endif /* API_COMMON_H_ */

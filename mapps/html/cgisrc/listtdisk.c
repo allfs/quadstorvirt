@@ -34,10 +34,7 @@ deleting_vdisks_present(struct tdisk_list *tdisk_list)
 
 int main()
 {
-	FILE *fp;
-	char tempfile[100];
 	char databuf[64];
-	int fd;
 	int retval;
 	struct tdisk_list tdisk_list;
 	struct tdisk_info *tdisk_info;
@@ -45,37 +42,10 @@ int main()
 	char *cols[] = {"{ key: 'Name', sortable: true}", "{ key: 'Pool', sortable: true}", "{ key: 'Serial', label: 'Serial Number'}", "Size", "Status", "{ key: 'Modify', allowHTML: true }", "{ key: 'Statistics', allowHTML: true }", "{ key: 'Delete', label: ' ', allowHTML: true }", NULL};
 
 
-	strcpy(tempfile, "/tmp/.quadstorlsttdk.XXXXXX");
-	fd = mkstemp(tempfile);
-	if (fd == -1) {
-		cgi_print_header("Virtual Disks", NULL, 1);
-		cgi_print_error_page("Internal processing error\n");
-	}
-
-	close(fd);
-
-	retval = tl_client_list_generic(tempfile, MSG_ID_LIST_TDISK);
+	retval = tl_client_list_vdisks(&tdisk_list, MSG_ID_LIST_TDISK);
 	if (retval != 0) {
-		remove(tempfile);
 		cgi_print_header("Virtual Disks", NULL, 1);
 		cgi_print_error_page("Getting VDisk list failed\n");
-	}
-
-	fp = fopen(tempfile, "r");
-	if (!fp) {
-		remove(tempfile);
-		cgi_print_header("Virtual Disks", NULL, 1);
-		cgi_print_error_page("Internal processing error\n");
-	}
-
-	TAILQ_INIT(&tdisk_list);
-	retval = tl_common_parse_tdisk(fp, &tdisk_list);
-	fclose(fp);
-	remove(tempfile);
-
-	if (retval != 0) {
-		cgi_print_header("Virtual Disks", NULL, 1);
-		cgi_print_error_page("Getting VDisk List failed\n");
 	}
 
 	if (deleting_vdisks_present(&tdisk_list))

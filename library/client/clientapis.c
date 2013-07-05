@@ -333,6 +333,72 @@ tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32
 }
 
 int
+tl_client_list_disks(struct d_list *dlist, int msg_id)
+{
+	char tempfile[100];
+	FILE *fp;
+	int fd;
+	int retval;
+
+	TAILQ_INIT(dlist);
+	strcpy(tempfile, "/tmp/.quadstoraddsk.XXXXXX");
+	fd = mkstemp(tempfile);
+	if (fd == -1)
+		return -1;
+	close(fd);
+
+	retval = tl_client_list_generic(tempfile, msg_id);
+	if (retval != 0) {
+		remove(tempfile);
+		return -1;
+	}
+
+	fp = fopen(tempfile, "r");
+	if (!fp) {
+		remove(tempfile);
+		return -1;
+	}
+
+	retval = tl_common_parse_physdisk(fp, dlist);
+	fclose(fp);
+	remove(tempfile);
+	return retval;
+}
+
+int
+tl_client_list_vdisks(struct tdisk_list *tdisk_list, int msg_id)
+{
+	char tempfile[100];
+	FILE *fp;
+	int fd, retval;
+
+	TAILQ_INIT(tdisk_list);
+
+	strcpy(tempfile, "/tmp/.quadstorlstvd.XXXXXX");
+	fd = mkstemp(tempfile);
+	if (fd == -1)
+		return -1;
+	close(fd);
+
+	retval = tl_client_list_generic(tempfile, msg_id);
+	if (retval != 0) {
+		remove(tempfile);
+		return -1;
+	}
+
+	fp = fopen(tempfile, "r");
+	if (!fp) {
+		remove(tempfile);
+		return -1;
+	}
+
+	retval = tl_common_parse_tdisk(fp, tdisk_list);
+	fclose(fp);
+	remove(tempfile);
+	return retval;
+}
+
+int
 tl_client_list_groups(struct group_list *group_list, int msg_id)
 {
 	char tempfile[100];
@@ -739,3 +805,53 @@ tl_client_send_data(int msg_id, void *msg_data, int msg_len)
 	return retval;
 
 }
+
+int
+tl_client_get_target_id(char *name)
+{
+	struct tdisk_list tdisk_list;
+	struct tdisk_info *tdisk_info;
+	int retval;
+	int target_id = -1;
+
+	retval = tl_client_list_vdisks(&tdisk_list, MSG_ID_LIST_TDISK);
+	if (retval != 0) {
+		fprintf(stderr, "Getting VDisk list failed\n");
+		return -1;
+	}
+
+	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+		if (tdisk_info->disabled == VDISK_DELETED)
+			continue;
+		if (strcmp(tdisk_info->name, name))
+			continue;
+		target_id = tdisk_info->target_id;
+		break;
+	}
+	tdisk_list_free(&tdisk_list);
+	return target_id;
+}
+
+int
+tl_client_get_group_id(char *name)
+{
+	struct group_list group_list;
+	struct group_info *group_info;
+	int retval;
+	int group_id = -1;
+
+	retval = tl_client_list_groups(&group_list, MSG_ID_LIST_GROUP);
+	if (retval != 0) {
+		fprintf(stderr, "Getting pool list failed\n");
+		return -1;
+	}
+
+	TAILQ_FOREACH(group_info, &group_list, q_entry) {
+		if (strcmp(group_info->name, name))
+			continue;
+		group_id = group_info->group_id;
+		break;
+	} 
+	return group_id;
+}
+
