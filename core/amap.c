@@ -52,6 +52,9 @@ amap_table_free(struct amap_table *amap_table)
 	wait_on_chan(amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &amap_table->flags));
 	amap_table_free_amaps(amap_table);
 
+	if (amap_table->write_bmap)
+		uma_zfree(write_bmap_cache, amap_table->write_bmap);
+
 	if (amap_table->metadata)
 		vm_pg_free(amap_table->metadata);
 

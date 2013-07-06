@@ -592,7 +592,7 @@ int node_client_recv(struct node_sock *sock);
 void node_recv_exit(void);
 
 struct clone_info;
-void tdisk_clone_setup(struct tdisk *tdisk, struct tdisk *src_tdisk, int in_sync, struct clone_info *clone_info);
+void tdisk_clone_setup(struct tdisk *tdisk, struct tdisk *src_tdisk, struct clone_info *clone_info);
 void tdisk_clone_cleanup(struct tdisk *tdisk, struct tdisk *src_tdisk);
 #define MAX_AMAP_CLONE_THREADS		8
 #define MAX_AMAP_MIRROR_THREADS	MAX_AMAP_CLONE_THREADS

@@ -179,6 +179,7 @@ skip_check:
 	atomic_clear_bit(MIRROR_FLAGS_PEER_LOAD_DONE, &tdisk->mirror_state.mirror_flags);
 	if (is_master) {
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
+		tdisk_mirroring_enable_write_bitmap(tdisk);
 		tdisk_flag_write_after(tdisk);
 	}
 	__tdisk_mirror_comm_free(tdisk);
@@ -1811,6 +1812,8 @@ tdisk_mirror_load_done(struct tdisk *tdisk, int msg_id, int recovery)
 	}
 
 	node_msg_free(msg);
+	if (!recovery && tdisk_mirror_master(tdisk))
+		tdisk_mirroring_enable_write_bitmap(tdisk);
 	return 0;
 }
 
@@ -2245,7 +2248,6 @@ tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys
 	setup_spec = (struct mirror_setup_spec *)(msg->raw->data);
 
 	mirror_state = &setup_spec->mirror_state;
-	mirror_state->mirror_type = clone_info->mirror_type;
 	mirror_state->mirror_role = clone_info->mirror_role;
 	mirror_state->mirror_target_id = tdisk->target_id;
 	mirror_state->mirror_src_ipaddr = clone_info->src_ipaddr;
@@ -2636,6 +2638,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
 		tdisk_sync(tdisk, 0);
 		status = NODE_STATUS_OK;
+		tdisk_mirroring_enable_write_bitmap(tdisk);
 		goto send;
 	}
 
@@ -2645,6 +2648,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
 		tdisk_sync(tdisk, 0);
+		tdisk_mirroring_enable_write_bitmap(tdisk);
 		status = NODE_STATUS_OK;
 	}
 	else {

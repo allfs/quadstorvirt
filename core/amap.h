@@ -148,10 +148,12 @@ amap_metadata_get_block(pagestruct_t *metadata, int idx)
 #define AMAP_TABLE_BLOCK_BITS	((BLOCK_BLOCKNR_BITS + BLOCK_BID_BITS))
 #define AMAPS_PER_AMAP_TABLE	(((AMAP_TABLE_SIZE - sizeof(struct raw_amap_table)) * 8) / AMAP_TABLE_BLOCK_BITS)
 #define LBAS_PER_AMAP_TABLE	(LBAS_PER_AMAP * AMAPS_PER_AMAP_TABLE)
+#define ATABLE_WRITE_BMAP_SIZE	(((AMAPS_PER_AMAP_TABLE) / 8) + 1) /* + 1 intentional */
 
 #define AMAP_TABLE_GROUP_SHIFT	(9)
 #define AMAP_TABLE_GROUP_MASK	((1U << AMAP_TABLE_GROUP_SHIFT) - 1)
 #define AMAP_TABLE_PER_GROUP	((1U << AMAP_TABLE_GROUP_SHIFT))
+#define AGROUP_WRITE_BMAP_SIZE	(AMAP_TABLE_PER_GROUP / 8)
 
 #define INDEX_TABLE_GROUP_SHIFT	AMAP_TABLE_GROUP_SHIFT
 #define INDEX_TABLE_GROUP_MASK	AMAP_TABLE_GROUP_MASK
@@ -161,6 +163,14 @@ amap_metadata_get_block(pagestruct_t *metadata, int idx)
 
 #define RAW_AMAP_TABLE_OFFSET	(AMAP_TABLE_SIZE - sizeof(struct raw_amap_table))
 
+struct write_bmap {
+	uint8_t bmap[ATABLE_WRITE_BMAP_SIZE];
+} __attribute__ ((__packed__));
+
+struct group_write_bmap {
+	uint8_t bmap[AGROUP_WRITE_BMAP_SIZE];
+} __attribute__ ((__packed__));
+ 
 static inline uint32_t
 lba_block_size(uint64_t block)
 {
@@ -245,6 +255,7 @@ struct amap_table {
 	wait_chan_t *amap_table_wait;
 	struct iowaiter_list io_waiters;
 	sx_t *amap_table_lock;
+	struct write_bmap *write_bmap;
 	uint32_t amap_table_id;
 	uint16_t pad;
 	int16_t flags;
@@ -294,8 +305,8 @@ STAILQ_HEAD(group_bmap_list, amap_group_bitmap);
 struct amap_table_group {
 	struct amap_table **amap_table;
 	sx_t *group_lock;
-	uint16_t amap_table_max;
-	uint16_t write_bitmap;
+	struct group_write_bmap *group_write_bmap;
+	uint32_t amap_table_max;
 	TAILQ_ENTRY(amap_table_group) g_list;
 	TAILQ_HEAD(, amap_table) table_list;
 };

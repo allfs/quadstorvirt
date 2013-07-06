@@ -128,6 +128,8 @@ calc_sector_bits(uint32_t sector_size, uint32_t *sector_shift)
 	return;
 }
 
+uma_t *write_bmap_cache;
+uma_t *group_write_bmap_cache;
 uma_t *node_sync_post_cache;
 uma_t *node_sock_cache;
 uma_t *node_comm_cache;
@@ -211,6 +213,14 @@ mdaemon_set_info(struct mdaemon_info *info)
 static void
 exit_caches(void)
 {
+	debug_info("group_write_bmap_cache_free\n");
+	if (group_write_bmap_cache)
+		__uma_zdestroy("qs_group_write_bmap", group_write_bmap_cache);
+
+	debug_info("write_bmap_cache_free\n");
+	if (write_bmap_cache)
+		__uma_zdestroy("qs_write_bmap", write_bmap_cache);
+
 	debug_info("node_msg_cache_free\n");
 	if (node_msg_cache)
 		__uma_zdestroy("qs_node_msg", node_msg_cache);
@@ -405,6 +415,18 @@ do {							\
 static int
 init_caches(void)
 {
+	CREATE_CACHE(group_write_bmap_cache, "qs_group_write_bmap", sizeof(struct group_write_bmap));
+	if (!group_write_bmap_cache) {
+		debug_warn("Cannot create group_write_bmap cache\n");
+		return -1;
+	}
+
+	CREATE_CACHE(write_bmap_cache, "qs_write_bmap", sizeof(struct write_bmap));
+	if (!write_bmap_cache) {
+		debug_warn("Cannot create write_bmap cache\n");
+		return -1;
+	}
+
 	CREATE_CACHE(node_msg_cache, "qs_node_msg", sizeof(struct node_msg));
 	if (!node_msg_cache) {
 		debug_warn("Cannot create node_msg cache\n");

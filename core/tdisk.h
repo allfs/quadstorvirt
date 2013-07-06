@@ -158,7 +158,7 @@ struct clone_info {
 	uint32_t dest_target_id;
 	uint8_t  op;
 	uint8_t  attach;
-	uint8_t  mirror_type;
+	uint8_t  in_sync;
 	uint8_t  mirror_role;
 	char mirror_vdisk[TDISK_MAX_NAME_LEN];
 	char mirror_group[TDISK_MAX_NAME_LEN];

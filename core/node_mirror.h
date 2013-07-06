@@ -75,11 +75,39 @@ tdisk_mirroring_disabled(struct tdisk *tdisk)
 
 int tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual);
 
+int tdisk_clear_write_bitmap(struct tdisk *tdisk);
+
+static inline int
+tdisk_mirror_master(struct tdisk *tdisk)
+{
+	return (tdisk->mirror_state.mirror_role == MIRROR_ROLE_MASTER);
+}
+
 static inline void
 tdisk_mirroring_resync_clear(struct tdisk *tdisk)
 {
 	atomic_clear_bit(MIRROR_FLAGS_NEED_RESYNC, &tdisk->mirror_state.mirror_flags);
 	atomic_clear_bit(MIRROR_FLAGS_IN_RESYNC, &tdisk->mirror_state.mirror_flags);
+	if (tdisk_mirror_master(tdisk))
+		atomic_set_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
+	tdisk_clear_write_bitmap(tdisk);
+}
+
+static inline void
+tdisk_mirroring_enable_write_bitmap(struct tdisk *tdisk)
+{
+	int retval;
+
+	if (atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &tdisk->mirror_state.mirror_flags))
+		return;
+
+	retval = tdisk_clear_write_bitmap(tdisk);
+	if (retval) {
+		debug_check(1);
+		atomic_clear_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
+		return;
+	}
+	atomic_set_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
 }
 
 static inline int 
@@ -135,12 +163,6 @@ static inline int
 mirror_state_master(struct mirror_state *mirror_state)
 {
 	return (mirror_state->mirror_role == MIRROR_ROLE_MASTER);
-}
-
-static inline int
-tdisk_mirror_master(struct tdisk *tdisk)
-{
-	return (tdisk->mirror_state.mirror_role == MIRROR_ROLE_MASTER);
 }
 
 int tdisk_lba_needs_mirror_sync(struct tdisk *tdisk, uint64_t lba);

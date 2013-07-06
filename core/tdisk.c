@@ -126,6 +126,9 @@ amap_table_group_free(struct amap_table_group *group)
 		}
 		uma_zfree(fourk_cache, group->amap_table);
 	}
+
+	if (group->group_write_bmap)
+		uma_zfree(group_write_bmap_cache, group->group_write_bmap);
 	sx_free(group->group_lock);
 	uma_zfree(amap_table_group_cache, group);
 }
@@ -964,6 +967,7 @@ __tdisk_sync(struct tdisk *tdisk, int free_alloc)
 	raw_data->threshold = tdisk->threshold;
 	memcpy(&raw_data->stats, &tdisk->stats, sizeof(tdisk->stats));
 	memcpy(&raw_data->mirror_state, &tdisk->mirror_state, sizeof(tdisk->mirror_state));
+	atomic_clear_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &raw_data->mirror_state.mirror_flags);
 skip:
 	index_b_start = bdev_get_disk_index_block(tdisk_bint(tdisk), tdisk->target_id);
 	retval = qs_lib_bio_lba(tdisk_bint(tdisk), index_b_start, page, QS_IO_WRITE, TYPE_TDISK_INDEX);
@@ -8174,4 +8178,48 @@ tdisk_reset(struct tdisk *tdisk, uint64_t i_prt[], uint64_t t_prt[], uint8_t ini
 	node_istate_sense_state_send(tdisk);
 	tdisk_reservation_unlock(tdisk);
 	device_unblock_queues(tdisk);
+}
+
+static int 
+amap_table_group_clear_write_bitmap(struct amap_table_group *group)
+{
+	struct amap_table *amap_table;
+
+	if (!group->group_write_bmap)
+		return 0;
+
+	TAILQ_FOREACH(amap_table, &group->table_list, t_list) {
+		amap_table_lock(amap_table);
+		if (amap_table->write_bmap) {
+			uma_zfree(write_bmap_cache, amap_table->write_bmap);
+			amap_table->write_bmap = NULL;
+		}
+	}
+	uma_zfree(group_write_bmap_cache, group->group_write_bmap);
+	group->group_write_bmap = NULL;
+	return 1;
+}
+
+int
+tdisk_clear_write_bitmap(struct tdisk *tdisk)
+{
+	struct amap_table_group *group;
+	int done = 0;
+	int i, retval; 
+
+	if (!tdisk->amap_table_group)
+		return 0;
+
+	for (i = 0; i < tdisk->amap_table_group_max; i++) {
+		group = tdisk->amap_table_group[i];
+		if (!group)
+			continue;
+
+		amap_table_group_lock(group);
+		retval = amap_table_group_clear_write_bitmap(group);
+		amap_table_group_unlock(group);
+		if (retval)
+			done++;
+	}
+	return done;
 }

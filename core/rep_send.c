@@ -456,6 +456,29 @@ amap_mirror_data(struct clone_data *clone_data)
 }
 
 static int
+amap_write_bmap_check(struct tdisk *tdisk, struct amap_table *amap_table, int idx)
+{
+	struct mirror_state *mirror_state;
+	struct write_bmap *write_bmap;
+	int i, j;
+
+	mirror_state = &tdisk->mirror_state;
+	if (!atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &mirror_state->mirror_flags))
+		return 0;
+
+	write_bmap = amap_table->write_bmap;
+	if (!write_bmap)
+		return 1;
+
+	i = idx / 8;
+	j = idx % 8; 
+	if (!(write_bmap->bmap[i] & (1 << j)))
+		return 1;
+	else
+		return 0;
+}
+
+static int
 amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t group_id)
 {
 	struct amap *amap;
@@ -467,7 +490,7 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 	uint32_t amap_id, bmap_group_offset;
 	uint32_t amap_max, todo;
 	int i, set;
-	int done = 0, error;
+	int done = 0, error, retval;
 
 	group = tdisk->amap_table_group[group_id];
 	amap_id = amap_table->amap_table_id * AMAPS_PER_AMAP_TABLE;
@@ -475,6 +498,16 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 	todo = min_t(uint32_t, AMAPS_PER_AMAP_TABLE, amap_max - amap_id);
 
 	for (i = 0; i < todo; i++, amap_id++) {
+		if (tdisk_in_sync(tdisk)) {
+			amap_table_lock(amap_table);
+			retval = amap_write_bmap_check(tdisk, amap_table, i);
+			amap_table_unlock(amap_table);
+			if (retval) {
+				tdisk_set_clone_amap_id(tdisk, amap_id);
+				continue;
+			}
+		}
+
 		metadata = vm_pg_alloc(0);
 		if (unlikely(!metadata)) {
 			tdisk_set_mirror_error(tdisk);
@@ -515,6 +548,9 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 			return -1;
 		}
 
+		if (tdisk_in_sync(tdisk))
+			goto skip_bmap_check;
+
 		bmap_group_offset = amap_bitmap_group_offset(amap_id);
 		amap_table_group_lock(group);
 		if (!bmap || bmap_group_offset != bmap->group_offset) {
@@ -537,6 +573,7 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 			vm_pg_free(metadata);
 			continue;
 		}
+skip_bmap_check:
 		memcpy(vm_pg_address(metadata), vm_pg_address(amap->metadata), AMAP_SIZE); 
 		atomic_set_bit_short(AMAP_META_DATA_BUSY, &amap->flags);
 		amap_table_group_unlock(group);
@@ -565,6 +602,29 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 }
 
 static int
+amap_table_write_bmap_check(struct tdisk *tdisk, struct amap_table_group *group, int idx)
+{
+	struct mirror_state *mirror_state;
+	struct group_write_bmap *group_write_bmap;
+	int i, j;
+
+	mirror_state = &tdisk->mirror_state;
+	if (!atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &mirror_state->mirror_flags))
+		return 0;
+
+	group_write_bmap = group->group_write_bmap;
+	if (!group_write_bmap)
+		return 1;
+
+	i = idx / 8;
+	j = idx % 8; 
+	if (!(group_write_bmap->bmap[i] & (1 << j)))
+		return 1;
+	else
+		return 0;
+}
+
+static int
 amap_table_group_mirror(struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_id)
 {
 	struct amap_table *amap_table;
@@ -585,8 +645,14 @@ amap_table_group_mirror(struct tdisk *tdisk, struct amap_table_group *group, uin
 
 	for (i = 0; i < group->amap_table_max; i++, atable_id++) {
 		amap_table_group_lock(group);
-
-		if (bmap_bit_is_set(bmap, i)) {
+		if (tdisk_in_sync(tdisk)) {
+			retval = amap_table_write_bmap_check(tdisk, group, i);
+			if (retval) {
+				amap_table_group_unlock(group);
+				continue;
+			}
+		}
+		else if (bmap_bit_is_set(bmap, i)) {
 			amap_table_group_unlock(group);
 			continue;
 		}
@@ -715,7 +781,7 @@ static int rep_send_thr(void *data)
 
 	clone_info->comm = comm;
 	tdisk_clone_lock(tdisk);
-	tdisk_clone_setup(tdisk, NULL, clone_info->attach, clone_info);
+	tdisk_clone_setup(tdisk, NULL, clone_info);
 	tdisk_clone_unlock(tdisk);
 	for (i = 0; i < tdisk->amap_table_group_max; i++) {
 		group = tdisk->amap_table_group[i];
@@ -935,13 +1001,13 @@ __vdisk_mirror(struct clone_config *config, int internal)
 	clone_info->dest_target_id = config->dest_target_id;
 	clone_info->op = OP_MIRROR;
 	clone_info->attach = config->attach;
-	clone_info->mirror_type = config->mirror_type;
+	clone_info->in_sync = (config->attach || internal);
 	clone_info->mirror_role = config->mirror_role;
 	clone_info->job_id = config->job_id;
 	strcpy(clone_info->mirror_vdisk, config->mirror_vdisk);
 	strcpy(clone_info->mirror_group, config->mirror_group);
 
-	if (clone_info->attach) {
+	if (config->attach) {
 		retval = tdisk_mirror_setup(tdisk, clone_info, config->sys_rid);
 		if (unlikely(retval != 0)) {
 			sprintf(config->errmsg, "Mirror setup failed for %s\n", tdisk_name(tdisk));
@@ -954,7 +1020,7 @@ __vdisk_mirror(struct clone_config *config, int internal)
 	if (unlikely(retval != 0)) {
 		sprintf(config->errmsg, "Creating a new mirroring thread failed\n");
 		STAILQ_REMOVE(&clone_info_list, clone_info, clone_info, i_list);
-		if (clone_info->attach)
+		if (config->attach)
 			tdisk_mirror_remove(tdisk, 0);
 		goto err;
 	}
