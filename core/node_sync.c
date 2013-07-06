@@ -229,7 +229,7 @@ node_sync_post_insert(struct node_sync_post *post)
 }
 
 static struct amap_table *
-amap_table_create(struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_offset, int atable_id, uint64_t amap_table_block)
+amap_table_create(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, uint64_t amap_table_block)
 {
 	struct amap_table *amap_table;
 	struct bdevint *bint;
@@ -239,7 +239,7 @@ amap_table_create(struct tdisk *tdisk, struct amap_table_group *group, uint32_t 
 		return NULL;
 	}
 
-	amap_table = amap_table_alloc(tdisk, atable_id, group_offset);
+	amap_table = amap_table_alloc(tdisk, atable_id);
 	amap_table->metadata = vm_pg_alloc(VM_ALLOC_ZERO);
 	if (unlikely(!amap_table->metadata)) {
 		amap_table_put(amap_table);
@@ -247,7 +247,7 @@ amap_table_create(struct tdisk *tdisk, struct amap_table_group *group, uint32_t 
 	}
 	amap_table->amap_table_block = amap_table_block;
 	atomic_set_bit_short(ATABLE_META_DATA_INVALID, &amap_table->flags);
-	amap_table_insert(group, amap_table, group_offset);
+	amap_table_insert(group, amap_table);
 	return amap_table;
 }
  
@@ -881,7 +881,7 @@ node_amap_sync_recv(struct node_sock *sock, struct raw_node_msg *raw)
 	amap_table_group_lock(group);
 	amap_table = group->amap_table[group_offset];
 	if (!amap_table) {
-		amap_table = amap_table_create(tdisk, group, group_offset, atable_id, amap_spec.amap_table_block);
+		amap_table = amap_table_create(tdisk, group, atable_id, amap_spec.amap_table_block);
 		if (unlikely(!amap_table)) {
 			amap_table_group_unlock(group);
 			status = NODE_STATUS_MEM_ALLOC_FAILURE;
@@ -1154,7 +1154,7 @@ node_amap_table_sync_recv(struct node_sock *sock, struct raw_node_msg *raw)
 	amap_table_group_lock(group);
 	amap_table = group->amap_table[group_offset];
 	if (!amap_table) {
-		amap_table = amap_table_create(tdisk, group, group_offset, atable_id, amap_table_spec.block);
+		amap_table = amap_table_create(tdisk, group, atable_id, amap_table_spec.block);
 		if (unlikely(!amap_table))  {
 			amap_table_group_unlock(group);
 			status = NODE_STATUS_MEM_ALLOC_FAILURE;

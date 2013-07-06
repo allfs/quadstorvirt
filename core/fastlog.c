@@ -428,7 +428,7 @@ amap_table_recreate(struct tdisk *tdisk, uint64_t lba, uint64_t block)
 		return NULL;
 	}
 
-	amap_table = amap_table_alloc(tdisk, atable_id, group_offset);
+	amap_table = amap_table_alloc(tdisk, atable_id);
 	amap_table->metadata = vm_pg_alloc(VM_ALLOC_ZERO);
 	if (unlikely(!amap_table->metadata)) {
 		amap_table_put(amap_table);
@@ -457,7 +457,7 @@ amap_table_recreate(struct tdisk *tdisk, uint64_t lba, uint64_t block)
 	table_index_write(tdisk, table_index, index_id, index_offset, amap_table);
 
 	amap_table_group_lock(group);
-	amap_table_insert(group, amap_table, group_offset);
+	amap_table_insert(group, amap_table);
 	amap_table_get(amap_table);
 	amap_table_group_unlock(group);
 	return amap_table;

@@ -246,11 +246,17 @@ struct amap_table {
 	struct iowaiter_list io_waiters;
 	sx_t *amap_table_lock;
 	uint32_t amap_table_id;
-	uint16_t group_offset;
+	uint16_t pad;
 	int16_t flags;
 	atomic_t refs;
 	atomic_t pending_writes; 
 };
+
+static inline uint32_t
+amap_table_group_offset(struct amap_table *amap_table)
+{
+	return (amap_table->amap_table_id & AMAP_TABLE_GROUP_MASK);
+}
 
 static inline struct bdevint *
 amap_table_bint(struct amap_table *amap_table)
@@ -288,7 +294,8 @@ STAILQ_HEAD(group_bmap_list, amap_group_bitmap);
 struct amap_table_group {
 	struct amap_table **amap_table;
 	sx_t *group_lock;
-	uint32_t amap_table_max;
+	uint16_t amap_table_max;
+	uint16_t write_bitmap;
 	TAILQ_ENTRY(amap_table_group) g_list;
 	TAILQ_HEAD(, amap_table) table_list;
 };

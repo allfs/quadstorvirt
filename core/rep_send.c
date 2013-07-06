@@ -599,7 +599,7 @@ amap_table_group_mirror(struct tdisk *tdisk, struct amap_table_group *group, uin
 		}
 
 		if (!amap_table) {
-			amap_table = amap_table_load_async(tdisk, block, group, group_id, i, atable_id);
+			amap_table = amap_table_load_async(tdisk, block, group, group_id, atable_id);
 			if (unlikely(!amap_table)) {
 				amap_table_group_unlock(group);
 				debug_warn("Cannot load amap table at id %u block %llu\n", atable_id, (unsigned long long)block);

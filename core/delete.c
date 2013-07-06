@@ -312,7 +312,7 @@ amap_table_group_delete(struct tdisk *tdisk, struct amap_table_group *group, uin
 
 		amap_table = group->amap_table[i];
 		if (!amap_table) {
-			amap_table = amap_table_load_async(tdisk, block, group, group_id, i, atable_id);
+			amap_table = amap_table_load_async(tdisk, block, group, group_id, atable_id);
 			if (unlikely(!amap_table)) {
 				amap_table_group_unlock(group);
 				return -1;

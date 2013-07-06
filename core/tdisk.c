@@ -869,7 +869,9 @@ tdisk_group_first(struct tdisk *tdisk)
 void
 amap_table_remove(struct amap_table_group *group, struct amap_table *amap_table)
 {
-	group->amap_table[amap_table->group_offset] = NULL;
+	uint32_t group_offset = amap_table_group_offset(amap_table);
+
+	group->amap_table[group_offset] = NULL;
 	TAILQ_REMOVE(&group->table_list, amap_table, t_list);
 	atomic_dec(&amap_table->tdisk->amap_table_count);
 	amap_table_put(amap_table);
@@ -1273,7 +1275,7 @@ target_load_disk(struct tdisk_info *tdisk_info, unsigned long arg)
 }
 
 struct amap_table *
-amap_table_alloc(struct tdisk *tdisk, uint32_t amap_table_id, uint32_t group_offset)
+amap_table_alloc(struct tdisk *tdisk, uint32_t amap_table_id)
 {
 	struct amap_table *amap_table;
 
@@ -1292,7 +1294,6 @@ amap_table_alloc(struct tdisk *tdisk, uint32_t amap_table_id, uint32_t group_off
 
 	amap_table->tdisk = tdisk;
 	amap_table->amap_table_id = amap_table_id;
-	amap_table->group_offset = group_offset;
 	atomic_set(&amap_table->refs, 1);
 	amap_table->amap_table_lock = sx_alloc("amap table lock");
 	amap_table->amap_table_wait = wait_chan_alloc("amap table wait");
@@ -1463,7 +1464,7 @@ static int tdisk_load_thread(void *data)
 			continue;
 		}
 
-		amap_table = amap_table_load(tdisk, block, group, group_offset, atable_id, &priv);
+		amap_table = amap_table_load(tdisk, block, group, atable_id, &priv);
 		if (amap_table) {
 			bdev_start(amap_table_bint(amap_table)->b_dev, &priv);
 		}
@@ -3025,9 +3026,10 @@ tdisk_cmd_test_unit_ready(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 }
 
 void
-amap_table_insert(struct amap_table_group *group, struct amap_table *amap_table, uint32_t group_offset)
+amap_table_insert(struct amap_table_group *group, struct amap_table *amap_table)
 {
 	struct tdisk *tdisk = amap_table->tdisk;
+	uint32_t group_offset = amap_table_group_offset(amap_table);
 
 	group->amap_table[group_offset] = amap_table;
 	TAILQ_INSERT_TAIL(&group->table_list, amap_table, t_list);
@@ -3039,14 +3041,14 @@ amap_table_insert(struct amap_table_group *group, struct amap_table *amap_table,
 }
 
 int
-amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_offset, int atable_id, struct index_info_list *meta_index_info_list)
+amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, struct index_info_list *meta_index_info_list)
 {
 	uint64_t b_start;
 	struct bdevint *bint;
 	struct amap_table *amap_table;
 	struct index_info *index_info;
 
-	amap_table = amap_table_alloc(tdisk, atable_id, group_offset);
+	amap_table = amap_table_alloc(tdisk, atable_id);
 	if (unlikely(!amap_table)) {
 		debug_warn("Failed to alloc amap table\n");
 		return -1;
@@ -3084,20 +3086,21 @@ amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, uint32_t gr
 
 	atomic_set_bit_short(ATABLE_META_IO_PENDING, &amap_table->flags);
 	atomic_set_bit_short(ATABLE_META_DATA_NEW, &amap_table->flags);
-	amap_table_insert(group, amap_table, group_offset);
+	amap_table_insert(group, amap_table);
 	TDISK_INC(tdisk, amap_table_new, 1);
 	return 0;
 }
 
 struct amap_table * 
-amap_table_load_async(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, uint32_t group_id, uint32_t group_offset, int atable_id)
+amap_table_load_async(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, uint32_t group_id, int atable_id)
 {
 	struct amap_table_index *table_index;
 	struct amap_table *amap_table, *ret_amap_table;
 	struct tpriv priv = { 0 };
+	uint32_t group_offset = atable_id & AMAP_TABLE_GROUP_MASK;
 	int i;
 
-	ret_amap_table = amap_table_load(tdisk, block, group, group_offset, atable_id, &priv);
+	ret_amap_table = amap_table_load(tdisk, block, group, atable_id, &priv);
 	if (unlikely(!ret_amap_table))
 		return NULL;
 
@@ -3118,7 +3121,7 @@ amap_table_load_async(struct tdisk *tdisk, uint64_t block, struct amap_table_gro
 		block = get_amap_table_block(table_index, group_offset);
 		if (!block)
 			continue;
-		amap_table_load(tdisk, block, group, group_offset, atable_id, NULL);
+		amap_table_load(tdisk, block, group, atable_id, NULL);
 	}
 
 	bdev_start(amap_table_bint(ret_amap_table)->b_dev, &priv);
@@ -3126,13 +3129,13 @@ amap_table_load_async(struct tdisk *tdisk, uint64_t block, struct amap_table_gro
 }
 
 struct amap_table * 
-amap_table_load(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, uint32_t group_offset, int atable_id, struct tpriv *priv)
+amap_table_load(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, int atable_id, struct tpriv *priv)
 {
 	struct bdevint *bint;
 	struct amap_table *amap_table;
 	int retval;
 
-	amap_table = amap_table_alloc(tdisk, atable_id, group_offset);
+	amap_table = amap_table_alloc(tdisk, atable_id);
 	if (unlikely(!amap_table)) {
 		debug_warn("Failed to alloc amap table\n");
 		return NULL;
@@ -3160,7 +3163,7 @@ amap_table_load(struct tdisk *tdisk, uint64_t block, struct amap_table_group *gr
 		amap_table_put(amap_table);
 		return NULL;
 	}
-	amap_table_insert(group, amap_table, group_offset);
+	amap_table_insert(group, amap_table);
 	TDISK_INC(tdisk, amap_table_load, 1);
 	return amap_table;
 }
@@ -3220,7 +3223,7 @@ amap_table_locate(struct tdisk *tdisk, uint64_t lba, int *error)
 			return NULL;
 		}
 
-		amap_table = amap_table_load(tdisk, block, group, group_offset, atable_id, NULL);
+		amap_table = amap_table_load(tdisk, block, group, atable_id, NULL);
 		if (unlikely(!amap_table)) {
 			*error = -1;
 			amap_table_group_unlock(group);
@@ -3274,7 +3277,7 @@ lba_unmapped(struct tdisk *tdisk, uint64_t lba, struct pgdata *pgdata, struct am
 			return 1;
 		}
 
-		amap_table = amap_table_load_async(tdisk, block, group, group_id, group_offset, atable_id);
+		amap_table = amap_table_load_async(tdisk, block, group, group_id, atable_id);
 		if (unlikely(!amap_table)) {
 			amap_table_group_unlock(group);
 			return -1;
@@ -3520,7 +3523,7 @@ lba_unmapped_write(struct tdisk *tdisk, uint64_t lba, struct pgdata *pgdata, str
 				return 0;
 			}
 			TDISK_TSTART(tmp_ticks);
-			retval = amap_table_init(tdisk, group, group_offset, atable_id, &wlist->meta_index_info_list);
+			retval = amap_table_init(tdisk, group, atable_id, &wlist->meta_index_info_list);
 			TDISK_TEND(tdisk, amap_table_init_ticks, tmp_ticks);
 			if (unlikely(retval != 0)) {
 				amap_table_group_unlock(group);
@@ -3532,7 +3535,7 @@ lba_unmapped_write(struct tdisk *tdisk, uint64_t lba, struct pgdata *pgdata, str
 		}
 		else {
 			TDISK_TSTART(tmp_ticks);
-			amap_table = amap_table_load_async(tdisk, block, group, group_id, group_offset, atable_id);
+			amap_table = amap_table_load_async(tdisk, block, group, group_id, atable_id);
 			TDISK_TEND(tdisk, amap_table_load_ticks, tmp_ticks);
 			if (unlikely(!amap_table)) {
 				amap_table_group_unlock(group);

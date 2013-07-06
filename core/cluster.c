@@ -301,7 +301,7 @@ node_ha_amap_locate(struct tdisk *tdisk, uint64_t lba, struct amap_table **ret_a
 			return NULL;
 		}
 
-		amap_table = amap_table_load(tdisk, block, group, group_offset, atable_id, &priv);
+		amap_table = amap_table_load(tdisk, block, group, atable_id, &priv);
 		if (unlikely(!amap_table)) {
 			debug_warn("Cannot load amap table at block %u:%llu\n", BLOCK_BID(block), (unsigned long long)BLOCK_BLOCKNR(block));
 			amap_table_group_unlock(group);

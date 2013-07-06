@@ -162,7 +162,7 @@ clone_amap_table_get(struct tdisk *dest_tdisk, struct amap_table_group *dest_gro
 	dest_amap_table = dest_group->amap_table[group_offset];
 	if (!block && !dest_amap_table) {
 		wlist_lock(wlist);
-		retval = amap_table_init(dest_tdisk, dest_group, group_offset, atable_id, &wlist->meta_index_info_list);
+		retval = amap_table_init(dest_tdisk, dest_group, atable_id, &wlist->meta_index_info_list);
 		wlist_unlock(wlist);
 		if (unlikely(retval != 0)) {
 			tdisk_set_clone_error(dest_tdisk);
@@ -171,7 +171,7 @@ clone_amap_table_get(struct tdisk *dest_tdisk, struct amap_table_group *dest_gro
 		dest_amap_table = dest_group->amap_table[group_offset];
 	}
 	else if (!dest_amap_table) {
-		dest_amap_table = amap_table_load_async(dest_tdisk, block, dest_group, group_id, group_offset, atable_id);
+		dest_amap_table = amap_table_load_async(dest_tdisk, block, dest_group, group_id, atable_id);
 		if (unlikely(!dest_amap_table)) {
 			tdisk_set_clone_error(dest_tdisk);
 			return NULL;
@@ -1042,7 +1042,7 @@ amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct
 		}
 
 		if (!src_amap_table) {
-			src_amap_table = amap_table_load_async(src_tdisk, block, src_group, group_id, i, atable_id);
+			src_amap_table = amap_table_load_async(src_tdisk, block, src_group, group_id, atable_id);
 			if (unlikely(!src_amap_table)) {
 				amap_table_group_unlock(src_group);
 				return -1;
