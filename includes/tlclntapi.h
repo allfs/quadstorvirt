@@ -63,5 +63,6 @@ int tl_client_send_data(int msg_id, void *msg_data, int msg_len);
 int tl_client_dev_mapping(char *path, char *reply);
 int tl_client_get_target_id(char *name);
 int tl_client_get_group_id(char *name);
+int tl_client_prompt_user(char *msg);
 
 #endif /* TLCLNTAPI_H_ */

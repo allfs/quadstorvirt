@@ -30,7 +30,7 @@ print_usage(void)
 	fprintf(stdout, "Adding a VDisk: \n");
 	fprintf(stdout, "vdconfig -a -v <vdisk name> -s <size> -g <pool name> -e (optional)\n\n");
 	fprintf(stdout, "Deleting a VDisk: \n");
-	fprintf(stdout, "vdconfig -x -v <vdisk name>\n\n");
+	fprintf(stdout, "vdconfig -x -v <vdisk name> -f (force)\n\n");
 	fprintf(stdout, "Modifying a VDisk: \n");
 	fprintf(stdout, "vdconfig -m -v <vdisk name> -d (dedupe) -c (compression) -y (verify) -t <threshold value>\n\n");
 	fprintf(stdout, "Resizing a VDisk: \n");
@@ -136,7 +136,7 @@ vdconfig_modify_vdisk(char *name, int dedupe, int compression, int verify, int t
 }
 
 static int
-vdconfig_delete_vdisk(char *name)
+vdconfig_delete_vdisk(char *name, int force)
 {
 	int retval, target_id;
 
@@ -144,6 +144,16 @@ vdconfig_delete_vdisk(char *name)
 	if (target_id <= 0) {
 		fprintf(stderr, "Cannot get target id for VDisk %s\n", name);
 		return -1;
+	}
+
+	if (!force) {
+		char msg[128];
+		snprintf(msg, sizeof(msg), "Delete VDisk %s ? (y/n)", name);
+		retval = tl_client_prompt_user(msg);
+		if (retval != 1) {
+			fprintf(stdout, "Skipping deletion of VDisk %s\n", name);
+			exit(1);
+		}
 	}
 
 	retval = tl_client_delete_tdisk(target_id);
@@ -309,7 +319,7 @@ int main(int argc, char *argv[])
 	if (delete) {
 		if (!src[0])
 			print_usage();
-		return vdconfig_delete_vdisk(src);
+		return vdconfig_delete_vdisk(src, force);
 	}		
 
 

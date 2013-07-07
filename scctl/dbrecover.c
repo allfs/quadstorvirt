@@ -78,32 +78,6 @@ read_raw_bint(struct physdisk *disk, struct raw_bdevint *raw_bint)
 	return 0;
 }
 
-int prompt_user(char *msg)
-{
-	int resp;
-
-	fprintf(stdout, "%s", msg);
-	fflush(stdout);
-again:
-	resp = getchar();
-#ifdef FREEBSD
-	fpurge(stdin);
-#endif
-	if ((char)(resp) == 'y')
-		return 1;
-	else if ((char)(resp) == 'n')
-		return 0;
-	else if ((char)(resp) == '\n')
-		goto again;
-	else if ((char)(resp) == ' ')
-		goto again;
-	else {
-		fprintf(stdout, "Enter y/n ");
-		fflush(stdout);
-		goto again;
-	}
-}
-
 void
 scan_vdisks()
 {
@@ -141,7 +115,7 @@ scan_vdisks()
 
 			if (!disk->mrid[0]) {
 				sprintf(msg, "Add VDisk with name %s ? ", raw_data->name);
-				retval = prompt_user(msg);
+				retval = tl_client_prompt_user(msg);
 				if (retval != 1)
 					continue;
 			}
@@ -373,7 +347,7 @@ main(int argc, char *argv[])
 			fprintf(stdout, "Model: %.16s\n", disk->info.product);
 			fprintf(stdout, "Serial Number: %.32s\n", disk->info.serialnumber);
 			sprintf(msg, "Add Master Physical Disk with path %s ? ", disk->info.devname);
-			retval = prompt_user(msg);
+			retval = tl_client_prompt_user(msg);
 			if (retval != 1) {
 				disk->ignore = 1;
 				continue;
@@ -455,7 +429,7 @@ main(int argc, char *argv[])
 			fprintf(stdout, "Model: %.16s\n", disk->info.product);
 			fprintf(stdout, "Serial Number: %.32s\n", disk->info.serialnumber);
 			sprintf(msg, "Add Physical Disk with path %s ? ", disk->info.devname);
-			retval = prompt_user(msg);
+			retval = tl_client_prompt_user(msg);
 			if (retval != 1) {
 				disk->ignore = 1;
 				continue;

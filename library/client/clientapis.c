@@ -855,3 +855,30 @@ tl_client_get_group_id(char *name)
 	return group_id;
 }
 
+int
+tl_client_prompt_user(char *msg)
+{
+	int resp;
+
+	fprintf(stdout, "%s", msg);
+	fflush(stdout);
+again:
+	resp = getchar();
+#ifdef FREEBSD
+	fpurge(stdin);
+#endif
+	if ((char)(resp) == 'y')
+		return 1;
+	else if ((char)(resp) == 'n')
+		return 0;
+	else if ((char)(resp) == '\n')
+		goto again;
+	else if ((char)(resp) == ' ')
+		goto again;
+	else {
+		fprintf(stdout, "Enter y/n ");
+		fflush(stdout);
+		goto again;
+	}
+}
+
