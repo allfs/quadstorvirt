@@ -226,22 +226,17 @@ __amap_table_clone_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_t
 
 	group_id = amap_table_group_id(src_amap_table->amap_table_id, &group_offset);
 	dest_group = dest_tdisk->amap_table_group[group_id];
-	amap_table_group_lock(dest_group);
+	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
 	if (unlikely(!bmap)) {
 		if (error)
 			tdisk_set_clone_error(dest_tdisk);
-		amap_table_group_unlock(dest_group);
-		return;
-	}
-
-	if (bmap_bit_is_set(bmap, group_offset)) {
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 		return;
 	}
 
 	bmap_set_bit(bmap, group_offset);
-	amap_table_group_unlock(dest_group);
+	tdisk_bmap_unlock(dest_tdisk);
 }
 
 static void
@@ -250,14 +245,12 @@ amap_table_write_bmap_set(struct amap_table *amap_table, int idx)
 	struct write_bmap *write_bmap;
 	int i, j;
 
-	amap_table_lock(amap_table);
 	write_bmap = amap_table->write_bmap;
 	if (!write_bmap)
 		write_bmap = amap_table->write_bmap = __uma_zalloc(write_bmap_cache, Q_WAITOK | Q_ZERO, sizeof(*write_bmap));
 	i = idx / 8;
 	j = idx % 8; 
 	write_bmap->bmap[i] |= (1 << j);
-	amap_table_unlock(amap_table);
 }
 
 static void
@@ -266,14 +259,12 @@ group_write_bmap_set(struct amap_table_group *group, int idx)
 	struct group_write_bmap *group_write_bmap;
 	int i, j;
 
-	amap_table_group_lock(group);
 	group_write_bmap = group->group_write_bmap;
 	if (!group_write_bmap)
 		group_write_bmap = group->group_write_bmap = __uma_zalloc(group_write_bmap_cache, Q_WAITOK | Q_ZERO, sizeof(*group_write_bmap));
 	i = idx / 8;
 	j = idx % 8; 
 	group_write_bmap->bmap[i] |= (1 << j);
-	amap_table_group_unlock(group);
 }
 
 static int
@@ -288,7 +279,7 @@ tdisk_needs_write_bmap(struct tdisk *tdisk)
 		return 0;
 
 	mirror_state = &tdisk->mirror_state;
-	if (!atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags))
+	if (!tdisk_mirroring_disabled(tdisk) && !atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags))
 		return 0;
 
 	if (!atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &mirror_state->mirror_flags))
@@ -297,13 +288,19 @@ tdisk_needs_write_bmap(struct tdisk *tdisk)
 }
 
 static void
-amap_table_write_bitmap_check(struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_offset)
+amap_table_write_bmap_check(struct tdisk *tdisk, struct amap_table *amap_table)
 {
+	struct amap_table_group *group;
+	uint32_t group_id, group_offset;
 
 	if (!tdisk_needs_write_bmap(tdisk))
 		return;
 
+	group_id = amap_table_group_id(amap_table->amap_table_id, &group_offset);
+	group = tdisk->amap_table_group[group_id];
+	tdisk_bmap_lock(tdisk);
 	group_write_bmap_set(group, group_offset);
+	tdisk_bmap_unlock(tdisk);
 }
 
 static void
@@ -316,36 +313,29 @@ __amap_table_mirror_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_
 	uint32_t group_id, group_offset;
 	int error;
 
-	group_id = amap_table_group_id(src_amap_table->amap_table_id, &group_offset);
-	dest_group = dest_tdisk->amap_table_group[group_id];
-	amap_table_write_bitmap_check(dest_tdisk, dest_group, group_offset);
-
 	if (tdisk_mirror_error(dest_tdisk))
 		return;
 
 	if (src_amap_table->amap_table_id < clone_amap_table_id)
 		return;
 
-	amap_table_group_lock(dest_group);
+	group_id = amap_table_group_id(src_amap_table->amap_table_id, &group_offset);
+	dest_group = dest_tdisk->amap_table_group[group_id];
+	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
 	if (unlikely(!bmap)) {
 		if (error)
 			tdisk_set_mirror_error(dest_tdisk);
-		amap_table_group_unlock(dest_group);
-		return;
-	}
-
-	if (bmap_bit_is_set(bmap, group_offset)) {
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 		return;
 	}
 
 	bmap_set_bit(bmap, group_offset);
-	amap_table_group_unlock(dest_group);
+	tdisk_bmap_unlock(dest_tdisk);
 }
 
 static void
-amap_write_bitmap_check(struct tdisk *tdisk, struct amap *amap)
+amap_write_bmap_check(struct tdisk *tdisk, struct amap *amap)
 {
 	struct amap_table *amap_table = amap->amap_table;
 	struct amap_table_group *group;
@@ -356,8 +346,10 @@ amap_write_bitmap_check(struct tdisk *tdisk, struct amap *amap)
 
 	group_id = amap_table_group_id(amap_table->amap_table_id, &group_offset);
 	group = tdisk->amap_table_group[group_id];
+	tdisk_bmap_lock(tdisk);
 	group_write_bmap_set(group, group_offset);
 	amap_table_write_bmap_set(amap_table, amap->amap_id);
+	tdisk_bmap_unlock(tdisk);
 }
 
 static void 
@@ -371,7 +363,6 @@ __amap_mirror_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 	pagestruct_t *metadata;
 	int error;
 
-	amap_write_bitmap_check(src_tdisk, src_amap);
 	if (tdisk_mirror_error(src_tdisk))
 		return;
 
@@ -388,29 +379,31 @@ __amap_mirror_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 	bmap_group_offset = amap_bitmap_group_offset(src_amap->amap_id);
 
 	src_group = src_tdisk->amap_table_group[group_id];
-	amap_table_group_lock(src_group);
+	tdisk_bmap_lock(src_tdisk);
 	bmap = amap_group_bmap_locate(src_tdisk, group_id, bmap_group_offset, &error);
 	if (unlikely(!bmap)) {
 		if (error)
 			tdisk_set_mirror_error(src_tdisk);
-		amap_table_group_unlock(src_group);
+		tdisk_bmap_unlock(src_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
 
 	amap_group_offset = amap_to_bitmap_offset(src_amap->amap_id);
 	if (bmap_bit_is_set(bmap, amap_group_offset)) {
-		amap_table_group_unlock(src_group);
+		tdisk_bmap_unlock(src_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
 
 	bmap_set_bit(bmap, amap_group_offset);
 	if (isnew) {
-		amap_table_group_unlock(src_group);
+		tdisk_bmap_unlock(src_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
+	atomic_inc(&src_tdisk->clone_busy);
+	tdisk_bmap_unlock(src_tdisk);
 
 	memcpy(vm_pg_address(metadata), vm_pg_address(src_amap->metadata), AMAP_SIZE);
 	atomic_set_bit_short(AMAP_META_DATA_BUSY, &src_amap->flags);
@@ -422,7 +415,7 @@ __amap_mirror_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 	clone_data->amap = src_amap;
 	clone_data->metadata = metadata;
 	clone_data_insert(clone_data, &src_tdisk->clone_list);
-	amap_table_group_unlock(src_group);
+	atomic_dec(&src_tdisk->clone_busy);
 	return;
 }
 
@@ -456,34 +449,38 @@ __amap_clone_check(struct tdisk *dest_tdisk, struct amap *src_amap, int isnew)
 	bmap_group_offset = amap_bitmap_group_offset(src_amap->amap_id);
 
 	dest_group = dest_tdisk->amap_table_group[group_id];
-	amap_table_group_lock(dest_group);
+	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_bmap_locate(dest_tdisk, group_id, bmap_group_offset, &error);
 	if (unlikely(!bmap)) {
 		if (error)
 			tdisk_set_clone_error(dest_tdisk);
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
 
 	amap_group_offset = amap_to_bitmap_offset(src_amap->amap_id);
 	if (bmap_bit_is_set(bmap, amap_group_offset)) {
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
 
 	bmap_set_bit(bmap, amap_group_offset);
 	if (isnew) {
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 		vm_pg_free(metadata);
 		return;
 	}
+	atomic_inc(&dest_tdisk->clone_busy);
+	tdisk_bmap_unlock(dest_tdisk);
 
+	amap_table_group_lock(dest_group);
 	dest_amap_table = clone_amap_table_get(dest_tdisk, dest_group, group_id, group_offset, src_amap->amap_table->amap_table_id, dest_tdisk->clone_wlist);
 	if (unlikely(!dest_amap_table)) {
 		amap_table_group_unlock(dest_group);
 		vm_pg_free(metadata);
+		atomic_dec(&dest_tdisk->clone_busy);
 		return;
 	}
 
@@ -508,10 +505,12 @@ __amap_clone_check(struct tdisk *dest_tdisk, struct amap *src_amap, int isnew)
 		amap_put(src_amap);
 		amap_table_group_unlock(dest_group);
 		vm_pg_free(metadata);
+		atomic_dec(&dest_tdisk->clone_busy);
 		return;
 	}
 	amap_get(dest_amap);
 	amap_table_unlock(dest_amap_table);
+	amap_table_group_unlock(dest_group);
 
 	clone_data = clone_data_alloc(CLONE_DATA_CLONE);
 	clone_data->async = 1;
@@ -519,13 +518,14 @@ __amap_clone_check(struct tdisk *dest_tdisk, struct amap *src_amap, int isnew)
 	clone_data->src_amap = src_amap;
 	clone_data->metadata = metadata;
 	clone_data_insert(clone_data, &dest_tdisk->clone_list);
-	amap_table_group_unlock(dest_group);
+	atomic_dec(&dest_tdisk->clone_busy);
 	return;
 }
 
 void
 amap_table_clone_check(struct tdisk *src_tdisk, struct amap_table *src_amap_table)
 {
+	amap_table_write_bmap_check(src_tdisk, src_amap_table);
 	if (!tdisk_in_cloning(src_tdisk) && !tdisk_in_mirroring(src_tdisk))
 		return;
 
@@ -542,6 +542,7 @@ amap_table_clone_check(struct tdisk *src_tdisk, struct amap_table *src_amap_tabl
 void
 amap_clone_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 {
+	amap_write_bmap_check(src_tdisk, src_amap);
 	if (!tdisk_in_cloning(src_tdisk) && !tdisk_in_mirroring(src_tdisk))
 		return;
 
@@ -550,8 +551,6 @@ amap_clone_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 		__amap_clone_check(src_tdisk->dest_tdisk, src_amap, isnew);
 	else if (!tdisk_in_sync(src_tdisk))
 		__amap_mirror_check(src_tdisk, src_amap, isnew);
-	else if (tdisk_mirroring_configured(src_tdisk))
-		amap_write_bitmap_check(src_tdisk, src_amap);
 	tdisk_clone_unlock(src_tdisk);
 }
 
@@ -951,6 +950,9 @@ clone_list_wait(struct tdisk *tdisk)
 	struct clone_data *clone_data, *next;
 	int error = 0;
 
+	while (atomic_read(&tdisk->clone_busy))
+		pause("psg", 100);
+
 	chan_lock(tdevq_wait);
 	clone_data = STAILQ_FIRST(&tdisk->clone_list);
 	chan_unlock(tdevq_wait);
@@ -1030,12 +1032,12 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 		}
 
 		bmap_group_offset = amap_bitmap_group_offset(amap_id);
-		amap_table_group_lock(dest_group);
+		tdisk_bmap_lock(dest_tdisk);
 		if (!bmap || bmap_group_offset != bmap->group_offset) {
 			bmap = amap_group_bmap_locate(dest_tdisk, group_id, bmap_group_offset, &error);
 			if (unlikely(!bmap)) {
 				tdisk_set_clone_error(dest_tdisk);
-				amap_table_group_unlock(dest_group);
+				tdisk_bmap_unlock(dest_tdisk);
 				amap_put(src_amap);
 				debug_warn("Cannot get bmap for %i group offset %u\n", group_id, bmap_group_offset);
 				vm_pg_free(metadata);
@@ -1046,7 +1048,7 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 		set = bmap_bit_is_set(bmap, amap_to_bitmap_offset(amap_id));
 		if (set) {
 			tdisk_set_clone_amap_id(dest_tdisk, amap_id);
-			amap_table_group_unlock(dest_group);
+			tdisk_bmap_unlock(dest_tdisk);
 			amap_put(src_amap);
 			vm_pg_free(metadata);
 			continue;
@@ -1055,7 +1057,7 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 		memcpy(vm_pg_address(metadata), vm_pg_address(src_amap->metadata), AMAP_SIZE); 
 		atomic_set_bit_short(AMAP_META_DATA_BUSY, &src_amap->flags);
 		bmap_set_bit(bmap, amap_to_bitmap_offset(amap_id));
-		amap_table_group_unlock(dest_group);
+		tdisk_bmap_unlock(dest_tdisk);
 
 		amap_table_lock(dest_amap_table);
 		block = get_amap_block(dest_amap_table, i);
@@ -1074,6 +1076,7 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 			return -1;
 		}
 		amap_get(dest_amap);
+		amap_table_unlock(dest_amap_table);
 
 		amap_table_get(dest_amap_table);
 		clone_data = clone_data_alloc(CLONE_DATA_CLONE);
@@ -1081,7 +1084,6 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 		clone_data->src_amap = src_amap;
 		clone_data->metadata = metadata;
 		clone_data_insert(clone_data, &dest_tdisk->clone_list);
-		amap_table_unlock(dest_amap_table);
 
 		done++;
 		if (done == MAX_AMAP_CLONE_THREADS) {
@@ -1104,15 +1106,15 @@ amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct
 	uint32_t atable_id;
 	struct write_list *wlist = dest_tdisk->clone_wlist;
 	struct amap_group_bitmap *bmap;
-	int i, retval, error;
+	int i, retval, error, set;
 
 	atable_id = group_id << AMAP_TABLE_GROUP_SHIFT;
 	src_table_index = &src_tdisk->table_index[group_id];
 	debug_check(dest_group->amap_table_max != src_group->amap_table_max);
 
-	amap_table_group_lock(dest_group);
+	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
-	amap_table_group_unlock(dest_group);
+	tdisk_bmap_unlock(dest_tdisk);
 	if (unlikely(!bmap))
 		return -1;
 
@@ -1137,21 +1139,21 @@ amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct
 		amap_table_group_unlock(src_group);
 
 		amap_table_group_lock(dest_group);
-
-		if (bmap_bit_is_set(bmap, i)) {
+		tdisk_bmap_lock(dest_tdisk);
+		set = bmap_bit_is_set(bmap, i);
+		tdisk_bmap_unlock(dest_tdisk);
+		if (set) {
 			amap_table_group_unlock(dest_group);
 			amap_table_put(src_amap_table);
 			continue;
 		}
 
 		dest_amap_table = clone_amap_table_get(dest_tdisk, dest_group, group_id, i, atable_id, wlist);
+		amap_table_group_unlock(dest_group);
 		if (unlikely(!dest_amap_table)) {
-			amap_table_group_unlock(dest_group);
 			amap_table_put(src_amap_table);
 			return -1;
 		}
-
-		amap_table_group_unlock(dest_group);
 
 		wait_on_chan_check(src_amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &src_amap_table->flags));
 		wait_on_chan_check(dest_amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &dest_amap_table->flags));
@@ -1271,7 +1273,9 @@ static int tdisk_clone_thr(void *data)
 		}
 
 		tdisk_clone_lock(tdisk);
+		tdisk_bmap_lock(tdisk);
 		amap_group_bmaps_free(tdisk, i);
+		tdisk_bmap_unlock(tdisk);
 		tdisk_clone_unlock(tdisk);
 	}
 

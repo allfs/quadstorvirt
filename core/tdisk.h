@@ -275,6 +275,7 @@ struct tdisk {
 	struct clone_info *clone_info;
 	wait_chan_t *clone_wait;
 	sx_t *clone_lock;
+	sx_t *bmap_lock;
 	int clone_flags;
 	uint32_t clone_amap_id;
 	struct group_bmap_list *group_bmaps; 
@@ -300,6 +301,7 @@ struct tdisk {
 	wait_chan_t *mirror_wait;
 	struct mirror_state mirror_state;
 	atomic_t mirror_cmds;
+	atomic_t clone_busy;
 
 #ifdef ENABLE_STATS
 	uint64_t read_total;
@@ -506,6 +508,13 @@ struct tdisk {
 do {									\
 	debug_check(!sx_xlocked((tdk)->clone_lock));		\
 	sx_xunlock((tdk)->clone_lock);				\
+} while (0)
+
+#define tdisk_bmap_lock(tdk)		(sx_xlock((tdk)->bmap_lock))
+#define tdisk_bmap_unlock(tdk)					\
+do {									\
+	debug_check(!sx_xlocked((tdk)->bmap_lock));		\
+	sx_xunlock((tdk)->bmap_lock);				\
 } while (0)
 
 #define tdisk_mirror_lock(tdk)		(sx_xlock((tdk)->mirror_lock))

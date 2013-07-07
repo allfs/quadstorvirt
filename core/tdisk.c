@@ -437,6 +437,7 @@ tdisk_free(struct tdisk *tdisk)
 	sx_free(tdisk->tdisk_lock);
 	sx_free(tdisk->mirror_lock);
 	sx_free(tdisk->clone_lock);
+	sx_free(tdisk->bmap_lock);
 	mtx_free(tdisk->group_list_lock);
 	mtx_free(tdisk->stats_lock);
 	sx_free(tdisk->reservation_lock);
@@ -514,6 +515,7 @@ tdisk_init(struct tdisk *tdisk)
 	tdisk->tdisk_lock = sx_alloc("tdisk lock");
 	tdisk->mirror_lock = sx_alloc("tdisk mirror lock");
 	tdisk->clone_lock = sx_alloc("tdisk clone lock");
+	tdisk->bmap_lock = sx_alloc("tdisk write bmap lock");
 	tdisk->group_list_lock = mtx_alloc("tdisk group lock");
 	tdisk->stats_lock = mtx_alloc("tdisk stats lock");
 	tdisk->reservation_lock = sx_alloc("tdisk reservation lock");
