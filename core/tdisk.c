@@ -8191,7 +8191,6 @@ amap_table_group_clear_write_bitmap(struct amap_table_group *group)
 		return 0;
 
 	TAILQ_FOREACH(amap_table, &group->table_list, t_list) {
-		amap_table_lock(amap_table);
 		if (amap_table->write_bmap) {
 			uma_zfree(write_bmap_cache, amap_table->write_bmap);
 			amap_table->write_bmap = NULL;
@@ -8212,16 +8211,16 @@ tdisk_clear_write_bitmap(struct tdisk *tdisk)
 	if (!tdisk->amap_table_group)
 		return 0;
 
+	tdisk_bmap_lock(tdisk);
 	for (i = 0; i < tdisk->amap_table_group_max; i++) {
 		group = tdisk->amap_table_group[i];
 		if (!group)
 			continue;
 
-		amap_table_group_lock(group);
 		retval = amap_table_group_clear_write_bitmap(group);
-		amap_table_group_unlock(group);
 		if (retval)
 			done++;
 	}
+	tdisk_bmap_unlock(tdisk);
 	return done;
 }
