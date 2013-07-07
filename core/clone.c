@@ -354,7 +354,7 @@ amap_write_bmap_check(struct tdisk *tdisk, struct amap *amap)
 	group = tdisk->amap_table_group[group_id];
 	tdisk_bmap_lock(tdisk);
 	group_write_bmap_set(group, group_offset);
-	amap_table_write_bmap_set(amap_table, amap->amap_id);
+	amap_table_write_bmap_set(amap_table, amap->amap_idx);
 	tdisk_bmap_unlock(tdisk);
 }
 
