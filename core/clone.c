@@ -296,6 +296,9 @@ amap_table_write_bmap_check(struct tdisk *tdisk, struct amap_table *amap_table)
 	if (!tdisk_needs_write_bmap(tdisk))
 		return;
 
+	if (atomic_test_bit_short(ATABLE_WRITE_BMAP_INVALID, &amap_table->flags))
+		return;
+
 	group_id = amap_table_group_id(amap_table->amap_table_id, &group_offset);
 	group = tdisk->amap_table_group[group_id];
 	tdisk_bmap_lock(tdisk);
@@ -342,6 +345,9 @@ amap_write_bmap_check(struct tdisk *tdisk, struct amap *amap)
 	uint32_t group_id, group_offset;
 
 	if (!tdisk_needs_write_bmap(tdisk))
+		return;
+
+	if (atomic_test_bit_short(ATABLE_WRITE_BMAP_INVALID, &amap_table->flags))
 		return;
 
 	group_id = amap_table_group_id(amap_table->amap_table_id, &group_offset);

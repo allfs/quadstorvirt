@@ -3169,6 +3169,17 @@ amap_table_load(struct tdisk *tdisk, uint64_t block, struct amap_table_group *gr
 		amap_table_put(amap_table);
 		return NULL;
 	}
+	tdisk_bmap_lock(tdisk);
+	if (group->group_write_bmap) {
+		uint32_t group_offset = atable_id & AMAP_TABLE_GROUP_MASK;
+		int i, j;
+
+		i = group_offset / 8;
+		j = group_offset % 8;
+		if (group->group_write_bmap->bmap[i] & (1 << j))
+			atomic_set_bit_short(ATABLE_WRITE_BMAP_INVALID, &amap_table->flags);
+	}
+	tdisk_bmap_unlock(tdisk);
 	amap_table_insert(group, amap_table);
 	TDISK_INC(tdisk, amap_table_load, 1);
 	return amap_table;
@@ -8191,6 +8202,7 @@ amap_table_group_clear_write_bitmap(struct amap_table_group *group)
 		return 0;
 
 	TAILQ_FOREACH(amap_table, &group->table_list, t_list) {
+		atomic_clear_bit_short(ATABLE_WRITE_BMAP_INVALID, &amap_table->flags);
 		if (amap_table->write_bmap) {
 			uma_zfree(write_bmap_cache, amap_table->write_bmap);
 			amap_table->write_bmap = NULL;

@@ -462,6 +462,9 @@ amap_write_bmap_check(struct tdisk *tdisk, struct amap_table *amap_table, int id
 	struct write_bmap *write_bmap;
 	int i, j;
 
+	if (atomic_test_bit_short(ATABLE_WRITE_BMAP_INVALID, &amap_table->flags))
+		return 0;
+
 	mirror_state = &tdisk->mirror_state;
 	if (!atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &mirror_state->mirror_flags))
 		return 0;
