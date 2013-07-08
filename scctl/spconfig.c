@@ -30,7 +30,7 @@ print_usage(void)
 	fprintf(stdout, "Adding a Pool: \n");
 	fprintf(stdout, "spconfig -a -g <pool name> -d (Enable dedupe metadata) -o (Enable Logs)\n\n");
 	fprintf(stdout, "Deleting a Pool: \n");
-	fprintf(stdout, "spconfig -a -g <pool name>\n\n");
+	fprintf(stdout, "spconfig -x -g <pool name>\n\n");
 	exit(1);
 }
 
