@@ -1,7 +1,7 @@
-%define libvers 3.0.41
+%define libvers 3.0.42
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-client
-Version: 3.0.41
+Version: 3.0.42
 Release: sles11sp1
 Source0: %{name}-%{version}.tar.gz
 License: None 

@@ -1,3 +1,14 @@
+Release 3.0.42
+	* After a mirror resync the slave VDisk data may be inconsistent from 
+	  the master VDisk data. This has been fixed
+	* A mirror resync now no longer requires scanning of the enter VDisk
+	  metadata to determine which blocks of VDisk data need to be resynced
+	* Command line tools for disk, VDisk, and pool management
+	* qmirror inititated mirroring can lead to a deadlock if the source
+	  VDisk has active IO. This has been fixed
+	* Source VDisks in a qmirror operation can now also be VDisks with 
+	  synchronous mirroring configured
+
 Release 3.0.41
 	* Fixes related to Persistent Reseveration All Registrants Type
 	* Fix for defects reported by Coverity Scan
