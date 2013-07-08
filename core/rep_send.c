@@ -487,7 +487,6 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 	struct amap *amap;
 	uint64_t block;
 	struct clone_data *clone_data;
-	struct amap_table_group *group;
 	struct amap_group_bitmap *bmap = NULL;
 	pagestruct_t *metadata;
 	uint32_t amap_id, bmap_group_offset;
@@ -495,7 +494,6 @@ amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t g
 	int i, set;
 	int done = 0, error, retval;
 
-	group = tdisk->amap_table_group[group_id];
 	amap_id = amap_table->amap_table_id * AMAPS_PER_AMAP_TABLE;
 	amap_max = tdisk_max_amaps(tdisk);
 	todo = min_t(uint32_t, AMAPS_PER_AMAP_TABLE, amap_max - amap_id);

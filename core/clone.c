@@ -212,7 +212,6 @@ static void
 __amap_table_clone_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_table)
 {
 	struct amap_group_bitmap *bmap;
-	struct amap_table_group *dest_group;
 	uint32_t clone_amap_id = tdisk_get_clone_amap_id(dest_tdisk);
 	uint32_t clone_amap_table_id = clone_amap_id / AMAPS_PER_AMAP_TABLE;
 	uint32_t group_id, group_offset;
@@ -225,7 +224,6 @@ __amap_table_clone_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_t
 		return;
 
 	group_id = amap_table_group_id(src_amap_table->amap_table_id, &group_offset);
-	dest_group = dest_tdisk->amap_table_group[group_id];
 	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
 	if (unlikely(!bmap)) {
@@ -310,7 +308,6 @@ static void
 __amap_table_mirror_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_table)
 {
 	struct amap_group_bitmap *bmap;
-	struct amap_table_group *dest_group;
 	uint32_t clone_amap_id = tdisk_get_clone_amap_id(dest_tdisk);
 	uint32_t clone_amap_table_id = clone_amap_id / AMAPS_PER_AMAP_TABLE;
 	uint32_t group_id, group_offset;
@@ -323,7 +320,6 @@ __amap_table_mirror_check(struct tdisk *dest_tdisk, struct amap_table *src_amap_
 		return;
 
 	group_id = amap_table_group_id(src_amap_table->amap_table_id, &group_offset);
-	dest_group = dest_tdisk->amap_table_group[group_id];
 	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
 	if (unlikely(!bmap)) {
@@ -362,7 +358,6 @@ static void
 __amap_mirror_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 {
 	struct amap_group_bitmap *bmap;
-	struct amap_table_group *src_group;
 	uint32_t group_id, group_offset, bmap_group_offset;
 	uint32_t amap_group_offset;
 	struct clone_data *clone_data;
@@ -384,7 +379,6 @@ __amap_mirror_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew)
 	group_id = amap_table_group_id(src_amap->amap_table->amap_table_id, &group_offset);
 	bmap_group_offset = amap_bitmap_group_offset(src_amap->amap_id);
 
-	src_group = src_tdisk->amap_table_group[group_id];
 	tdisk_bmap_lock(src_tdisk);
 	bmap = amap_group_bmap_locate(src_tdisk, group_id, bmap_group_offset, &error);
 	if (unlikely(!bmap)) {
@@ -986,7 +980,6 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 	struct amap *src_amap;
 	uint64_t block;
 	struct clone_data *clone_data;
-	struct amap_table_group *dest_group;
 	struct amap_group_bitmap *bmap = NULL;
 	uint32_t amap_id, bmap_group_offset;
 	pagestruct_t *metadata;
@@ -994,7 +987,6 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 	int i, set;
 	int done = 0, error;
 
-	dest_group = dest_tdisk->amap_table_group[group_id];
 	amap_id = src_amap_table->amap_table_id * AMAPS_PER_AMAP_TABLE;
 	amap_max = tdisk_max_amaps(dest_tdisk);
 	todo = min_t(uint32_t, AMAPS_PER_AMAP_TABLE, amap_max - amap_id);

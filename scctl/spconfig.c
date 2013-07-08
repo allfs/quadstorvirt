@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 
 	if (add)
 		return spconfig_add_pool(pool, dedupemeta, logdata);
-	else
+	else if (delete)
 		return spconfig_delete_pool(pool);
 	return 0;
 }
