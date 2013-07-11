@@ -36,7 +36,7 @@ struct mirror_check_list mirror_check_list = TAILQ_HEAD_INITIALIZER(mirror_check
 struct fc_rule_list fc_rule_list = TAILQ_HEAD_INITIALIZER(fc_rule_list);  
 
 char default_group[TDISK_MAX_NAME_LEN];
-struct blist bdev_list = TAILQ_HEAD_INITIALIZER(bdev_list);
+struct tl_blkdevinfo *bdev_list[TL_MAX_DISKS];
 char sys_rid[TL_RID_MAX];
 pthread_mutex_t daemon_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mirror_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -116,7 +116,7 @@ bdev_add(struct group_info *group_info, struct tl_blkdevinfo *blkdev)
 {
 	blkdev->group = group_info;
 	blkdev->group_id = group_info->group_id;
-	TAILQ_INSERT_TAIL(&bdev_list, blkdev, q_entry);
+	bdev_list[blkdev->bid] = blkdev;
 	TAILQ_INSERT_TAIL(&group_info->bdev_list, blkdev, g_entry);
 	blkdev->offline = 0;
 }
@@ -130,7 +130,7 @@ bdev_remove(struct tl_blkdevinfo *blkdev)
 		TAILQ_REMOVE(&group_info->bdev_list, blkdev, g_entry); 
 		blkdev->group = NULL;
 	}
-	TAILQ_REMOVE(&bdev_list, blkdev, q_entry); 
+	bdev_list[blkdev->bid] = NULL;
 }
 
 void
@@ -374,8 +374,12 @@ static int
 check_blkdev_exists(char *devname)
 {
 	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (strcmp(blkdev->devname, devname) == 0)
 		{
 			return 1;
@@ -400,13 +404,33 @@ update_blkdev_info(struct tl_blkdevinfo *blkdev)
 	return 0;
 }
 
+static int
+get_next_bid()
+{
+	int i;
+
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		if (bdev_list[i])
+			continue;
+		return i;
+	}
+	return 0;
+}
+
 struct tl_blkdevinfo *
 blkdev_new(char *devname)
 {
 	struct tl_blkdevinfo *blkdev;
 	dev_t b_dev;
 	int error = 0;
+	int bid;
 
+	bid = get_next_bid();
+	if (!bid) {
+		DEBUG_ERR("Unable to get bid\n");
+		return NULL;
+	}
+ 
 	b_dev = get_device_id(devname, &error);
 	if (error < 0) {
 		DEBUG_ERR_SERVER("Unable to get device id for %s\n", devname);
@@ -419,6 +443,7 @@ blkdev_new(char *devname)
 		return NULL;
 	}
 	blkdev->b_dev = b_dev;
+	blkdev->bid = bid;
 	return blkdev;
 }
 
@@ -803,15 +828,18 @@ int
 load_configured_disks(void)
 {
 	struct tl_blkdevinfo *blkdev;
-	int error;
+	int error, i;
 
-	error = sql_query_blkdevs(&bdev_list);
+	error = sql_query_blkdevs(bdev_list);
 	if (error != 0) {
 		DEBUG_ERR_SERVER("Disks query failed\n");
 		goto err;
 	}
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		error = sync_blkdev(blkdev);
 		if (error != 0) {
 			blkdev->offline = 1;
@@ -823,8 +851,10 @@ load_configured_disks(void)
 
 	return 0;
 err:
-	while ((blkdev = TAILQ_FIRST(&bdev_list)))
-	{
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		bdev_remove(blkdev);
 		free(blkdev);
 	}
@@ -2560,7 +2590,7 @@ __list_configured_disks(char *filepath)
 {
 	FILE *fp;
 	struct tl_blkdevinfo *blkdev;
-	int retval;
+	int retval, i;
 
 	fp = fopen(filepath, "w");
 	if (!fp) {
@@ -2568,9 +2598,12 @@ __list_configured_disks(char *filepath)
 		return -1;
 	}
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (i = 1; i < TL_MAX_DISKS; i++) {
 		struct bdev_info binfo;
 
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		fprintf (fp, "<disk>\n");
 		memset(&binfo, 0, sizeof(struct bdev_info));
 		binfo.bid = blkdev->bid;
@@ -2635,7 +2668,7 @@ tl_server_get_pool_configured_disks(struct tl_comm *comm, struct tl_msg *msg)
 	char filepath[256];
 	FILE *fp;
 	struct tl_blkdevinfo *blkdev;
-	int retval;
+	int retval, i;
 	uint32_t group_id;
 
 	if (sscanf(msg->msg_data, "target_id: %u\ntempfile: %s\n", &group_id, filepath) != 2) {
@@ -2652,9 +2685,12 @@ tl_server_get_pool_configured_disks(struct tl_comm *comm, struct tl_msg *msg)
 		return -1;
 	}
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (i = 1; i < TL_MAX_DISKS; i++) {
 		struct bdev_info binfo;
 
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (!blkdev->group || blkdev->group->group_id != group_id)
 			continue;
 		fprintf (fp, "<disk>\n");
@@ -2700,7 +2736,7 @@ tl_server_delete_disk(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct tl_blkdevinfo *blkdev = NULL, *tmp;
 	struct bdev_info binfo;
-	int retval;
+	int retval, i;
 	char errmsg[256];
 	char dev[512];
 	int count = 0, tcount;
@@ -2710,11 +2746,14 @@ tl_server_delete_disk(struct tl_comm *comm, struct tl_msg *msg)
 		goto senderr;
 	}
 
-	TAILQ_FOREACH(tmp, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		tmp = bdev_list[i];
+		if (!tmp)
+			continue;
 		if (strcmp(tmp->disk.info.devname, dev))
 			continue;
 		blkdev = tmp;
-		continue;
+		break;
 	}
 
 	if (!blkdev) {
@@ -2839,7 +2878,7 @@ tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 	strcpy(blkdev->devname, disk->info.devname);
 	blkdev->group_id = group_id;
 
-	conn = sql_add_blkdev(&blkdev->disk, &blkdev->bid);
+	conn = sql_add_blkdev(&blkdev->disk, blkdev->bid);
 	if (!conn) {
 		snprintf(errmsg, sizeof(errmsg), "Adding disk to database failed\n");
 		free(blkdev);
@@ -2849,9 +2888,6 @@ tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 	memset(&binfo, 0, sizeof(struct bdev_info));
 	binfo.bid = blkdev->bid;
 	binfo.group_id = group_id;
-	if (TAILQ_EMPTY(&bdev_list)) {
-		binfo.ddmaster = 1;
-	}
 	strcpy(binfo.devpath, blkdev->devname);
 	memcpy(binfo.vendor, blkdev->disk.info.vendor, sizeof(binfo.vendor));
 	memcpy(binfo.product, blkdev->disk.info.product, sizeof(binfo.product));
@@ -3321,7 +3357,7 @@ senderr:
 static int
 tl_server_rescan_disks(struct tl_comm *comm, struct tl_msg *msg)
 {
-	int retval;
+	int retval, i;
 	struct tl_blkdevinfo *blkdev;
 
 	retval = tl_common_scan_physdisk();
@@ -3330,7 +3366,10 @@ tl_server_rescan_disks(struct tl_comm *comm, struct tl_msg *msg)
 		return -1;
 	}
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		retval = sync_blkdev(blkdev);
 		if (retval != 0) {
 			blkdev->offline = 1;

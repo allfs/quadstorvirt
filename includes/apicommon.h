@@ -135,7 +135,6 @@ struct tl_blkdevinfo {
 	int ha_disk;
 	uint32_t group_id;
 	TAILQ_ENTRY(tl_blkdevinfo) g_entry;
-	TAILQ_ENTRY(tl_blkdevinfo) q_entry;
 	struct group_info *group;
 };
 

@@ -22,12 +22,12 @@
 #include "pgsql.h"
 
 struct tl_blkdevinfo;
-PGconn *sql_add_blkdev(struct physdisk *disk, uint32_t *ret_bid);
+PGconn *sql_add_blkdev(struct physdisk *disk, uint32_t bid);
 int sql_delete_blkdev(struct tl_blkdevinfo *binfo);
 int sql_update_iscsiconf(uint32_t target_id, struct iscsiconf *iscsiconf);
 int sql_add_iscsiconf(PGconn *conn, uint32_t target_id, struct iscsiconf *iscsiconf);
 struct blist;
-int sql_query_blkdevs(struct blist *bdev_list);
+int sql_query_blkdevs(struct tl_blkdevinfo *bdev_list[]);
 int sql_query_iscsiconf(uint32_t target_id, struct iscsiconf *iscsiconf);
 int sql_add_group(PGconn *conn, struct group_info *group_info);
 int sql_add_tdisk(PGconn *conn, struct tdisk_info *info);

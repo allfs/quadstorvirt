@@ -30,7 +30,7 @@ struct node {
 
 static SLIST_HEAD(, node) node_list;
 static pthread_mutex_t node_lock = PTHREAD_MUTEX_INITIALIZER;
-extern struct blist bdev_list;
+extern struct tl_blkdevinfo *bdev_list[];
 static pthread_t nc_thread_id;
 static char controller_host[16];
 static char ha_host[16];
@@ -373,9 +373,12 @@ node_msg_list_bdev(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct tl_blkdevinfo *blkdev;
 	struct bdev_spec *bdev_spec;
-	int count = 0, done;
+	int count = 0, done, i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (blkdev->offline)
 			continue;
 		if (blkdev->disk.initialized == -1)
@@ -398,7 +401,10 @@ node_msg_list_bdev(struct tl_comm *comm, struct tl_msg *msg)
 	bdev_spec = (struct bdev_spec *)(msg->msg_data);
 	done = 0;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (blkdev->offline)
 			continue;
 		if (blkdev->disk.initialized == -1)

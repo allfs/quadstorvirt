@@ -34,7 +34,7 @@
 #include <rawdefs.h>
 #include <ietadm.h>
 
-extern struct blist bdev_list;
+extern struct tl_blkdevinfo *bdev_list[];
 extern struct d_list disk_list;
 extern struct tdisk_list tdisk_list;
 extern struct group_list group_list;
@@ -179,6 +179,7 @@ add_group(struct raw_bdevint *raw_bint, int testmode)
 	group_info->logdata = atomic_test_bit(GROUP_FLAGS_LOGDATA, &raw_bint->group_flags) ? 1 : 0;
 	strcpy(group_info->name, raw_bint->group_name);
 	group_info->group_id = raw_bint->group_id;
+	TAILQ_INIT(&group_info->bdev_list);
 
 	fprintf(stdout, "Adding pool %s pool id %u dedupemeta %d logdata %d\n", group_info->name, group_info->group_id, group_info->dedupemeta, group_info->logdata);
 	if (testmode) {
@@ -207,10 +208,13 @@ static int
 __srv_disk_configured(struct physdisk *disk)
 {
 	struct physdisk *cur_disk;
-	int configured = 0;
+	int configured = 0, j;
 	struct tl_blkdevinfo *blkdev;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (j = 1; j < TL_MAX_DISKS; j++) {
+		blkdev = bdev_list[j];
+		if (!blkdev)
+			continue;
 		cur_disk = &blkdev->disk;
 
 		if (device_equal(&cur_disk->info, &disk->info) == 0) {
@@ -253,13 +257,13 @@ main(int argc, char *argv[])
 	if (fd >= 0)
 		dup2(fd, 2);
 
+	TAILQ_INIT(&group_list);
+
 	retval = sql_query_groups(&group_list);
 	if (retval != 0) {
 		fprintf(stdout, "Error in getting configured pools\n");
 		exit(1);
 	}
-
-	TAILQ_INIT(&group_list);
 
 	group_info = alloc_buffer(sizeof(*group_info));
 	if (!group_info) {
@@ -276,7 +280,7 @@ main(int argc, char *argv[])
 	TAILQ_INSERT_HEAD(&group_list, group_info, q_entry); 
 
 	tl_common_scan_physdisk();
-	retval = sql_query_blkdevs(&bdev_list);
+	retval = sql_query_blkdevs(bdev_list);
 	if (retval != 0) {
 		fprintf(stdout, "Error in getting configured disks\n");
 		exit(1);
@@ -358,7 +362,7 @@ main(int argc, char *argv[])
 			continue;
 		}
 
-		conn = sql_add_blkdev(disk, &raw_bint.bid);
+		conn = sql_add_blkdev(disk, raw_bint.bid);
 		if (!conn) {
 			fprintf(stdout, "Failed to update disk information for %s", disk->info.devname);
 			exit(1);
@@ -376,7 +380,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 		memcpy(&blkdev->disk, disk, sizeof(*disk));
-		TAILQ_INSERT_TAIL(&bdev_list, blkdev, q_entry);
+		bdev_list[blkdev->bid] = blkdev;
 
 	}
 
@@ -441,7 +445,7 @@ main(int argc, char *argv[])
 
 		if (testmode)
 			continue;
-		conn = sql_add_blkdev(disk, &raw_bint.bid);
+		conn = sql_add_blkdev(disk, raw_bint.bid);
 		if (!conn) {
 			fprintf(stdout, "Failed to update disk information for %s", disk->info.devname);
 			exit(1);

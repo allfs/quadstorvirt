@@ -22,7 +22,7 @@
 #include <signal.h>
 #include "ietadm.h"
 
-extern struct blist bdev_list;
+extern struct tl_blkdevinfo *bdev_list[];
 extern struct group_list group_list;
 int client_accept_fd;
 static char controller_host[16];
@@ -53,8 +53,12 @@ struct tl_blkdevinfo *
 blkdev_find(uint32_t bid)
 {
 	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) { 
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (blkdev->bid == bid)
 		{
 			return blkdev;
@@ -1037,8 +1041,12 @@ static void
 node_client_insert_bdev(struct bdev_spec *spec)
 {
 	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (blkdev_equal(blkdev, spec)) {
 			blkdev->offline = 0;
 			return;
@@ -1051,8 +1059,12 @@ static void
 node_client_mark_bdevs_offline(void)
 {
 	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		blkdev->offline = 1;
 	}
 }
@@ -1060,9 +1072,13 @@ node_client_mark_bdevs_offline(void)
 static void
 node_client_remove_offline_bdevs(void)
 {
-	struct tl_blkdevinfo *blkdev, *next;
+	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH_SAFE(blkdev, &bdev_list, q_entry, next) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (!blkdev->offline)
 			continue;
 		node_client_remove_bdev(blkdev);
@@ -1073,8 +1089,12 @@ static void
 node_client_prune_bdev(struct bdev_spec *spec)
 {
 	struct tl_blkdevinfo *blkdev;
+	int i;
 
-	TAILQ_FOREACH(blkdev, &bdev_list, q_entry) {
+	for (i = 1; i < TL_MAX_DISKS; i++) {
+		blkdev = bdev_list[i];
+		if (!blkdev)
+			continue;
 		if (blkdev_equal(blkdev, spec)) {
 			if (blkdev->bid != spec->bid)
 				node_client_remove_bdev(blkdev);
