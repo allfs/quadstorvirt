@@ -37,7 +37,7 @@
 extern struct tl_blkdevinfo *bdev_list[];
 extern struct d_list disk_list;
 extern struct tdisk_list tdisk_list;
-extern struct group_list group_list;
+extern struct group_info *group_list[];
 int testmode = 0;
 
 #define atomic_test_bit(b, p)                                           \
@@ -81,7 +81,7 @@ read_raw_bint(struct physdisk *disk, struct raw_bdevint *raw_bint)
 void
 scan_vdisks()
 {
-	int i;
+	int i, j;
 	int retval, offset;
 	char buf[4096];
 	struct raw_index_data *raw_data;
@@ -91,7 +91,10 @@ scan_vdisks()
 	struct group_info *group_info;
 	struct physdisk *disk;
 
-	TAILQ_FOREACH(group_info, &group_list, q_entry) {
+	for (j = 0; j < TL_MAX_POOLS; j++) {
+		group_info = group_list[j];
+		if (!group_info)
+			continue;
 		disk = locate_group_master(group_info->group_id);
 		if (!disk) {
 			fprintf(stdout, "Cannot find master for pool %s. Skipping VDisk addtion\n", group_info->name);
@@ -183,7 +186,7 @@ add_group(struct raw_bdevint *raw_bint, int testmode)
 
 	fprintf(stdout, "Adding pool %s pool id %u dedupemeta %d logdata %d\n", group_info->name, group_info->group_id, group_info->dedupemeta, group_info->logdata);
 	if (testmode) {
-		TAILQ_INSERT_TAIL(&group_list, group_info, q_entry); 
+		group_list[group_info->group_id] = group_info;
 		return group_info;
 	}
 
@@ -200,7 +203,7 @@ add_group(struct raw_bdevint *raw_bint, int testmode)
 		return NULL;
 	}
 
-	TAILQ_INSERT_TAIL(&group_list, group_info, q_entry); 
+	group_list[group_info->group_id] = group_info;
 	return group_info;
 }
 
@@ -257,9 +260,7 @@ main(int argc, char *argv[])
 	if (fd >= 0)
 		dup2(fd, 2);
 
-	TAILQ_INIT(&group_list);
-
-	retval = sql_query_groups(&group_list);
+	retval = sql_query_groups(group_list);
 	if (retval != 0) {
 		fprintf(stdout, "Error in getting configured pools\n");
 		exit(1);
@@ -277,7 +278,7 @@ main(int argc, char *argv[])
 	group_info->logdata = 1;
 	TAILQ_INIT(&group_info->bdev_list);
 	TAILQ_INIT(&group_info->tdisk_list);
-	TAILQ_INSERT_HEAD(&group_list, group_info, q_entry); 
+	group_list[0] = group_info;
 
 	tl_common_scan_physdisk();
 	retval = sql_query_blkdevs(bdev_list);

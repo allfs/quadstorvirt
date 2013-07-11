@@ -382,7 +382,7 @@ sql_query_mirror_checks(struct mirror_check_list *mirror_check_list)
 }
 
 int
-sql_query_groups(struct group_list *group_list)
+sql_query_groups(struct group_info *group_list[])
 {
 	char sqlcmd[512];
 	PGconn *conn;
@@ -415,7 +415,8 @@ sql_query_groups(struct group_list *group_list)
 		group_info->logdata = atoi(PQgetvalue(res, i, 3));
 		TAILQ_INIT(&group_info->bdev_list);
 		TAILQ_INIT(&group_info->tdisk_list);
-		TAILQ_INSERT_TAIL(group_list, group_info, q_entry);
+		DEBUG_BUG_ON(group_list[group_info->group_id]);
+		group_list[group_info->group_id] = group_info;
 	}
 
 	PQclear(res);

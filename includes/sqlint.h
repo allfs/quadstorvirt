@@ -37,7 +37,7 @@ int sql_rename_pool(uint32_t group_id, char *name);
 int sql_delete_tdisk(uint32_t target_id);
 int sql_disable_tdisk(uint32_t target_id);
 int sql_mark_tdisk_for_deletion(PGconn *conn, uint32_t target_id);
-int sql_query_groups(struct group_list *group_list);
+int sql_query_groups(struct group_info *group_list[]);
 int sql_query_tdisks(struct tdisk_list *tdisk_list);
 int sql_update_tdisk_size(PGconn *conn, struct tdisk_info *info);
 int sql_update_tdisk_block(PGconn *conn, struct tdisk_info *tdisk_info);
