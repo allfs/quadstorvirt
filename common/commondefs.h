@@ -16,11 +16,12 @@
  * Boston, MA  02110-1301, USA.
  */
 
-#define TL_MAX_DISKS	512
-#define TL_MAX_POOLS	512	
 #ifndef QS_COMMONDEFS_H_
 #define QS_COMMONDEFS_H_ 1
 
+#define TL_MAX_DISKS	512
+#define TL_MAX_POOLS	512	
+#define TL_MAX_TDISKS	4096
 #define TL_DEV_NAME	"iodev"
 #define TL_DEV		"/dev/iodev"
 #define MIN_PHYSDISK_SIZE	(1ULL << 32)
@@ -144,7 +145,6 @@ enum {
 	TDISK_DISABLE_COMPRESION,
 };
 
-#define MAX_TDISKS		4096
 #define MAX_TARGET_SIZE		(1ULL << 46) /* 64 TB */
 
 struct bint_stats {

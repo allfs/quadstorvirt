@@ -31,7 +31,7 @@
 #include "md5.h"
 
 struct group_info *group_list[TL_MAX_POOLS];
-struct tdisk_list tdisk_list = TAILQ_HEAD_INITIALIZER(tdisk_list);  
+struct tdisk_info *tdisk_list[TL_MAX_TDISKS];
 struct mirror_check_list mirror_check_list = TAILQ_HEAD_INITIALIZER(mirror_check_list);  
 struct fc_rule_list fc_rule_list = TAILQ_HEAD_INITIALIZER(fc_rule_list);  
 
@@ -145,7 +145,7 @@ tdisk_add(struct group_info *group_info, struct tdisk_info *tdisk_info)
 {
 	tdisk_info->group = group_info;
 	TAILQ_INSERT_TAIL(&group_info->tdisk_list, tdisk_info, g_entry);
-	TAILQ_INSERT_TAIL(&tdisk_list, tdisk_info, q_entry);
+	tdisk_list[tdisk_info->target_id] = tdisk_info;
 }
 
 void
@@ -157,7 +157,7 @@ tdisk_remove(struct tdisk_info *tdisk_info)
 		TAILQ_REMOVE(&group_info->tdisk_list, tdisk_info, g_entry); 
 		tdisk_info->group = NULL;
 	}
-	TAILQ_REMOVE(&tdisk_list, tdisk_info, q_entry); 
+	tdisk_list[tdisk_info->target_id] = NULL;
 }
 
 struct group_info * 
@@ -533,22 +533,26 @@ attach_tdisks(void)
 {
 	struct tdisk_info *info;
 	int retval;
+	int i;
 
-	info = TAILQ_FIRST(&tdisk_list);
-	while (info) {
-		struct tdisk_info *next;
-		next = TAILQ_NEXT(info, q_entry);
-		if (info->disabled != VDISK_DELETED) {
-			info = next;
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
 			continue;
-		}
+
+		if (info->disabled != VDISK_DELETED)
+			continue;
+
 		sql_delete_tdisk(info->target_id);
 		tdisk_remove(info);
 		free(info);
-		info = next;
 	}
 
-	TAILQ_FOREACH(info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
+
 		if (info->disabled)
 			continue;
 
@@ -556,7 +560,11 @@ attach_tdisks(void)
 	}
 
 	pthread_mutex_lock(&daemon_lock);
-	TAILQ_FOREACH(info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
+
 		if (info->disabled != VDISK_DELETING)
 			continue;
 
@@ -572,11 +580,15 @@ attach_tdisks(void)
 static int
 load_tdisks(struct tl_blkdevinfo *blkdev)
 {
-	int error;
+	int error, i;
 	struct tdisk_info *info;
 	struct group_info *group_info;
 
-	TAILQ_FOREACH(info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
+
 		if (info->disabled == VDISK_DELETED)
 			continue;
 
@@ -729,8 +741,7 @@ load_configured_tdisks(void)
 {
 	int error;
 
-	TAILQ_INIT(&tdisk_list);
-	error = sql_query_tdisks(&tdisk_list);
+	error = sql_query_tdisks(tdisk_list);
 	if (error != 0)
 	{
 		DEBUG_ERR_SERVER("VDisk query failed\n");
@@ -1005,8 +1016,13 @@ int
 iqn_exists(char *iqn)
 {
 	struct tdisk_info *tdisk_info;
+	int i;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (tdisk_info->disabled)
 			continue;
 		if (strcasecmp(tdisk_info->iscsiconf.iqn, iqn) == 0)
@@ -1019,8 +1035,13 @@ int
 target_name_exists(char *targetname)
 {
 	struct tdisk_info *tdisk_info;
+	int i;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (strcasecmp(tdisk_info->name, targetname) == 0) 
 			return 1;
 	}
@@ -1030,10 +1051,14 @@ target_name_exists(char *targetname)
 struct tdisk_info * 
 find_tdisk(uint32_t target_id)
 {
-
 	struct tdisk_info *tdisk_info;
+	int i;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (tdisk_info->target_id == target_id)
 			return tdisk_info;
 	}
@@ -1044,9 +1069,14 @@ static int
 serial_number_unique(char *serialnumber)
 {
 	struct tdisk_info *tdisk_info;
+	int i;
 
 	DEBUG_INFO("new serial number %.32s\n", serialnumber);
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		DEBUG_INFO("tdisk %s serial number %.32s\n", tdisk_info->name, tdisk_info->serialnumber);
 		if (memcmp(tdisk_info->serialnumber, serialnumber, 32) == 0)
 			return 0;
@@ -1083,6 +1113,26 @@ again:
 	goto again;
 }
 
+uint32_t next_target_id = 1;
+static int
+get_next_target_id()
+{
+	int i;
+
+again:
+	for (i = next_target_id; i < TL_MAX_TDISKS; i++) {
+		if (tdisk_list[i])
+			continue;
+		next_target_id = i+1;
+		return i;
+	}
+	if (next_target_id != 1) {
+		next_target_id = 1;
+		goto again;
+	}
+	return 0;
+}
+
 struct tdisk_info * 
 add_target(struct group_info *group_info, char *targetname, uint64_t targetsize, int lba_shift, int enable_deduplication, int enable_compression, int enable_verify, int force_inline, char *serialnumber, char *err, int attach, struct iscsiconf *srcconf)
 {
@@ -1114,6 +1164,12 @@ add_target(struct group_info *group_info, char *targetname, uint64_t targetsize,
 	tdisk_info->tl_id = 0xFFFF;
 	tdisk_info->vhba_id = -1;
 	tdisk_info->iscsi_tid = -1;
+	tdisk_info->target_id = get_next_target_id();
+	if (!tdisk_info->target_id) {
+		free(tdisk_info);
+		sprintf(err, "Cannot get target id\n");
+		return NULL;
+	}
 
 	conn = pgsql_begin();
 	if (!conn)
@@ -1215,8 +1271,13 @@ struct tdisk_info *
 find_tdisk_by_name(char *name)
 {
 	struct tdisk_info *tdisk_info;
+	int i;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (strcasecmp(tdisk_info->name, name) == 0) 
 			return tdisk_info;
 	}
@@ -1551,7 +1612,7 @@ __list_sync_mirrors(char *filepath)
 	struct mirror_state *mirror_state;
 	struct sockaddr_in in_addr;
 	char status[64];
-	int retval;
+	int retval, i;
 
 	fp = fopen(filepath, "w");
 	if (!fp) {
@@ -1559,7 +1620,11 @@ __list_sync_mirrors(char *filepath)
 		return -1;
 	}
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (tdisk_info->disabled)
 			continue;
 		retval = tl_ioctl(TLTARGIOCTDISKSTATS, tdisk_info);
@@ -1609,7 +1674,7 @@ tl_server_set_vdisk_role(struct tl_comm *comm, struct tl_msg *msg)
 {
 	char src[40];
 	char errmsg[256];
-	int mirror_role, retval, force;
+	int mirror_role, retval, force, i;
 	struct tdisk_info *tdisk_info;
 
 	src[0] = 0;
@@ -1636,7 +1701,10 @@ tl_server_set_vdisk_role(struct tl_comm *comm, struct tl_msg *msg)
 			goto senderr;
 	}
 	else if (force) {
-		TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+		for (i = 1; i < TL_MAX_TDISKS; i++) {
+			tdisk_info = tdisk_list[i];
+			if (!tdisk_info)
+				continue;
 			if (tdisk_info->disabled)
 				continue;
 			retval = __tl_server_set_vdisk_role(tdisk_info, mirror_role, errmsg);
@@ -1883,7 +1951,7 @@ tl_server_dev_mapping(struct tl_comm *comm, struct tl_msg *msg)
 {
 	char path[256];
 	char name[64];
-	int retval, serial_len;
+	int retval, serial_len, i;
 	struct tdisk_info *tdisk_info, *ret = NULL;
 	char serialnumber[64];
 
@@ -1902,7 +1970,11 @@ tl_server_dev_mapping(struct tl_comm *comm, struct tl_msg *msg)
 		return -1;
 	}
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (memcmp(tdisk_info->serialnumber, serialnumber, 32))
 			continue;
 		ret = tdisk_info;
@@ -1968,8 +2040,13 @@ static void
 tl_server_unload_tdisks()
 {
 	struct tdisk_info *tdisk_info;
+	int i;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (!tdisk_info->online || tdisk_info->disabled)
 			continue;
 		detach_tdisk(tdisk_info);
@@ -2101,6 +2178,7 @@ __list_tdisks(char *filepath)
 {
 	struct tdisk_info *tdisk_info;
 	FILE *fp;
+	int i;
 
 	fp = fopen(filepath, "w");
 	if (!fp) {
@@ -2108,7 +2186,11 @@ __list_tdisks(char *filepath)
 		return -1;
 	}
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (tdisk_info->disabled == VDISK_DELETED)
 			continue;
 
@@ -2168,6 +2250,7 @@ tl_server_list_pool_tdisks(struct tl_comm *comm, struct tl_msg *msg)
 	char filepath[256];
 	FILE *fp;
 	uint32_t group_id;
+	int i;
 
 	if (sscanf(msg->msg_data, "target_id: %u\ntempfile: %s\n", &group_id, filepath) != 2) {
 		DEBUG_ERR_SERVER("Invalid msg data");
@@ -2183,7 +2266,11 @@ tl_server_list_pool_tdisks(struct tl_comm *comm, struct tl_msg *msg)
 		return -1;
 	}
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
+
 		if (tdisk_info->disabled == VDISK_DELETED)
 			continue;
 
@@ -2355,6 +2442,7 @@ tl_server_add_group(struct tl_comm *comm, struct tl_msg *msg)
 
 	group_info->group_id  = get_next_group_id();
 	if (!group_info->group_id) {
+		free(group_info);
 		snprintf(errmsg, sizeof(errmsg), "Cannot get group id\n");
 		goto senderr;
 	}

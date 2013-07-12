@@ -941,7 +941,7 @@ bint_clear(struct bdevint *bint)
 	if (atomic_test_bit(GROUP_FLAGS_TAIL_META, &bint->group_flags)) {
 		b_start = bint->usize >> bint->sector_shift;
 		pages = BDEV_META_RESERVED >> LBA_SHIFT;
-		pages += (MAX_TDISKS + 1); /* 1 for BDEV META itself */
+		pages += (TL_MAX_TDISKS + 1); /* 1 for BDEV META itself */
 		retval = tcache_zero_range(bint, b_start, pages);
 		if (unlikely(retval != 0))
 			debug_warn("Clear failed for vdisk meta and meta from b_start %llu\n", (unsigned long long)b_start);
@@ -952,7 +952,7 @@ bint_clear(struct bdevint *bint)
 		debug_warn("Clear failed for bdev meta at b_start %llu\n", (unsigned long long)bint->b_start);
 
 	b_start = bdev_get_disk_index_block(bint, 0);
-	retval = tcache_zero_range(bint, b_start, MAX_TDISKS);
+	retval = tcache_zero_range(bint, b_start, TL_MAX_TDISKS);
 	if (unlikely(retval != 0))
 		debug_warn("Clear failed for vdisk meta from b_start %llu\n", (unsigned long long)b_start);
 	vm_pg_free(page);

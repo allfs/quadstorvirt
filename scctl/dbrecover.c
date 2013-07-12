@@ -36,7 +36,7 @@
 
 extern struct tl_blkdevinfo *bdev_list[];
 extern struct d_list disk_list;
-extern struct tdisk_list tdisk_list;
+extern struct tdisk_info *tdisk_list[];
 extern struct group_info *group_list[];
 int testmode = 0;
 
@@ -101,7 +101,7 @@ scan_vdisks()
 			continue;
 		}
 
-		for (i = 0; i < MAX_TDISKS; i++) {
+		for (i = 0; i < TL_MAX_TDISKS; i++) {
 			offset = TDISK_RESERVED_OFFSET + (i * 4096);
 			retval = read_from_device(disk->info.devname, buf, sizeof(buf), offset);
 			if (retval < 0) {
@@ -287,8 +287,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	TAILQ_INIT(&tdisk_list);
-	retval = sql_query_tdisks(&tdisk_list);
+	retval = sql_query_tdisks(tdisk_list);
 	if (retval != 0) {
 		fprintf(stdout, "Error in getting configured VDisks\n");
 		exit(1);

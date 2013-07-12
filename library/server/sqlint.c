@@ -425,7 +425,7 @@ sql_query_groups(struct group_info *group_list[])
 }
 
 int
-sql_query_tdisks(struct tdisk_list *tdisk_list)
+sql_query_tdisks(struct tdisk_info *tdisk_list[])
 {
 	char sqlcmd[512];
 	PGconn *conn;
@@ -476,7 +476,8 @@ sql_query_tdisks(struct tdisk_list *tdisk_list)
 			break;
 		}
 
-		TAILQ_INSERT_TAIL(tdisk_list, tdisk_info, q_entry);
+		DEBUG_BUG_ON(tdisk_list[tdisk_info->target_id]);
+		tdisk_list[tdisk_info->target_id] = tdisk_info;
 	}
 
 	PQclear(res);
