@@ -93,8 +93,10 @@ start() {
 	/sbin/insmod /quadstor/lib/modules/$kvers/ldev.ko > /dev/null 2>&1 
 	check_error "Failed to insert ldev module"
 
-	/sbin/insmod /quadstor/lib/modules/$kvers/iscsit.ko > /dev/null 2>&1
-	check_error "Failed to insert iscsi target module"
+	if [ -f /quadstor/etc/initd.iscsi ]; then
+		/sbin/insmod /quadstor/lib/modules/$kvers/iscsit.ko > /dev/null 2>&1
+		check_error "Failed to insert iscsi target module"
+	fi
 
 	pkill mdaemon
 	export PATH=$PATH:/quadstor/bin:/sbin:/usr/sbin
@@ -102,7 +104,9 @@ start() {
 	/quadstor/sbin/mdaemon > /dev/null 2>&1
 	check_error "Cannot start master daemon"
 
-	/quadstor/etc/initd.iscsi start
+	if [ -f /quadstor/etc/initd.iscsi ]; then
+		/quadstor/etc/initd.iscsi start
+	fi
 
 	sleep 10 
 	/quadstor/bin/scctl -l > /dev/null 2>&1
@@ -114,7 +118,9 @@ start() {
 
 stop() {
 	echo -n $"Stopping $prog: "
-	/quadstor/etc/initd.iscsi stop > /dev/null 2>&1
+	if [ -f /quadstor/etc/initd.iscsi ]; then
+		/quadstor/etc/initd.iscsi stop > /dev/null 2>&1
+	fi
 
 	/quadstor/bin/scctl -u > /dev/null 2>&1
 	sleep 10 
