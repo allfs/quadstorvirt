@@ -2026,6 +2026,7 @@ bint_sync(struct bdevint *bint)
 	}
 	raw_bint->group_flags = bint->group_flags;
 	memcpy(raw_bint->magic, "QUADSTOR", strlen("QUADSTOR"));
+	memcpy(raw_bint->quad_prod, "VIRT", strlen("VIRT"));
 	memcpy(raw_bint->vendor, bint->vendor, sizeof(bint->vendor));
 	memcpy(raw_bint->product, bint->product, sizeof(bint->product));
 	memcpy(raw_bint->serialnumber, bint->serialnumber, sizeof(bint->serialnumber));
