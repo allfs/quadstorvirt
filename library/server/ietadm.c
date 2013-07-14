@@ -20,6 +20,17 @@
 #include <sqlint.h>
 #include "cluster.h"
 
+int iet_enable = 1;
+
+void
+ietadm_check(void)
+{
+	struct stat stbuf;
+
+	if (stat(IETADM_PATH, &stbuf) < 0)
+		iet_enable = 0;
+}
+
 int 
 ietadm_default_settings(void *conn, struct tdisk_info *tdisk_info, struct iscsiconf *srcconf)
 {
@@ -55,7 +66,7 @@ ietadm_mod_target(int tid, struct iscsiconf *iscsiconf, struct iscsiconf *oldcon
 	int retval;
 	char user[40], passwd[40];
 
-	if (tid <= 0)
+	if (!iet_enable || tid <= 0)
 		return 0;
 
 	if (oldconf && strcmp(iscsiconf->iqn, oldconf->iqn)) {
@@ -121,6 +132,9 @@ ietadm_qload_done(void)
 	char cmd[128];
 	int retval;
 
+	if (!iet_enable)
+		return 0;
+
 	snprintf(cmd, sizeof(cmd), "%s -q\n", IETADM_PATH);
 	retval = system(cmd);
 	if (retval != 0) {
@@ -135,7 +149,7 @@ ietadm_add_target(int tid, struct iscsiconf *iscsiconf)
 	char cmd[512];
 	int retval;
 
-	if (tid <= 0)
+	if (!iet_enable || tid <= 0)
 		return 0;
 
 	snprintf(cmd, sizeof(cmd), "%s --op new --tid=%d --params Name=%s\n", IETADM_PATH, tid, iscsiconf->iqn);
@@ -159,7 +173,7 @@ ietadm_delete_target(int tid)
 	char cmd[128];
 	int retval;
 
-	if (tid <= 0)
+	if (!iet_enable || tid <= 0)
 		return 0;
 
 	snprintf(cmd, sizeof(cmd), "%s --op delete --tid=%d > /dev/null 2>&1", IETADM_PATH, tid);
@@ -177,6 +191,9 @@ int
 ietadm_delete(void)
 {
 	char cmd[128];
+
+	if (!iet_enable)
+		return 0;
 
 	snprintf(cmd, sizeof(cmd), "%s --op delete > /dev/null 2>&1", IETADM_PATH);
 	system(cmd);

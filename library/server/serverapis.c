@@ -948,6 +948,8 @@ __tl_server_load(void)
 {
 	int retval;
 
+	ietadm_check();
+ 
 	retval = sys_rid_load();
 	if (retval != 0) {
 		DEBUG_ERR_SERVER("Failed to load uuid information\n");

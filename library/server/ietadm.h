@@ -25,4 +25,5 @@ int ietadm_add_target(int tid, struct iscsiconf *iscsiconf);
 int ietadm_delete_target(int tid);
 int ietadm_delete(void);
 int ietadm_qload_done(void);
+void ietadm_check(void);
 #endif
