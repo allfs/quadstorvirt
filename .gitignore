@@ -34,3 +34,7 @@ scctl/spconfig
 scctl/vdconfig
 target-mode/iscsi/usr/ietadm
 target-mode/iscsi/usr/ietd
+build/quadstorclientrhel6.spec
+build/quadstorcorerhel6.spec
+build/quadstoritfminrhel6.spec
+build/quadstoritfrhel6.spec
