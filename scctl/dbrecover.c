@@ -306,7 +306,7 @@ main(int argc, char *argv[])
 		if (memcmp(raw_bint.magic, "QUADSTOR", strlen("QUADSTOR")))
 			continue;
 
-		if (!memcmp(raw_bint.quad_prod, "VTL", strlen("VTL")))
+		if (!memcmp(((uint8_t *)(&raw_bint))+0x72, "VTL", strlen("VTL")))
 			continue;
 
 		if ((!raw_bint.group_id && !raw_bint.ddmaster) || (raw_bint.group_id && !atomic_test_bit(GROUP_FLAGS_MASTER, &raw_bint.group_flags)))
