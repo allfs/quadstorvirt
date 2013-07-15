@@ -8,3 +8,5 @@ sh debianclient.sh
 mv debian.deb quadstor-client-$version-debian7-x86_64.deb
 sh debianitf.sh
 mv debian.deb quadstor-itf-$version-debian7-x86_64.deb
+sh debianitfmin.sh
+mv debian.deb quadstor-itf-minimal-$version-debian7-x86_64.deb

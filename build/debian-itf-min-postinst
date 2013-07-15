@@ -1,0 +1,10 @@
+#!/bin/sh
+
+update-rc.d quadstor defaults
+
+echo "Minimal 3.0.42 for Debian" > /quadstor/etc/quadstor-itf-min-version
+
+echo "Building required kernel modules"
+echo "Running /quadstor/bin/builditf.min"
+sleep 5
+/quadstor/bin/builditf.min

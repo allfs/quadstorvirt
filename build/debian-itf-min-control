@@ -1,0 +1,9 @@
+Package: quadstor-itf-min
+Version: 3.0.42 
+Section: base
+Priority: optional
+Architecture: amd64 
+Depends: linux-headers, build-essential
+Conflicts: quadstor-itf
+Maintainer: QUADStor Support <support@quadstor.com>
+Description: QUADStor storage virtualization, data deduplication 
