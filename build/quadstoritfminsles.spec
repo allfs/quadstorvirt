@@ -22,6 +22,7 @@ exit 0
 rm -rf $RPM_BUILD_ROOT/
 
 mkdir -p $RPM_BUILD_ROOT/etc/udev/rules.d
+mkdir -p $RPM_BUILD_ROOT/quadstor/bin
 mkdir -p $RPM_BUILD_ROOT/quadstor/src
 mkdir -p $RPM_BUILD_ROOT/quadstor/src/export
 cp /quadstor/quadstor/export/devq.[ch] $RPM_BUILD_ROOT/quadstor/src/export/

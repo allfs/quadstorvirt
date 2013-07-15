@@ -15,6 +15,7 @@ install -m 755 debian-itf-min-preinst $DEBIAN_ROOT/DEBIAN/preinst
 install -m 755 debian-itf-min-postinst $DEBIAN_ROOT/DEBIAN/postinst
 
 install -m 755 -d $DEBIAN_ROOT/etc/udev/rules.d
+install -m 755 -d $DEBIAN_ROOT/quadstor/min
 install -m 755 -d $DEBIAN_ROOT/quadstor/src
 install -m 755 -d $DEBIAN_ROOT/quadstor/src/export
 install -m 644 /quadstor/quadstor/export/devq.[ch] $DEBIAN_ROOT/quadstor/src/export/
