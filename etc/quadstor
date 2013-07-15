@@ -107,8 +107,7 @@ quadstor_start() {
 
 quadstor_status() {
 	mdaemonpid=`/quadstor/bin/pidof /quadstor/sbin/mdaemon 2> /dev/null`
-	ietdpid=`/quadstor/bin/pidof /quadstor/sbin/ietd 2> /dev/null`
-	if [ "${mdaemonpid}" != "" -o "${ietdpid}" != "" ] ; then 
+	if [ "${mdaemonpid}" != "" ] ; then 
 		echo "QUADStor daemon is running..."
 		exit 1
 	else

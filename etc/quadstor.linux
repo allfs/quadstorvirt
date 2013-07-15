@@ -140,8 +140,7 @@ stop() {
 
 status_check() {
 	mdaemonpid=`$PIDOF /quadstor/sbin/mdaemon 2> /dev/null`
-	ietdpid=`$PIDOF /quadstor/sbin/ietd 2> /dev/null`
-	if [ "${mdaemonpid}" != "" -a "${ietdpid}" != "" ] ; then 
+	if [ "${mdaemonpid}" != "" ] ; then 
 		echo "QUADStor daemon is running..."
 		exit 0
 	else

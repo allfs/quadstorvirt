@@ -113,8 +113,7 @@ stop() {
 
 status_check() {
 	ncdaemonpid=`$PIDOF /quadstor/sbin/ncdaemon 2> /dev/null`
-	ietdpid=`$PIDOF /quadstor/sbin/ietd 2> /dev/null`
-	if [ "${ncdaemonpid}" != "" -a "${ietdpid}" != "" ] ; then 
+	if [ "${ncdaemonpid}" != "" ] ; then 
 		echo "QUADStor node client daemon is running..."
 		exit 0
 	else
