@@ -11,10 +11,12 @@ else
 	cgibin=/var/www/cgi-bin
 fi
 
-cgilist=`cd /quadstor/httpd/cgi-bin && ls -1 *.cgi`
-for i in $cgilist; do
-	rm -f $cgibin/$i
-done
+if [ -d /quadstorvtl/httpd/cgi-bin ]; then
+	cgilist=`cd /quadstor/httpd/cgi-bin && ls -1 *.cgi`
+	for i in $cgilist; do
+		rm -f $cgibin/$i
+	done
+fi
 
 rm -rf $htdocs/quadstor
 
