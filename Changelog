@@ -1,3 +1,7 @@
+Release 3.0.43
+	* Changes required to allow installing the VTL product on top of the
+	  virtualization product
+
 Release 3.0.42
 	* After a mirror resync the slave VDisk data may be inconsistent from 
 	  the master VDisk data. This has been fixed
