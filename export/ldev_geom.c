@@ -19,6 +19,7 @@
 #include "ldev_geom.h"
 #include "exportdefs.h"
 #include "missingdefs.h"
+#include "../common/commondefs.h"
 
 mtx_t ldev_stats_lock;
 static int ldev_new_device_cb(struct tdisk *newdevice);
@@ -138,20 +139,46 @@ struct unmap_block_descriptor {
 static int 
 create_unmap_request(struct qsio_scsiio *ctio, struct bio *bp, uint32_t lba_shift)
 {
+	uint8_t *cdb = ctio->cdb;
 	uint8_t *ptr;
 	struct unmap_block_descriptor *desc;
-	int retval;
+	int retval, i;
+	uint32_t num_blocks;
+	int max_blocks, min_blocks, num_desc, desc_len;
+	uint64_t lba;
+
+	if (lba_shift == LBA_SHIFT)
+		max_blocks = TDISK_UNMAP_LBA_COUNT;
+	else
+		max_blocks = TDISK_UNMAP_LBA_COUNT_LEGACY;
+
+	num_blocks = bp->bio_length >> lba_shift;
+	num_desc = num_blocks / max_blocks;
+	if (num_blocks % max_blocks)
+		num_desc++;
+
+	if (num_desc > 32)
+		return EOPNOTSUPP;
+
+	desc_len = sizeof(*desc) * num_desc;
+	*(uint16_t *)(&cdb[7]) = htobe16(8 + desc_len);
 
 	retval = (*icbs.device_allocate_cmd_buffers)(ctio, Q_NOWAIT);
 	if (unlikely(retval != 0))
-		return -1;
+		return ENOMEM;
 
 	desc = (struct unmap_block_descriptor *)(ctio->data_ptr + 8);
-	desc->lba = htobe64(bp->bio_offset >> lba_shift); 
-	desc->num_blocks = htobe32(bp->bio_length >> lba_shift);
+	lba = (bp->bio_offset >> lba_shift);
+	for (i = 0; i < num_desc; i++, desc++) {
+		desc->lba = htobe64(lba);
+		min_blocks = min_t(int, num_blocks, max_blocks);
+		desc->num_blocks = htobe32(min_blocks);
+		num_blocks -= min_blocks;
+		lba += min_blocks;
+	}
 	ptr = ctio->data_ptr;
-	*(uint16_t *)(ptr) = htobe16(6 + sizeof(*desc));
-	*(uint16_t *)(ptr + 2) = htobe16(sizeof(*desc));
+	*(uint16_t *)(ptr) = htobe16(6 + desc_len);
+	*(uint16_t *)(ptr + 2) = htobe16(desc_len);
 	return 0;
 }
 
@@ -256,11 +283,10 @@ ldev_start(struct bio *bp)
 		*(uint32_t *)(&cdb[10]) = htobe32(num_blocks);
 	}
 	else {
-		*(uint16_t *)(&cdb[7]) = htobe16(8 + sizeof(struct unmap_block_descriptor));
 		retval = create_unmap_request(ctio, bp, lba_shift);
 		if (retval != 0) {
 			(*icbs.ctio_free_all)(ctio);
-			g_io_deliver(bp, ENOMEM);
+			g_io_deliver(bp, retval);
 			return;
 		}
 	}

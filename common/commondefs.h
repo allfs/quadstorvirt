@@ -470,4 +470,7 @@ enum {
 	MIRROR_FLAGS_WRITE_BITMAP_VALID,
 };
 
+#define TDISK_UNMAP_LBA_COUNT				512 /* 2 MB */
+#define TDISK_UNMAP_LBA_COUNT_LEGACY			4096 /* 2 MB */
+
 #endif /* COMMONDEFS_H_ */
