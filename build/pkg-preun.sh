@@ -25,6 +25,22 @@ if [ "$?" = "0" ]; then
 	rm -f $htdocs/index.html
 fi
 
+cmod=`/sbin/kldstat | grep vtlcore`
+if [ "$cmod" != "" -a -f /etc/rc.d/quadstorvtl ]; then
+	/etc/rc.d/quadstorvtl stop > /dev/null 2>&1
+fi
+
+cmod=`/sbin/kldstat | grep vtlcore`
+if [ "$cmod" != "" -a -f /etc/rc.d/quadstorvtl ]; then
+	/etc/rc.d/quadstorvtl onestop > /dev/null 2>&1
+fi
+
+cmod=`/sbin/kldstat | grep vtlcore`
+if [ "$cmod" != "" ]; then
+	echo "Unable to shutdown QUADStor service cleanly. Please restart the system and try again"
+	exit 1
+fi
+
 cmod=`/sbin/kldstat | grep coredev`
 if [ "$cmod" = "" ]; then
 	return

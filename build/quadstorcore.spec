@@ -111,6 +111,17 @@ cd $RPM_BUILD_ROOT/quadstor/lib && ln -fs libtlmsg.so.%{libvers} libtlmsg.so
 %preun
 	/sbin/chkconfig --del quadstor
 
+	cmod=`/sbin/lsmod | grep vtlcore`
+	if [ "$cmod" != "" -a -f /etc/rc.d/init.d/quadstorvtl ]; then
+		/etc/rc.d/init.d/quadstorvtl stop
+	fi
+
+	cmod=`/sbin/lsmod | grep vtlcore`
+	if [ "$cmod" != "" ]; then
+		echo "Unable to shutdown QUADStor VTL service cleanly. Please restart the system and try again"
+		exit 1
+	fi
+
 	cmod=`/sbin/lsmod | grep coredev`
 	if [ "$cmod" != "" ]; then
 		/etc/rc.d/init.d/quadstor stop
