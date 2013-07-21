@@ -1,11 +1,5 @@
 #!/bin/sh
 
-checkerrorwarnonly() {
-	if [ "$?" != "0" ]; then
-		echo "WARNING: Building one or more kernel modules failed!. Skipping and continuing."
-	fi
-}
-
 checkerror() {
 	if [ "$?" != "0" ]; then
 		echo "ERROR: Building kernel modules failed!"
@@ -52,8 +46,8 @@ checkerror
 cp -f qla2xxx.ko /quadstor/lib/modules/$kvers/
 
 cd /quadstor/src/target-mode/fc/srpt
-make clean && make 
-checkerrorwarnonly
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
 
 if [ -f ib_srpt.ko ]; then
 	cp -f ib_srpt.ko /quadstor/lib/modules/$kvers/
