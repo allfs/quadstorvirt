@@ -269,10 +269,10 @@ skip_wc:
 			strcpy(status, "offline");
 
 		if (config && disk->info.online) {
-			fprintf(stdout, fmt, disk->bid, disk->info.vendor, disk->info.product, disk->info.serialnumber, disk->info.devname, config->group_name, disk->size / (1024.00 * 1024.00 * 1024.00), config->used/(1024.00 * 1024.00 * 1024.00), status);
+			fprintf(stdout, fmt, config->bid, disk->info.vendor, disk->info.product, disk->info.serialnumber, disk->info.devname, config->group_name, disk->size / (1024.00 * 1024.00 * 1024.00), config->used/(1024.00 * 1024.00 * 1024.00), status);
 		}
 		else if (config)
-			fprintf(stdout, fmt, disk->bid, disk->info.vendor, disk->info.product, disk->info.serialnumber, disk->info.devname, config->group_name, disk->size / (1024.00 * 1024.00 * 1024.00), 0.00, status);
+			fprintf(stdout, fmt, config->bid, disk->info.vendor, disk->info.product, disk->info.serialnumber, disk->info.devname, config->group_name, disk->size / (1024.00 * 1024.00 * 1024.00), 0.00, status);
 		else
 			fprintf(stdout, fmt, 0, disk->info.vendor, disk->info.product, disk->info.serialnumber, disk->info.devname, "N/A", disk->size / (1024.00 * 1024.00 * 1024.00), 0.00, "N/A");
 	}
