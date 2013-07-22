@@ -131,9 +131,11 @@ struct tl_blkdevinfo {
 	dev_t b_dev;
 	int offline;
 	int ddmaster;
+	int ismaster;
 	int log_disk;
 	int ha_disk;
 	uint32_t group_id;
+	uint32_t db_group_id;
 	TAILQ_ENTRY(tl_blkdevinfo) g_entry;
 	struct group_info *group;
 };

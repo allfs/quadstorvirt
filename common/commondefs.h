@@ -224,6 +224,7 @@ struct bdev_info {
 	uint64_t reserved;
 	uint8_t  isnew;
 	uint8_t  ddmaster;
+	uint8_t  ismaster;
 	uint8_t  log_disk;
 	uint8_t  ha_disk;
 	uint8_t  unmap;

@@ -365,7 +365,7 @@ main(int argc, char *argv[])
 			continue;
 		}
 
-		conn = sql_add_blkdev(disk, raw_bint.bid);
+		conn = sql_add_blkdev(disk, raw_bint.bid, raw_bint.group_id);
 		if (!conn) {
 			fprintf(stdout, "Failed to update disk information for %s", disk->info.devname);
 			exit(1);
@@ -448,7 +448,7 @@ main(int argc, char *argv[])
 
 		if (testmode)
 			continue;
-		conn = sql_add_blkdev(disk, raw_bint.bid);
+		conn = sql_add_blkdev(disk, raw_bint.bid, raw_bint.group_id);
 		if (!conn) {
 			fprintf(stdout, "Failed to update disk information for %s", disk->info.devname);
 			exit(1);

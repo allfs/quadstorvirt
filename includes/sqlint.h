@@ -22,7 +22,7 @@
 #include "pgsql.h"
 
 struct tl_blkdevinfo;
-PGconn *sql_add_blkdev(struct physdisk *disk, uint32_t bid);
+PGconn *sql_add_blkdev(struct physdisk *disk, uint32_t bid, uint32_t group_id);
 int sql_delete_blkdev(struct tl_blkdevinfo *binfo);
 int sql_update_iscsiconf(uint32_t target_id, struct iscsiconf *iscsiconf);
 int sql_add_iscsiconf(PGconn *conn, uint32_t target_id, struct iscsiconf *iscsiconf);
@@ -49,4 +49,6 @@ int sql_add_fc_rule(struct fc_rule *fc_rule);
 int sql_delete_fc_rule(struct fc_rule *fc_rule);
 int sql_delete_tdisk_fc_rules(uint32_t target_id);
 int sql_query_fc_rules(struct fc_rule_list *fc_rule_list);
+int sql_update_blkdev_group_id(uint32_t bid, uint32_t group_id);
+
 #endif
