@@ -483,14 +483,14 @@ tl_client_delete_disk(char *dev, char *reply)
 }
 
 int
-tl_client_rescan_disks(void)
+tl_client_rescan_disks(char *reply)
 {
 	struct tl_msg msg;
 
 	msg.msg_id = MSG_ID_RESCAN_DISKS;
 	msg.msg_len = 0;
 
-	return tl_client_send_msg(&msg, NULL);
+	return tl_client_send_msg(&msg, reply);
 }
 
 int

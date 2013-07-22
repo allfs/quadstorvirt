@@ -20,7 +20,15 @@
 
 int main()
 {
-	tl_client_rescan_disks();
+	char reply[512];
+	char errmsg[512];
+	int retval;
+
+	retval = tl_client_rescan_disks(reply); 
+	if (retval != 0) {
+		snprintf(errmsg, sizeof(errmsg), "Rescan failed<br/>Message from server is:<br/>\"%s\"\n", reply);
+		cgi_print_header_error_page(errmsg);
+	}
 	cgi_redirect("adddisk.cgi");
 	return 0;
 }

@@ -28,7 +28,7 @@ int tl_client_clear_log(char *logfile);
 int tl_client_add_disk(char *dev, int comp, int log_disk, int ha_disk, uint32_t group_id, char *reply);
 int tl_client_delete_disk(char *dev, char *reply);
 int tl_client_list_generic(char *tempfile, int msg_id);
-int tl_client_rescan_disks(void);
+int tl_client_rescan_disks(char *reply);
 int tl_client_reboot_system(int msg_id);
 struct iscsiconf;
 struct vdiskconf;

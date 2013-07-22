@@ -3552,6 +3552,15 @@ bdev_alloc_list_insert(struct bdevint *bint)
 	sx_xunlock(group->alloc_lock);
 }
 
+static void
+bint_create_notify_mdaemon(void)
+{
+	struct usr_notify msg;
+
+	bzero(&msg, sizeof(msg));
+	node_usr_notify_msg(USR_NOTIFY_BINT_CREATE_DONE, 0, &msg);
+}
+
 uint32_t increate;
 #ifdef FREEBSD 
 static void bint_create_thread(void *data)
@@ -3707,6 +3716,7 @@ exit:
 	}
 	sx_xunlock(gchain_lock);
 	bint->create_task = NULL;
+	bint_create_notify_mdaemon();
 
 #ifdef FREEBSD 
 	kproc_exit(0);

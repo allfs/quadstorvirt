@@ -2965,6 +2965,8 @@ senderr:
 	return -1;
 }
 
+int scan_busy;
+
 static int
 tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 {
@@ -3045,9 +3047,10 @@ tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 		goto err;
 	}
 
+	scan_busy++;
 	retval = tl_ioctl(TLTARGIOCNEWBLKDEV, &binfo);
-	if (retval != 0)
-	{
+	if (retval != 0) {
+		scan_busy--;
 		DEBUG_ERR_SERVER("Error adding new disk, ioctl failed\n");
 		if (binfo.errmsg[0])
 			strcpy(errmsg, binfo.errmsg);
@@ -3500,6 +3503,11 @@ tl_server_rescan_disks(struct tl_comm *comm, struct tl_msg *msg)
 {
 	int retval, i;
 	struct tl_blkdevinfo *blkdev;
+
+	if (scan_busy) {
+		tl_server_msg_failure2(comm, msg, "Cannot do a rescan when one of the disks is being configured\n");
+		return -1;
+	}
 
 	retval = tl_common_scan_physdisk();
 	if (retval != 0) {

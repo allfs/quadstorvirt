@@ -569,6 +569,7 @@ node_usr_vdisk_threshold(struct usr_msg *msg, struct usr_notify *notify)
 	return;
 }
 
+extern int scan_busy;
 static void
 node_usr_notify(struct usr_msg *msg, struct usr_notify *notify)
 {
@@ -586,6 +587,11 @@ node_usr_notify(struct usr_msg *msg, struct usr_notify *notify)
 		break;
 	case USR_NOTIFY_VDISK_THRESHOLD:
 		node_usr_vdisk_threshold(msg, notify);
+		break;
+	case USR_NOTIFY_BINT_CREATE_DONE:
+		pthread_mutex_lock(&daemon_lock);
+		scan_busy--;
+		pthread_mutex_unlock(&daemon_lock);
 		break;
 	}
 }
@@ -649,6 +655,7 @@ node_usr_process_request(void *arg)
 		case USR_MSG_NOTIFY:
 			retval = read(clientfd, ((uint8_t *)&notify) + offset, notify_len);
 			if (retval != notify_len) {
+				DEBUG_WARN_SERVER("short read %d needed %d\n", retval, notify_len);
 				close(clientfd);
 				pthread_exit(0);
 			}
