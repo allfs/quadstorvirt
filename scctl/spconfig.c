@@ -38,6 +38,7 @@ static int
 spconfig_delete_pool(char *name)
 {
 	int group_id, retval;
+	char reply[512];
 
 	group_id = tl_client_get_group_id(name);
 	if (group_id <= 0) {
@@ -45,9 +46,10 @@ spconfig_delete_pool(char *name)
 		return -1;
 	}
 
-	retval = tl_client_delete_group(group_id);
+	retval = tl_client_delete_group(group_id, reply);
 	if (retval != 0) {
 		fprintf(stderr, "Deleting pool %s failed\n", name);
+		fprintf(stderr, "Message from server is %s\n", reply);
 		return -1;
 	}
 	fprintf(stdout, "Deleting pool %s successful\n", name);

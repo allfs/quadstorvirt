@@ -595,14 +595,15 @@ load_tdisks(struct tl_blkdevinfo *blkdev)
 		if (blkdev && blkdev->group->group_id != info->group_id)
 			continue;
 
-		DEBUG_BUG_ON(info->group);
-		group_info = find_group(info->group_id);
-		if (!group_info) {
-			DEBUG_ERR_SERVER("Cannot find pool at id %u\n", info->group_id);
-			return -1;
-		}
+		if (!info->group) {
+			group_info = find_group(info->group_id);
+			if (!group_info) {
+				DEBUG_ERR_SERVER("Cannot find pool at id %u\n", info->group_id);
+				return -1;
+			}
 
-		tdisk_group_insert(group_info, info);
+			tdisk_group_insert(group_info, info);
+		}
 		error = tl_ioctl(TLTARGIOCLOADTDISK, info);
 		if (error != 0) {
 			DEBUG_ERR_SERVER("Load vdisk ioctl failed for name %s id %d\n", info->name, info->target_id);
@@ -2621,6 +2622,16 @@ tl_server_delete_group(struct tl_comm *comm, struct tl_msg *msg)
 	group_info = find_group(group_id);
 	if (!group_info) {
 		snprintf(errmsg, sizeof(errmsg), "Cannot find pool at group_id %u\n", group_id);
+		goto senderr;
+	}
+
+	if (!TAILQ_EMPTY(&group_info->tdisk_list)) {
+		snprintf(errmsg, sizeof(errmsg), "Pool %s vdisk list not empty\n", group_info->name);
+		goto senderr;
+	}
+
+	if (!TAILQ_EMPTY(&group_info->bdev_list)) {
+		snprintf(errmsg, sizeof(errmsg), "Pool %s disk list not empty\n", group_info->name);
 		goto senderr;
 	}
 

@@ -46,7 +46,7 @@ int tl_client_add_group(char *groupname, int dedupemeta, int logdata, char *repl
 int tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, char *reply);
 int tl_client_modify_tdisk(uint32_t target_id, int dedupe, int comp, int verify, int force_inline);
 int tl_client_rename_pool(uint32_t group_id, char *name, char *reply);
-int tl_client_delete_group(uint32_t group_id);
+int tl_client_delete_group(uint32_t group_id, char *reply);
 int tl_client_delete_tdisk(uint32_t target_id);
 int tl_client_tdisk_stats_reset(uint32_t target_id);
 int tl_client_vdisk_resize(char *src, unsigned long long size, int force, char *reply);
