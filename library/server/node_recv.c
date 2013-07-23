@@ -106,6 +106,7 @@ node_msg_handle_new_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 	struct tdisk_info *dest_tdisk;
 	struct group_info *dest_group;
 	char errmsg[128];
+	struct iscsiconf *iscsiconf;
 
 	if (msg->msg_len < sizeof(*mirror_spec)) {
 		node_resp_error(comm, msg);
@@ -124,7 +125,11 @@ node_msg_handle_new_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 	}
 
 	if (!dest_tdisk) {
-		dest_tdisk = add_target(dest_group, mirror_spec->dest_tdisk, mirror_spec->size, mirror_spec->lba_shift, mirror_spec->enable_deduplication, mirror_spec->enable_compression, mirror_spec->enable_verify, mirror_spec->force_inline, mirror_spec->src_serialnumber, errmsg, !mirror_spec->attach, &mirror_spec->iscsiconf);
+		if (strcmp(mirror_spec->dest_tdisk, mirror_spec->src_tdisk) == 0)
+			iscsiconf = &mirror_spec->iscsiconf;
+		else
+			iscsiconf = NULL;
+		dest_tdisk = add_target(dest_group, mirror_spec->dest_tdisk, mirror_spec->size, mirror_spec->lba_shift, mirror_spec->enable_deduplication, mirror_spec->enable_compression, mirror_spec->enable_verify, mirror_spec->force_inline, mirror_spec->src_serialnumber, errmsg, !mirror_spec->attach, iscsiconf);
 		if (!dest_tdisk) {
 			node_resp_error_msg(comm, msg, errmsg);
 			return;
