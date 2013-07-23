@@ -4108,6 +4108,9 @@ bdev_add_new(struct bdev_info *binfo)
 	bdev_list_insert(bint);
 	atomic_inc(&bint->group->bdevs);
 
+	if (bint_is_group_master(bint))
+		binfo->ismaster = 1;
+
 	if (binfo->isnew) {
 		retval = kernel_thread_create(bint_create_thread, bint, bint->create_task, "bintcr");
 		if (unlikely(retval != 0)) {
@@ -4122,8 +4125,6 @@ bdev_add_new(struct bdev_info *binfo)
 		return 0;
 	}
 
-	if (bint_is_group_master(bint))
-		binfo->ismaster = 1;
 	return 0;
 
 err:
