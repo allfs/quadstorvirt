@@ -3101,6 +3101,7 @@ tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 	memcpy(&blkdev->disk, disk, offsetof(struct physdisk, q_entry));
 	strcpy(blkdev->devname, disk->info.devname);
 	blkdev->group_id = group_id;
+	blkdev->db_group_id = group_id;
 
 	conn = sql_add_blkdev(&blkdev->disk, blkdev->bid, group_id);
 	if (!conn) {
