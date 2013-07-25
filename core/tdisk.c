@@ -5291,7 +5291,7 @@ tdisk_verify_block(struct tdisk *tdisk, struct pgdata *pgdata, struct write_list
 }
 
 void
-verify_ddblocks(struct tdisk *tdisk, struct pgdata_wlist *dedupe_list, struct write_list *wlist, int verify_count)
+verify_ddblocks(struct tdisk *tdisk, struct pgdata_wlist *dedupe_list, struct write_list *wlist, int verify_count, int enable_rcache)
 {
 	struct pgdata *pgdata;
 	struct tcache *tcache;
@@ -5356,7 +5356,8 @@ verify_ddblocks(struct tdisk *tdisk, struct pgdata_wlist *dedupe_list, struct wr
 		vm_pg_free(pgdata->verify_page);
 		if (!cmp) {
 			TDISK_STATS_ADD(tdisk, verify_hits, 1);
-			rcache_add_to_list(&rcache_list, pgdata);
+			if (enable_rcache)
+				rcache_add_to_list(&rcache_list, pgdata);
 			continue;
 		}
 		debug_info("verify failed for %llu\n", (unsigned long long)BLOCK_BLOCKNR(pgdata->amap_block));
@@ -5764,7 +5765,7 @@ scan_write_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t lba, str
 		if (remote && !in_xcopy)
 			goto skip_alloc;
 
-		verify_ddblocks(tdisk, &wlist->dedupe_list, wlist, verify_count);
+		verify_ddblocks(tdisk, &wlist->dedupe_list, wlist, verify_count, !ctio_norefs(ctio));
 	}
 	TDISK_TEND(tdisk, verify_ddblocks_ticks, start_ticks);
 

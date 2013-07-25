@@ -2019,7 +2019,7 @@ node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw)
 		}
 	}
 
-	verify_ddblocks(tdisk, &wlist->dedupe_list, wlist, ctio->pglist_cnt);
+	verify_ddblocks(tdisk, &wlist->dedupe_list, wlist, ctio->pglist_cnt, 1);
 
 	for (i = 0; i < ctio->pglist_cnt; i++) {
 		pgdata = pglist[i];
