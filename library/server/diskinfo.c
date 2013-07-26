@@ -4,19 +4,6 @@
 #include <apicommon.h>
 #include "diskinfo.h"
 
-dev_t 
-get_device_id(char *devname, int *error)
-{
-	struct stat stbuf;
-
-	if (stat(devname, &stbuf) < 0) {
-		*error = -1;
-		return 0;
-	}
-	else 
-		return stbuf.st_rdev;
-}
-
 #ifdef FREEBSD
 int disk_getsize(char *device, uint64_t *size)
 {
