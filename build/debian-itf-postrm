@@ -1,5 +1,5 @@
 #!/bin/sh
-rm -f /quadstor/core/quadstor-itf-version
+rm -f /quadstor/etc/quadstor-itf-version
 for i in `ls -1d /quadstor/lib/modules/*`; do
 	if [ -d $i ]; then
 		rm -rf $i > /dev/null 2>&1

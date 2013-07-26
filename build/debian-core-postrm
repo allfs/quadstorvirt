@@ -1,5 +1,5 @@
 #!/bin/sh
-rm -f /quadstor/core/quadstor-core-version
+rm -f /quadstor/etc/quadstor-core-version
 if [ -f /var/www/html/index.html.ssave ];then
 	mv -f /var/www/html/index.html.ssave /var/www/html/index.html
 fi
