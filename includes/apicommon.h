@@ -128,7 +128,6 @@ struct tl_blkdevinfo {
 	uint32_t bid;
 	struct physdisk disk;
 	char devname[256];
-	dev_t b_dev;
 	int offline;
 	int ddmaster;
 	int ismaster;

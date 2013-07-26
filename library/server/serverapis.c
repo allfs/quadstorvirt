@@ -49,7 +49,6 @@ int done_load;
 int done_init;
 
 static int check_blkdev_exists(char *devname);
-static int update_blkdev_info(struct tl_blkdevinfo *blkdev);
 static int __list_clones(char *filepath, int prune);
 static int __list_disks(char *filepath);
 static int __list_configured_disks(char *filepath);
@@ -264,13 +263,6 @@ sync_blkdev(struct tl_blkdevinfo *blkdev)
 		goto err;
 
 	strcpy(blkdev->devname, blkdev->disk.info.devname);
-	retval = update_blkdev_info(blkdev);
-	if (retval != 0)
-	{
-		DEBUG_ERR_SERVER("Updating blkdevinfo failed");
-		goto err;
-	}
-
 	return 0;
 err:
 	return -1;
@@ -404,22 +396,6 @@ check_blkdev_exists(char *devname)
 	return 0;
 }
 
-static int
-update_blkdev_info(struct tl_blkdevinfo *blkdev)
-{
-	dev_t b_dev;
-	char *devname = blkdev->devname;
-	int error = 0;
-
-	b_dev = get_device_id(devname, &error);
-	if (error < 0) {
-		DEBUG_ERR_SERVER("Unable to get device id for %s\n", devname);
-		return -1;
-	}
-	blkdev->b_dev = b_dev;
-	return 0;
-}
-
 uint32_t next_bid = 1;
 static int
 get_next_bid()
@@ -444,8 +420,6 @@ struct tl_blkdevinfo *
 blkdev_new(char *devname)
 {
 	struct tl_blkdevinfo *blkdev;
-	dev_t b_dev;
-	int error = 0;
 	int bid;
 
 	bid = get_next_bid();
@@ -454,18 +428,11 @@ blkdev_new(char *devname)
 		return NULL;
 	}
  
-	b_dev = get_device_id(devname, &error);
-	if (error < 0) {
-		DEBUG_ERR_SERVER("Unable to get device id for %s\n", devname);
-		return NULL;
-	}
-
 	blkdev = alloc_buffer(sizeof(struct tl_blkdevinfo));
 	if (!blkdev) {
 		DEBUG_ERR_SERVER("Memory allocation failure\n");
 		return NULL;
 	}
-	blkdev->b_dev = b_dev;
 	blkdev->bid = bid;
 	return blkdev;
 }
