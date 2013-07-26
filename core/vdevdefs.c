@@ -128,12 +128,12 @@ device_unit_attention(struct tdisk *tdisk, int all, uint64_t i_prt[], uint64_t t
 
 	SLIST_FOREACH(istate, &tdisk->istate_list, i_list) {
 		if (!all && iid_equal(istate->i_prt, istate->t_prt, istate->init_int, i_prt, t_prt, init_int))
-		{
 			continue;
-		}
 
-		if (ignore_dup)
-		{
+		if (istate->init_int == TARGET_INT_MIRROR)
+			continue;
+
+		if (ignore_dup) {
 			retval = device_find_sense(istate, SSD_KEY_UNIT_ATTENTION, asc, ascq);
 			if (retval == 0)
 				continue;

@@ -356,6 +356,9 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	ctio->pglist_cnt = pglist_cnt;
 	ctio->data_ptr = (void *)pglist;
 	ctio->dxfer_len = (pglist_cnt << LBA_SHIFT);
+	ctio->init_int = TARGET_INT_MIRROR;
+	ctio->i_prt[0] = comm->controller_ipaddr;
+	ctio->t_prt[0] = comm->node_ipaddr;
 
 	transfer_length = pglist_cnt;
 	if (tdisk->lba_shift != LBA_SHIFT) {
@@ -377,7 +380,7 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	retval = node_write_setup(comm, sock, msg, ctio, lba, transfer_length, amap->write_id, 0, mirror_send_timeout, NODE_MSG_WRITE_MIRROR_CMD);
 	TDISK_TEND(tdisk, mirror_write_setup_ticks, start_ticks);
 	if (unlikely(retval != 0)) {
-		debug_warn("node write setup failed for lba %llu\n", (unsigned long long)lba);
+		debug_warn("node write setup failed for lba %llu retval %d\n", (unsigned long long)lba, retval);
 		error = -1;
 		goto out;
 	}

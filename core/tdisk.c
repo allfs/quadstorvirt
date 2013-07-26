@@ -5506,7 +5506,7 @@ tdisk_check_threshold(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 	int retval;
 	struct usr_notify notify_msg;
 
-	if (!tdisk->threshold || !ctio)
+	if (!tdisk->threshold || !ctio || ctio->init_int == TARGET_INT_MIRROR || ctio_in_sync(ctio))
 		return;
 
 	group = tdisk->group;

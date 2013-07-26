@@ -7,6 +7,7 @@ enum {
 	TARGET_INT_LOCAL  = 0x01,
 	TARGET_INT_ISCSI  = 0x02,
 	TARGET_INT_FC     = 0x03,
+	TARGET_INT_MIRROR = 0x04,
 };
 
 enum {

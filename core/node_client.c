@@ -241,7 +241,10 @@ node_resp_status(struct qsio_scsiio *ctio, struct node_msg *msg, struct node_com
 		ascq = sense_spec->ascq; 
 		info = sense_spec->info;
 		error_code = sense_spec->error_code;
-		debug_info("cmd sense sense key %x asc %x ascq %x error_code %x info %u\n", sense_key, asc, ascq, error_code, info);
+		if (msg->mirror)
+			debug_warn("cmd sense sense key %x asc %x ascq %x error_code %x info %u\n", sense_key, asc, ascq, error_code, info);
+		else
+			debug_info("cmd sense sense key %x asc %x ascq %x error_code %x info %u\n", sense_key, asc, ascq, error_code, info);
 		break;
 	}
 
