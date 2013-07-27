@@ -1,6 +1,10 @@
 Release 3.0.43
 	* Changes required to allow installing the VTL product on top of the
 	  virtualization product
+	* Fix bad page access when verify is enabled and a VDisk is written to
+	  using the local block device interface
+	* Handle mirroring failures when VDisk thresholds are hit
+	* iSCSI configuration fixes
 
 Release 3.0.42
 	* After a mirror resync the slave VDisk data may be inconsistent from 
