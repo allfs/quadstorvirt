@@ -66,7 +66,6 @@ install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/et
 		exit 1
 	fi
 
-	/quadstor/bin/qlauninst
 	exit 0
 
 %postun
