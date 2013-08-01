@@ -932,6 +932,11 @@ vdisk_can_be_mirrored(struct tdisk *tdisk, struct clone_config *config, int inte
 	if (internal || !tdisk_mirroring_configured(tdisk))
 		return 1;
 
+	if (tdisk->mirror_state.mirror_ipaddr == config->dest_ipaddr) {
+		sprintf(config->errmsg, "Synchronous mirroring configured for %s and destination of current mirror operation is the same the synchronous mirror\n", tdisk_name(tdisk));
+		return 0;
+	}
+
 	if (tdisk_mirroring_disabled(tdisk)) {
 		if (tdisk_mirror_master(tdisk))
 			return 1;
