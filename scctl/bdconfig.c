@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
 
 	memset(devpath, 0, sizeof(devpath));
 	memset(pool, 0, sizeof(pool));
-	while ((c = getopt(argc, argv, "d:g:axlceh")) != -1) {
+	while ((c = getopt(argc, argv, "d:g:axlcehpoh")) != -1) {
 		switch (c) {
 		case 'd':
 			snprintf(devpath, sizeof(devpath), "%s", optarg);

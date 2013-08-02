@@ -26,7 +26,6 @@ print_usage(void)
 {
 	fprintf(stdout, "qsync usage: \n");
 	fprintf(stdout, "qsync -l lists running/completed replication operations\n");
-	fprintf(stdout, "qsync -c -s <source vdisk name> cancels a mirror operation\n");
 	fprintf(stdout, "qsync -s <source vdisk name> -d <destination vdisk name> -r <dest server ip address> -g <destination storage pool> configures mirroring\n");
 	fprintf(stdout, "qsync -x -s <source vdisk name> deletes an existing mirroring configuration\n");
 	fprintf(stdout, "qsync -s <source vdisk name> -m <mirror role> sets the mirroring role for the vdisk\n");
