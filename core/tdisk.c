@@ -3679,9 +3679,9 @@ is_bogus_page(struct pgdata **pglist, int pglist_cnt, pagestruct_t *page, int id
 #endif
 
 int 
-pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_list *rcache_list, int enable_rcache, int norefs)
+pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_list *rcache_list, int enable_rcache, int norefs, int save_comp)
 {
-	struct pgdata *pgdata;
+	struct pgdata *pgdata, *comp_pgdata;
 	pagestruct_t *uncomp_page;
 	uint32_t block_size;
 	int retval, i;
@@ -3734,7 +3734,15 @@ pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_
 			debug_warn("Failed to decompress page lba %llu size %d amap block %llu\n", (unsigned long long)pgdata->lba, block_size, (unsigned long long)pgdata->amap_block);
 			return -1;
 		}
-		if (!norefs) {
+		comp_pgdata = NULL;
+		if (save_comp) {
+			comp_pgdata = __uma_zalloc(pgdata_cache, Q_WAITOK | Q_ZERO, sizeof(*comp_pgdata));
+			comp_pgdata->completion = wait_completion_alloc("pgdata compl");
+			comp_pgdata->page = pgdata->page;
+			comp_pgdata->pg_len = block_size;
+			pgdata->page = uncomp_page;
+		}
+		else if (!norefs) {
 			pgdata_free_page(pgdata);
 			pgdata->page = uncomp_page;
 		}
@@ -3746,6 +3754,7 @@ pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_
 		if (enable_rcache)
 			rcache_add_to_list(rcache_list, pgdata);
 		pgdata_cleanup(pgdata);
+		pgdata->comp_pgdata = comp_pgdata;
 	}
 	return 0;
 }
@@ -4142,7 +4151,7 @@ __tdisk_cmd_ref_int(struct tdisk *tdisk, struct tdisk *dest_tdisk, struct qsio_s
 	tcache_read_comp(tcache);
 skip_io:
 	TDISK_TSTART(start_ticks);
-	retval = pgdata_post_read_io(pglist, pglist_cnt, NULL, 0, 0);
+	retval = pgdata_post_read_io(pglist, pglist_cnt, NULL, 0, 0, 0);
 	TDISK_TEND(tdisk, post_read_io_ticks, start_ticks);
 	if (unlikely(retval != 0)) {
 		goto err;
@@ -4404,7 +4413,7 @@ __tdisk_cmd_read_int(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdat
 skip_io:
 	tdisk_remove_alloc_lba_write(&lba_alloc, tdisk->lba_read_wait, &tdisk->lba_read_list);
 	TDISK_TSTART(start_ticks);
-	retval = pgdata_post_read_io(pglist, pglist_cnt, &rcache_list, enable_rcache, norefs);
+	retval = pgdata_post_read_io(pglist, pglist_cnt, &rcache_list, enable_rcache, norefs, 0);
 	TDISK_TEND(tdisk, post_read_io_ticks, start_ticks);
 	if (enable_rcache)
 		rcache_list_insert(&rcache_list);
@@ -5078,16 +5087,9 @@ pgdata_cleanup(struct pgdata *pgdata)
 		pgdata_free(pgdata->comp_pgdata);
 		pgdata->comp_pgdata = NULL;
 	}
-
-#if 0
-	if (pgdata->hash) {
-		uma_zfree(hash_cache, pgdata->hash);
-		pgdata->hash = NULL;
-	}
-#endif
 }
 
-static void
+void
 pglist_check_free(struct pgdata **pglist, int pglist_cnt, int norefs)
 {
 	int i;
@@ -5586,10 +5588,25 @@ pgdata_alloc_blocks(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdata
 
 		TDISK_TSTART(start_ticks);
 		if (ret_bint) {
+			int meta_shift = bint_meta_shift(ret_bint);
+			uint32_t sector_size = (1U << meta_shift);
+
+			if (pgdata->write_size < sector_size) {
+				if (pgdata->comp_pgdata) {
+					pgdata_free(pgdata->comp_pgdata);
+					pgdata->comp_pgdata = NULL;
+				}
+				pgdata->write_size = LBA_SIZE;
+			}
 			b_start = __bdev_alloc_block(ret_bint, pgdata->write_size, index_info, TYPE_DATA_BLOCK);
 			bint = ret_bint;
 		}
 		else {
+			if (pgdata->comp_pgdata) {
+				pgdata_free(pgdata->comp_pgdata);
+				pgdata->comp_pgdata = NULL;
+			}
+			pgdata->write_size = LBA_SIZE;
 			b_start = bdev_alloc_block(tdisk->group, pgdata->write_size, &bint, index_info, TYPE_DATA_BLOCK);
 			ret_bint = bint;
 		}

@@ -160,7 +160,7 @@ amap_setup_read(struct tdisk *tdisk, pagestruct_t *metadata, struct pgdata ***re
 	}
 	tcache_read_comp(tcache);
 
-	retval = pgdata_post_read_io(pglist, pglist_cnt, &rcache_list, 1, 0);
+	retval = pgdata_post_read_io(pglist, pglist_cnt, &rcache_list, 1, 0, 0);
 	if (unlikely(retval != 0)) {
 		debug_warn("pgdata post read io failed\n");
 		goto err;

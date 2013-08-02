@@ -1188,7 +1188,7 @@ void pgdata_post_write(struct tdisk *tdisk, struct pgdata **pglist, int pglist_c
 int pgdata_amap_io(struct tdisk *tdisk, struct write_list *wlist);
 void ctio_fix_pglist_len(struct qsio_scsiio *ctio);
 void verify_ddblocks(struct tdisk *tdisk, struct pgdata_wlist *dedupe_list, struct write_list *wlist, int verify_count, int enable_rcache);
-int pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_list *rcache_list, int enable_rcache, int norefs);
+int pgdata_post_read_io(struct pgdata **pglist, int pglist_cnt, struct rcache_entry_list *rcache_list, int enable_rcache, int norefs, int save_comp);
 struct amap_table * amap_table_alloc(struct tdisk *tdisk, uint32_t amap_table_id);
 struct amap_table * amap_table_load(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, int atable_id, struct tpriv *priv);
 void amap_table_insert(struct amap_table_group *group, struct amap_table *amap_table);
@@ -1363,5 +1363,6 @@ struct amap * amap_locate_by_block(uint64_t b_start, struct bdevint *bint, struc
 struct amap_table * amap_table_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_list *amap_sync_list);
 
 void wlist_release_log_reserved(struct tdisk *tdisk, struct write_list *wlist);
+void pglist_check_free(struct pgdata **pglist, int pglist_cnt, int norefs);
 
 #endif

@@ -559,7 +559,7 @@ node_cmd_read_io(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct node_comm
 	if (!need_uncomp)
 		return 0;
 
-	retval = pgdata_post_read_io(pglist, pglist_cnt, NULL, 0, 0);
+	retval = pgdata_post_read_io(pglist, pglist_cnt, NULL, 0, 0, 0);
 	if (unlikely(retval != 0)) {
 		debug_warn("pgdata post read io failed\n");
 		ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_HARDWARE_ERROR, 0, INTERNAL_TARGET_FAILURE_ASC, INTERNAL_TARGET_FAILURE_ASCQ);

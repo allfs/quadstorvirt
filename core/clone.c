@@ -645,7 +645,7 @@ amap_clone(struct clone_data *clone_data)
 	struct pgdata_wlist read_list;
 	struct bdevint *bint, *prev_bint = NULL;
 	struct tcache *tcache;
-	struct pgdata *pgdata, **pglist;
+	struct pgdata *pgdata, **pglist, *pgwrite;
 	int pglist_cnt, has_writes = 0;
 	int i, retval;
 	struct pgdata_wlist alloc_list;
@@ -736,6 +736,10 @@ amap_clone(struct clone_data *clone_data)
 	tcache_read_comp(tcache);
 
 	tcache_put(tcache);
+
+	retval = pgdata_post_read_io(pglist, pglist_cnt, NULL, 0, 0, 1);
+	if (unlikely(retval != 0))
+		goto err;
 
 	if (!enable_deduplication)
 		goto skip_dedupe;
@@ -836,7 +840,15 @@ skip_dedupe:
 			bint = prev_bint;
 		}
 
-		retval = tcache_add_page(tcache, pgdata->page, BLOCK_BLOCKNR(pgdata->amap_block), bint, lba_block_size(pgdata->amap_block), QS_IO_WRITE);
+		if (pgdata->comp_pgdata) {
+			pgwrite = pgdata->comp_pgdata;
+			size = lba_block_size(pgdata->amap_block);
+		}
+		else {
+			pgwrite = pgdata;
+			size = LBA_SIZE;
+		}
+		retval = tcache_add_page(tcache, pgwrite->page, BLOCK_BLOCKNR(pgdata->amap_block), bint, size, QS_IO_WRITE);
 		if (retval != 0)
 			goto err;
 	}
@@ -856,7 +868,7 @@ sync_index:
 	tdisk_remove_alloc_lba_write(&lba_alloc, tdisk->lba_write_wait, &tdisk->lba_write_list);
 	if (enable_deduplication && has_writes)
 		pglist_hash_insert(tdisk, &index_info_list, pglist, pglist_cnt);
-	pglist_free(pglist, pglist_cnt);
+	pglist_check_free(pglist, pglist_cnt, 0);
 	wlist_lock(wlist);
 	TAILQ_CONCAT(&wlist->index_info_list, &index_info_list, i_list);
 	wlist_unlock(wlist);
@@ -887,7 +899,7 @@ err:
 
 	tcache_put(tcache);
 	tdisk_set_clone_error(tdisk);
-	pglist_free(pglist, pglist_cnt);
+	pglist_check_free(pglist, pglist_cnt, 0);
 	return -1;
 }
 
