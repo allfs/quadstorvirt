@@ -1,3 +1,11 @@
+Release 3.0.44
+	* Cloning across pools with compression enabled did not deduplicate
+	  correctly. This has been fixed
+	* Add more checks for received data count in mirroring message headers
+	* bdconfig did not respect compression, log or ha disk options.
+	* Fixed qsync usage message. Removed cancel option as it does not
+	  apply
+
 Release 3.0.43
 	* Changes required to allow installing the VTL product on top of the
 	  virtualization product
