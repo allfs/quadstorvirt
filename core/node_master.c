@@ -622,6 +622,12 @@ fill_pglist(struct node_msg *msg, struct node_sock *sock, struct pgdata **pglist
 		mark_complete(pgdata);
 		source_spec = &source_spec_list[src_idx];
 		if (!unaligned && source_spec->csum != i) {
+			if (unlikely(source_spec->csum > pglist_cnt)) {
+				debug_warn("Mismatch in expected page count source spec count %d pglist cnt %d\n", source_spec->csum, pglist_cnt);
+				node_resp_msg(sock, msg->raw, NODE_STATUS_INVALID_MSG);
+				return -1;
+			}
+
 			mark_pgdata_zero_block(pglist, i, source_spec->csum);
 			i = source_spec->csum;
 			pgdata = pglist[i];
@@ -653,10 +659,16 @@ fill_pglist(struct node_msg *msg, struct node_sock *sock, struct pgdata **pglist
 		todo -= sizeof(*source_spec);
 		src_idx++;
 	}
-	debug_check(todo);
-	if (i != pglist_cnt) {
-		mark_pgdata_zero_block(pglist, i, pglist_cnt);
+
+	if (unlikely(todo)) {
+		debug_warn("Mismatch in expect page count remaining %d done %d pglist_cnt %d\n", todo, i, pglist_cnt);
+		node_resp_msg(sock, msg->raw, NODE_STATUS_INVALID_MSG);
+		return -1;
 	}
+
+	if (i != pglist_cnt)
+		mark_pgdata_zero_block(pglist, i, pglist_cnt);
+
 	return 0;
 }
 
