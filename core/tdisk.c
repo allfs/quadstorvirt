@@ -3009,6 +3009,9 @@ tdisk_cmd_inquiry(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 		return 0;
 	}
 
+	if (!allocation_length)
+		return 0;
+
 	if (!evpd)
 		retval = tdisk_standard_inquiry_data(ctio, allocation_length);
 	else
