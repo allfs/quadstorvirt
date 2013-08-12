@@ -1,3 +1,8 @@
+Release 3.0.45
+	* Fix for limiting the number of dedupe table entries created. In
+	  certain cases we were not limiting based on the available memory
+	* Fiber channel fixes and merge from upstream driver
+
 Release 3.0.44
 	* Cloning across pools with compression enabled did not deduplicate
 	  correctly. This has been fixed

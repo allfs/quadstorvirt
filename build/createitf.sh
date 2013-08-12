@@ -1,5 +1,5 @@
 #!/bin/sh
-libvers="3.0.44-FreeBSD8.2-x86_64"
+libvers="3.0.45-FreeBSD8.2-x86_64"
 rm -rf /quadstor/bin
 rm -rf /quadstor/lib
 rm -rf /quadstor/sbin
