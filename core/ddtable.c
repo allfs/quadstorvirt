@@ -2583,8 +2583,12 @@ ddtable_hash_insert(struct bdevgroup *group, struct pgdata *pgdata, struct index
 	}
 
 	locate_spec_free(&lspec);
-	if (!ddspec_list)
+	if (!ddspec_list || !ddtable_global_can_add_ddlookup()) {
+		debug_check(!last);
+		ddtable_ddlookup_node_put(last);
+		ddlookup_list_insert_unlock(ddlookup_list);
 		return;
+	}
 
 	child = ddtable_ddlookup_node_new(ddtable, ddlookup_list, &index_info);
 	if (unlikely(!child)) {
