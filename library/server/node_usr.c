@@ -382,12 +382,13 @@ node_usr_mirror_check(struct usr_msg *msg)
 extern struct clone_info_list clone_info_list;
 
 static void
-node_usr_complete_job(struct usr_msg *msg)
+node_usr_complete_job(struct usr_msg *msg, struct usr_job *job)
 {
 	struct clone_info *clone_info;
 
 	TAILQ_FOREACH(clone_info, &clone_info_list, c_list) {
-		if (clone_info->job_id == msg->job_id) {
+		if (clone_info->job_id == job->job_id) {
+			memcpy(&clone_info->stats, &job->stats, sizeof(job->stats));
 			if (msg->msg_rsp)
 				clone_info->status = CLONE_STATUS_ERROR;
 			else
@@ -602,10 +603,10 @@ node_usr_process_request(void *arg)
 	int clientfd = (int)((unsigned long)arg);
 	struct usr_msg msg;
 	struct usr_notify notify;
-	int retval, notify_len, offset;
+	struct usr_job job;
+	int retval, avail_len, offset;
 	char name[64];
 
-	notify_len = sizeof(notify) - sizeof(msg);
 	offset = sizeof(msg);
 
 	while (1) {
@@ -631,8 +632,15 @@ node_usr_process_request(void *arg)
 				node_usr_mount_vdisk(name);
 			break;
 		case USR_MSG_JOB_COMPLETED:
+			avail_len = sizeof(job) - sizeof(msg);
+			retval = read(clientfd, ((uint8_t *)&job) + offset, avail_len);
+			if (retval != avail_len) {
+				DEBUG_WARN_SERVER("short read %d needed %d\n", retval, avail_len);
+				close(clientfd);
+				pthread_exit(0);
+			}
 			pthread_mutex_lock(&daemon_lock);
-			node_usr_complete_job(&msg);
+			node_usr_complete_job(&msg, &job);
 			pthread_mutex_unlock(&daemon_lock);
 			break;
 		case USR_MSG_VDISK_DELETED:
@@ -653,9 +661,10 @@ node_usr_process_request(void *arg)
 			write(clientfd, &msg, sizeof(msg));
 			break;
 		case USR_MSG_NOTIFY:
-			retval = read(clientfd, ((uint8_t *)&notify) + offset, notify_len);
-			if (retval != notify_len) {
-				DEBUG_WARN_SERVER("short read %d needed %d\n", retval, notify_len);
+			avail_len = sizeof(notify) - sizeof(msg);
+			retval = read(clientfd, ((uint8_t *)&notify) + offset, avail_len);
+			if (retval != avail_len) {
+				DEBUG_WARN_SERVER("short read %d needed %d\n", retval, avail_len);
 				close(clientfd);
 				pthread_exit(0);
 			}

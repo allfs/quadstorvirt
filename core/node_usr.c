@@ -146,9 +146,9 @@ node_usr_send_vdisk_deleted(uint32_t target_id, int status)
 }
 
 int
-node_usr_send_job_completed(uint64_t job_id, int status)
+node_usr_send_job_completed(struct usr_job *job_info, int status)
 {
-	struct usr_msg msg;
+	struct usr_msg *msg;
 	struct node_sock *sock;
 	int retval;
 
@@ -162,15 +162,14 @@ node_usr_send_job_completed(uint64_t job_id, int status)
 		return USR_RSP_ERR;
 	}
 
-	bzero(&msg, sizeof(msg));
-	msg.msg_rsp = status;
-	msg.job_id = job_id;
-	msg.msg_id = USR_MSG_JOB_COMPLETED;
+	msg = &job_info->msg; 
+	msg->msg_rsp = status;
+	msg->msg_id = USR_MSG_JOB_COMPLETED;
 
-	retval = node_sock_write_data(sock, (void *)&msg, sizeof(msg));
+	retval = node_sock_write_data(sock, (void *)job_info, sizeof(*job_info));
 	node_sock_finish(sock);
 	if (unlikely(retval != 0)) {
-		debug_warn("Cannot write %d bytes of data retval %d\n", (int)sizeof(msg), retval);
+		debug_warn("Cannot write %d bytes of data retval %d\n", (int)sizeof(*job_info), retval);
 		return USR_RSP_ERR;
 	}
 	return USR_RSP_OK;

@@ -142,6 +142,7 @@ struct clone_data {
 	uint8_t type;
 	uint32_t num_blocks;
 	uint64_t lba;
+	struct job_stats stats;
 	STAILQ_ENTRY(clone_data) c_list;
 	STAILQ_ENTRY(clone_data) q_list;
 };
@@ -153,18 +154,29 @@ struct clone_info {
 	struct node_comm *comm;
 	kproc_t *task;
 	uint64_t job_id;
-	uint32_t dest_ipaddr;
-	uint32_t src_ipaddr;
 	uint32_t dest_target_id;
+	uint32_t start_ticks;
 	uint8_t  op;
 	uint8_t  attach;
 	uint8_t  in_sync;
 	uint8_t  mirror_role;
 	char mirror_vdisk[TDISK_MAX_NAME_LEN];
 	char mirror_group[TDISK_MAX_NAME_LEN];
+	struct job_stats stats;
 	STAILQ_ENTRY(clone_info) i_list;
 };
 STAILQ_HEAD(clone_info_list, clone_info);
+
+#define JOB_STATS_ADD(clninf,count,val)					\
+do {									\
+	atomic64_add(val, (atomic64_t *)&clninf->stats.count);		\
+} while (0)
+
+#define JOB_STATS_ADD32(clninf,count,val)					\
+do {									\
+	atomic_add(val, (atomic_t *)&clninf->stats.count);		\
+} while (0)
+
 
 struct node_comm;
 struct clone_thr {

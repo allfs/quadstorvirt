@@ -317,6 +317,23 @@ enum {
 	MIRROR_STATUS_INPROGRESS = CLONE_STATUS_INPROGRESS,
 };
 
+struct job_stats {
+	uint32_t elapsed_msecs;
+	uint32_t read_msecs;
+	uint32_t write_msecs;
+	uint32_t hash_compute_msecs;
+	uint32_t hash_lookup_msecs;
+	uint32_t dest_ipaddr;
+	uint32_t src_ipaddr;
+	uint64_t mapped_blocks;
+	uint64_t deduped_blocks;
+	uint64_t refed_blocks;
+	uint64_t bytes_read;
+	uint64_t blocks_read;
+	uint64_t blocks_written;
+	uint64_t bytes_written;
+};
+
 struct clone_config {
 	uint32_t src_target_id;
 	uint32_t dest_target_id;
@@ -333,6 +350,7 @@ struct clone_config {
 	char mirror_group[TDISK_MAX_NAME_LEN];
 	char sys_rid[40];
 	char errmsg[256];
+	struct job_stats stats;
 };
 
 enum {
@@ -377,8 +395,13 @@ struct usr_msg {
 	int vhba_id;
 	uint32_t target_id;
 	uint32_t mirror_ipaddr;
-	uint64_t job_id;
 } __attribute__ ((__packed__));
+
+struct usr_job {
+	struct usr_msg msg;
+	uint64_t job_id;
+	struct job_stats stats;
+};
 
 struct usr_notify {
 	struct usr_msg msg;

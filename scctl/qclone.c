@@ -25,7 +25,8 @@ static void
 print_usage(void)
 {
 	fprintf(stdout, "qclone usage: \n");
-	fprintf(stdout, "qclone -l lists running/completed clone operations\n");
+	fprintf(stdout, "qclone -l lists clone operations\n");
+	fprintf(stdout, "qclone -l -p lists clone operations, clears all completed operations\n");
 	fprintf(stdout, "qclone -c -s <src vdisk name> cancels a clone operation\n");
 	fprintf(stdout, "qclone -s <source vdisk name> -d <destination vdisk name> -g <destination storage pool> starts a clone operation\n");
 	fprintf(stdout, "For new clone operations a new VDisk is created, destination VDisk cannot already exist\n");
@@ -77,68 +78,79 @@ start_qclone(char *dest, char *src, char *pool)
 }
 
 static void
-dump_qclone_list(int prune)
+job_list_calc_format_length(struct job_list *job_list, int *ret_src_len, int *ret_dest_len, int *ret_progress_len)
 {
-	char tempfile[32];
-	char buf[512];
-	FILE *fp;
-	int fd;
-	int retval;
-	char src[50];
-	char dest[50];
-	int progress;
-	int status;
-	char progress_str[50];
+	struct job_info *job_info;
+	int src_len = strlen("Source");
+	int dest_len = strlen("Destination");
+	int progress_len = strlen("Progress");
+	int len;
 
-	strcpy(tempfile, "/tmp/.quadstorqclonlst.XXXXXX");
-	fd = mkstemp(tempfile);
-	if (fd == -1) {
-		fprintf(stderr, "Internal system error\n");
-		exit(1);
+	TAILQ_FOREACH(job_info, job_list, c_entry) {
+		len = strlen(job_info->src_tdisk);
+		if (len > src_len)
+			src_len = len;
+		len = strlen(job_info->dest_tdisk);
+		if (len > dest_len)
+			dest_len = len;
+		len = strlen(job_info->progress_str);
+		if (len > progress_len)
+			progress_len = len;
 	}
+	*ret_src_len = src_len;
+	*ret_dest_len = dest_len;
+	*ret_progress_len = progress_len;
+}
 
-	if (!prune)
-		retval = tl_client_list_generic(tempfile, MSG_ID_LIST_CLONES);
-	else
-		retval = tl_client_list_generic(tempfile, MSG_ID_LIST_CLONES_PRUNE);
+static void
+dump_qclone_list(int prune, int extended)
+{
+	struct job_list job_list;
+	struct job_info *job_info;
+	struct job_stats *stats;
+	char fmt[256];
+	int retval, msg_id;
+	int src_len, dest_len, progress_len;
+	char mapped[32], deduped[32], refed[32];
+	char bytesr[32], blocksr[32], bytesw[32], blocksw[32];
+
+	msg_id = prune ? MSG_ID_LIST_CLONES_PRUNE : MSG_ID_LIST_CLONES;
+	retval = tl_client_list_clone(&job_list, msg_id);
 	if (retval != 0) {
-		remove(tempfile);
 		fprintf(stderr, "Cannot get qclone list\n");
 		exit(1);
 	}
 
-	fp = fopen(tempfile, "r");
-	if (!fp) {
-		remove(tempfile);
-		fprintf(stderr, "Internal system error\n");
-		exit(1);
+	if (TAILQ_EMPTY(&job_list))
+		exit(0);
+
+	job_list_calc_format_length(&job_list, &src_len, &dest_len, &progress_len);
+	if (!extended) {
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-5s\n", src_len, dest_len, progress_len);
+		fprintf(stdout, fmt, "Source", "Destination", "Progress", "Time");
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-5.1f\n", src_len, dest_len, progress_len);
+	} else {
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-5s %%-5s %%-5s %%-5s %%-5s %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s\n", src_len, dest_len, progress_len);
+		fprintf(stdout, fmt, "Source", "Destination", "Progress", "Time", "Read", "Write", "HComp", "HLook", "Mapped", "Deduped", "Refed", "BytesR", "BlocksR", "BytesW", "BlocksW");
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-5.1f %%-5.1f %%-5.1f %%-5.1f %%-5.1f %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s\n", src_len, dest_len, progress_len);
 	}
 
-	fprintf(stdout, "%30s %30s %12s\n", "Source", "Destination", "Progress");
-	while ((fgets(buf, sizeof(buf), fp) != NULL)) {
-		retval = sscanf(buf, "dest: %s src: %s progress: %d status: %d\n", dest, src, &progress, &status);
-		if (retval != 4) {
-			fprintf(stderr, "Invalid buf %s\n", buf);
-			exit(1);
-			break;
-		}
-
-		if (status == CLONE_STATUS_INPROGRESS) {
-			sprintf(progress_str, "%d%%", progress);
-		}
-		else if (status == CLONE_STATUS_SUCCESSFUL) {
-			strcpy(progress_str, "Completed");
-		}
+	TAILQ_FOREACH(job_info, &job_list, c_entry) {
+		stats = &job_info->stats;
+		if (!extended)
+			fprintf(stdout, fmt, job_info->src_tdisk, job_info->dest_tdisk, job_info->progress_str, stats->elapsed_msecs/1000.0);
 		else {
-			strcpy(progress_str, "Error");
+			get_data_str(stats->mapped_blocks << 12, mapped);
+			get_data_str(stats->deduped_blocks << 12, deduped);
+			get_data_str(stats->refed_blocks << 12, refed);
+			get_data_str(stats->bytes_read, bytesr);
+			get_data_str(stats->blocks_read << 12, blocksr); 
+			get_data_str(stats->bytes_written, bytesw);
+			get_data_str(stats->blocks_written << 12, blocksw);
+			fprintf(stdout, fmt, job_info->src_tdisk, job_info->dest_tdisk, job_info->progress_str, stats->elapsed_msecs/1000.0, stats->read_msecs/1000.0, stats->write_msecs/1000.0, stats->hash_compute_msecs/1000.0, stats->hash_lookup_msecs/1000.0, mapped, deduped, refed, bytesr, blocksr, bytesw, blocksw);
 		}
-
-		fprintf(stdout, "%30s %30s %12s\n", src, dest, progress_str);
 	}
-
-	fclose(fp);
-	close(fd);
-	remove(tempfile);
+	job_list_free(&job_list);
 	exit(0);
 }
 
@@ -149,6 +161,7 @@ int main(int argc, char *argv[])
 	int cancel = 0;
 	int list = 0;
 	int prune = 0;
+	int extended = 0;
 
 	if (geteuid() != 0) {
 		fprintf(stderr, "This program can only be run as root\n");
@@ -159,13 +172,16 @@ int main(int argc, char *argv[])
 	memset(dest, 0, sizeof(dest));
 	memset(pool, 0, sizeof(pool));
 
-	while ((c = getopt(argc, argv, "s:d:g:lcp")) != -1) {
+	while ((c = getopt(argc, argv, "s:d:g:lcpe")) != -1) {
 		switch (c) {
 		case 'c':
 			cancel = 1;
 			break;
 		case 'p':
 			prune = 1;
+			break;
+		case 'e':
+			extended = 1;
 			break;
 		case 'l':
 			list = 1;
@@ -186,7 +202,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (list) {
-		dump_qclone_list(prune);
+		dump_qclone_list(prune, extended);
 	}
 	else if (cancel) {
 		if (!src[0])

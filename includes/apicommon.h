@@ -241,6 +241,17 @@ struct mirror_spec {
 	struct iscsiconf iscsiconf;
 };
 
+struct job_info {
+	char src_tdisk[TDISK_MAX_NAME_LEN];
+	char dest_tdisk[TDISK_MAX_NAME_LEN];
+	char progress_str[64];
+	struct job_stats stats;
+	TAILQ_ENTRY(job_info) c_entry;
+};
+
+TAILQ_HEAD(job_list, job_info);
+void job_list_free(struct job_list *job_list);
+
 long int get_random();
 void get_data_str(double bytes, char *buf);
 void get_data_str_int(uint64_t bytes, char *buf);

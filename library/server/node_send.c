@@ -112,7 +112,7 @@ __list_mirrors(char *filepath, int prune)
 			continue;
 
 		if (clone_info->status == MIRROR_STATUS_SUCCESSFUL || clone_info->status == MIRROR_STATUS_ERROR) {
-			fprintf(fp, "dest: %s src: %s progress: %d status: %d\n", clone_info->dest, clone_info->src, clone_info->progress, clone_info->status);
+			print_clone_info(fp, clone_info);
 			if (prune) {
 				TAILQ_REMOVE(&clone_info_list, clone_info, c_list);
 				free(clone_info);
@@ -127,7 +127,8 @@ __list_mirrors(char *filepath, int prune)
 			continue;
 		clone_info->status = clone_config.status;
 		clone_info->progress = clone_config.progress;
-		fprintf(fp, "dest: %s src: %s progress: %d status: %d\n", clone_info->dest, clone_info->src, clone_info->progress, clone_info->status);
+		memcpy(&clone_info->stats, &clone_config.stats, sizeof(clone_config.stats));
+		print_clone_info(fp, clone_info);
 		if (prune && ((clone_info->status == MIRROR_STATUS_SUCCESSFUL || clone_info->status == MIRROR_STATUS_ERROR)))  {
 			TAILQ_REMOVE(&clone_info_list, clone_info, c_list);
 			free(clone_info);

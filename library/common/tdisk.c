@@ -31,6 +31,17 @@ group_list_free(struct group_list *group_list)
 }
 
 void
+job_list_free(struct job_list *job_list)
+{
+	struct job_info *info;
+
+	while ((info = TAILQ_FIRST(job_list))) {
+		TAILQ_REMOVE(job_list, info, c_entry);
+		free(info);
+	}
+}
+
+void
 tdisk_list_free(struct tdisk_list *tdisk_list)
 {
 	struct tdisk_info *info;

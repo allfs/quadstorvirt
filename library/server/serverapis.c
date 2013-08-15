@@ -1321,6 +1321,7 @@ source_clone_valid(char *src)
 		}
 		clone_info->status = clone_config.status;
 		clone_info->progress = clone_config.progress;
+		memcpy(&clone_info->stats, &clone_config.stats, sizeof(clone_config.stats));
 
 		if (clone_info->status == CLONE_STATUS_SUCCESSFUL || clone_info->status == CLONE_STATUS_ERROR)
 			continue;
@@ -1861,24 +1862,13 @@ tl_server_cancel_clone(struct tl_comm *comm, struct tl_msg *msg)
 	return 0;
 }
 
-#if 0
-static void
-check_clone_attached(struct clone_info *clone_info)
+void
+print_clone_info(FILE *fp, struct clone_info *clone_info)
 {
-	struct tdisk_info *info;
+	struct job_stats *stats = &clone_info->stats;
 
-	if (clone_info->attached)
-		return;
-
-	info = find_tdisk_by_name(clone_info->dest);
-	if (!info) {
-		DEBUG_WARN_SERVER("Cannot find VDisk %s\n", clone_info->dest);
-		return;
-	}
-	attach_tdisk(info);
-	clone_info->attached = 1;
+	fprintf(fp, "dest: %s src: %s progress: %d status: %d %u %u %u %u %u %u %u %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n", clone_info->dest, clone_info->src, clone_info->progress, clone_info->status, stats->elapsed_msecs, stats->read_msecs, stats->write_msecs, stats->hash_compute_msecs, stats->hash_lookup_msecs, stats->dest_ipaddr, stats->src_ipaddr, stats->mapped_blocks, stats->deduped_blocks, stats->refed_blocks, stats->bytes_read, stats->blocks_read, stats->blocks_written, stats->bytes_written);
 }
-#endif
 
 static int
 __list_clones(char *filepath, int prune)
@@ -1899,12 +1889,7 @@ __list_clones(char *filepath, int prune)
 			continue;
 
 		if (clone_info->status == CLONE_STATUS_SUCCESSFUL || clone_info->status == CLONE_STATUS_ERROR) {
-			fprintf(fp, "dest: %s src: %s progress: %d status: %d\n", clone_info->dest, clone_info->src, clone_info->progress, clone_info->status);
-#if 0 
-			if (clone_info->status == CLONE_STATUS_SUCCESSFUL)
-				check_clone_attached(clone_info);
-#endif
-
+			print_clone_info(fp, clone_info);
 			if (prune) {
 				TAILQ_REMOVE(&clone_info_list, clone_info, c_list);
 				free(clone_info);
@@ -1919,11 +1904,8 @@ __list_clones(char *filepath, int prune)
 			continue;
 		clone_info->status = clone_config.status;
 		clone_info->progress = clone_config.progress;
-		fprintf(fp, "dest: %s src: %s progress: %d status: %d\n", clone_info->dest, clone_info->src, clone_info->progress, clone_info->status);
-#if 0
-		if (clone_info->status == CLONE_STATUS_SUCCESSFUL)
-			check_clone_attached(clone_info);
-#endif
+		memcpy(&clone_info->stats, &clone_config.stats, sizeof(clone_config.stats));
+		print_clone_info(fp, clone_info);
 
 		if (prune && ((clone_info->status == CLONE_STATUS_SUCCESSFUL || clone_info->status == CLONE_STATUS_ERROR)))  {
 			TAILQ_REMOVE(&clone_info_list, clone_info, c_list);

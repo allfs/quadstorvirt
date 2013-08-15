@@ -217,7 +217,7 @@ amap_table_delete(struct tdisk *tdisk, struct amap_table *amap_table, uint64_t s
 		done++;
 
 		if (done == MAX_AMAP_DELETE_THREADS) {
-			error = clone_list_wait(tdisk);
+			error = clone_list_wait(NULL, tdisk);
 			sync_wlist_indexes(tdisk);
 			done = 0;
 			if (error || (atomic_test_bit(VDISK_DELETE_EXIT, &tdisk->flags) && (i < (todo - 1)))) {
@@ -229,7 +229,7 @@ amap_table_delete(struct tdisk *tdisk, struct amap_table *amap_table, uint64_t s
 		}
 	}
 
-	error = clone_list_wait(tdisk);
+	error = clone_list_wait(NULL, tdisk);
 	sync_wlist_indexes(tdisk);
 	if (error)
 		return -1;

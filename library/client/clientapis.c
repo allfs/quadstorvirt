@@ -333,6 +333,70 @@ tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32
 }
 
 int
+tl_client_list_clone(struct job_list *job_list, int msg_id)
+{
+	struct job_info *job_info;
+	struct job_stats *stats;
+	char tempfile[100];
+	char buf[512];
+	char *progress_str;
+	FILE *fp;
+	int fd, retval, progress, status;
+
+	TAILQ_INIT(job_list);
+
+	strcpy(tempfile, "/tmp/.quadstorlstcln.XXXXXX");
+	fd = mkstemp(tempfile);
+	if (fd == -1)
+		return -1;
+	close(fd);
+
+	retval = tl_client_list_generic(tempfile, msg_id);
+	if (retval != 0) {
+		remove(tempfile);
+		return -1;
+	}
+
+	fp = fopen(tempfile, "r");
+	if (!fp) {
+		remove(tempfile);
+		return -1;
+	}
+
+	while ((fgets(buf, sizeof(buf), fp) != NULL)) {
+		job_info = alloc_buffer(sizeof(*job_info));
+		if (!job_info) {
+			DEBUG_WARN_NEW("Memory allocation failure\n");
+			break;
+		}
+
+		stats = &job_info->stats;
+		retval = sscanf(buf, "dest: %s src: %s progress: %d status: %d %u %u %u %u %u %u %u %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n", job_info->dest_tdisk, job_info->src_tdisk, &progress, &status, &stats->elapsed_msecs, &stats->read_msecs, &stats->write_msecs, &stats->hash_compute_msecs, &stats->hash_lookup_msecs, &stats->dest_ipaddr, &stats->src_ipaddr, &stats->mapped_blocks, &stats->deduped_blocks, &stats->refed_blocks, &stats->bytes_read, &stats->blocks_read, &stats->blocks_written, &stats->bytes_written);
+		if (retval != 18) {
+			DEBUG_WARN_NEW("Invalid buf %s\n", buf);
+			free(job_info);
+			continue;
+		}
+
+		progress_str = job_info->progress_str;
+		if (status == CLONE_STATUS_INPROGRESS) {
+			sprintf(progress_str, "%d%%", progress);
+		}
+		else if (status == CLONE_STATUS_SUCCESSFUL) {
+			strcpy(progress_str, "Done");
+		}
+		else {
+			strcpy(progress_str, "Error");
+		}
+		TAILQ_INSERT_TAIL(job_list, job_info, c_entry); 
+	}
+	fclose(fp);
+	close(fd);
+	remove(tempfile);
+	return 0;
+}
+
+int
 tl_client_list_disks(struct d_list *dlist, int msg_id)
 {
 	char tempfile[100];

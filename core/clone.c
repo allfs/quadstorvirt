@@ -653,6 +653,7 @@ amap_clone(struct clone_data *clone_data)
 	uint32_t size = 0;
 	int enable_deduplication = tdisk->enable_deduplication;
 	int verify_count = 0;
+	uint32_t start_ticks;
 
 	SLIST_INIT(&index_sync_list);
 	TAILQ_INIT(&index_info_list);
@@ -668,6 +669,7 @@ amap_clone(struct clone_data *clone_data)
 		return -1;
 	}
 
+	start_ticks = ticks;
 	lba_alloc = tdisk_add_alloc_lba_write((amap->amap_id * LBAS_PER_AMAP), tdisk->lba_write_wait, &tdisk->lba_write_list, 0);
 	tcache = tcache_alloc(pglist_cnt);
 
@@ -679,6 +681,7 @@ amap_clone(struct clone_data *clone_data)
 			continue;
 		}
 
+		JOB_STATS_ADD(clone_data, mapped_blocks, 1);
 		pgdata->amap_block = block;
 		retval = tdisk_add_block_ref(tdisk->group, block, &index_info_list);
 		if (retval == 0) {
@@ -686,6 +689,7 @@ amap_clone(struct clone_data *clone_data)
 			atomic_set_bit(DDBLOCK_ENTRY_DONE_ALLOC, &pgdata->flags);
 			atomic_set_bit(PGDATA_SKIP_DDCHECK, &pgdata->flags);
 			atomic_set_bit(PGDATA_SKIP_UNCOMP, &pgdata->flags);
+			JOB_STATS_ADD(clone_data, refed_blocks, 1);
 			amap_entry_set_block(amap, i, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
 			continue;
 		}
@@ -716,12 +720,15 @@ amap_clone(struct clone_data *clone_data)
 			goto err;
 		}
 
+		JOB_STATS_ADD(clone_data, blocks_read, 1);
+		JOB_STATS_ADD(clone_data, bytes_read, lba_block_size(block));
 		retval = tcache_add_page(tcache, pgdata->page, BLOCK_BLOCKNR(block), bint, lba_block_size(block), QS_IO_READ);
 		if (retval != 0)
 			goto err;
 	}
 
 	if (!has_writes) {
+		JOB_STATS_ADD32(clone_data, read_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 		goto sync_index;
 	}
 
@@ -741,9 +748,11 @@ amap_clone(struct clone_data *clone_data)
 	if (unlikely(retval != 0))
 		goto err;
 
+	JOB_STATS_ADD32(clone_data, read_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 	if (!enable_deduplication)
 		goto skip_dedupe;
 
+	start_ticks = ticks;
 	chan_lock(devq_write_wait);
 	for (i = 0; i < pglist_cnt; i++) {
 		pgdata = pglist[i];
@@ -764,7 +773,9 @@ amap_clone(struct clone_data *clone_data)
 	chan_wakeup_unlocked(devq_write_wait);
 	chan_unlock(devq_write_wait);
 	wait_for_pgdata(pglist, pglist_cnt);
+	JOB_STATS_ADD32(clone_data, hash_compute_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 
+	start_ticks = ticks;
 	for (i = 0; i < pglist_cnt; i++) {
 		pgdata = pglist[i];
 
@@ -790,6 +801,7 @@ amap_clone(struct clone_data *clone_data)
 	if (!STAILQ_EMPTY(&pending_list)) {
 		check_pending_ddblocks(tdisk, &pending_list, &wlist->dedupe_list, wlist, 0, &verify_count);
 	}
+	JOB_STATS_ADD32(clone_data, hash_lookup_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 
 skip_dedupe:
 	for (i = 0; i < pglist_cnt; i++) {
@@ -809,6 +821,7 @@ skip_dedupe:
 		STAILQ_INSERT_TAIL(&alloc_list, pgdata, w_list);
 	}
 
+	start_ticks = ticks;
 	tcache = tcache_alloc(pglist_cnt);
 	retval = pgdata_alloc_blocks(tdisk, NULL, &alloc_list, size, &index_info_list, lba_alloc);
 	tdisk_update_alloc_lba_write(lba_alloc, tdisk->lba_write_wait, LBA_WRITE_DONE_ALLOC);
@@ -824,6 +837,8 @@ skip_dedupe:
 
 		if (atomic_test_bit(DDBLOCK_ENTRY_FOUND_DUPLICATE, &pgdata->flags)) {
 			amap_entry_set_block(amap, i, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
+			if (!atomic_test_bit(PGDATA_SKIP_DDCHECK, &pgdata->flags))
+				JOB_STATS_ADD(clone_data, deduped_blocks, 1);
 			continue;
 		}
 
@@ -848,6 +863,8 @@ skip_dedupe:
 			pgwrite = pgdata;
 			size = LBA_SIZE;
 		}
+		JOB_STATS_ADD(clone_data, blocks_written, 1);
+		JOB_STATS_ADD(clone_data, bytes_written, size);
 		retval = tcache_add_page(tcache, pgwrite->page, BLOCK_BLOCKNR(pgdata->amap_block), bint, size, QS_IO_WRITE);
 		if (retval != 0)
 			goto err;
@@ -859,6 +876,7 @@ skip_dedupe:
 		tdisk_update_alloc_lba_write(lba_alloc, tdisk->lba_write_wait, LBA_WRITE_DONE_IO);
 		wait_for_done(tcache->completion);
 	}
+	JOB_STATS_ADD32(clone_data, write_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 
 	if (atomic_test_bit_short(TCACHE_IO_ERROR, &tcache->flags))
 		goto err;
@@ -956,8 +974,26 @@ amap_clone_data(struct clone_data *clone_data)
 	wait_complete_all(clone_data->completion);
 }
 
+static void
+clone_info_merge_stats(struct clone_info *clone_info, struct clone_data *clone_data)
+{
+	struct job_stats *stats = &clone_data->stats;
+
+	JOB_STATS_ADD32(clone_info, read_msecs, stats->read_msecs);
+	JOB_STATS_ADD32(clone_info, write_msecs, stats->write_msecs);
+	JOB_STATS_ADD32(clone_info, hash_compute_msecs, stats->hash_compute_msecs);
+	JOB_STATS_ADD32(clone_info, hash_lookup_msecs, stats->hash_lookup_msecs);
+	JOB_STATS_ADD(clone_info, mapped_blocks, stats->mapped_blocks);
+	JOB_STATS_ADD(clone_info, deduped_blocks, stats->deduped_blocks);
+	JOB_STATS_ADD(clone_info, refed_blocks, stats->refed_blocks);
+	JOB_STATS_ADD(clone_info, bytes_read, stats->bytes_read);
+	JOB_STATS_ADD(clone_info, blocks_read, stats->blocks_read);
+	JOB_STATS_ADD(clone_info, bytes_written, stats->bytes_written);
+	JOB_STATS_ADD(clone_info, blocks_written, stats->blocks_written);
+}
+
 int
-clone_list_wait(struct tdisk *tdisk)
+clone_list_wait(struct clone_info *clone_info, struct tdisk *tdisk)
 {
 	struct clone_data *clone_data, *next;
 	int error = 0;
@@ -979,6 +1015,8 @@ clone_list_wait(struct tdisk *tdisk)
 		next = STAILQ_FIRST(&tdisk->clone_list);
 		chan_unlock(tdevq_wait);
 
+		if (clone_info)
+			clone_info_merge_stats(clone_info, clone_data);
 		clone_data_free(clone_data);
 		clone_data = next;
 	}
@@ -986,7 +1024,7 @@ clone_list_wait(struct tdisk *tdisk)
 }
 
 static int
-amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, struct amap_table *src_amap_table, struct write_list *wlist, uint32_t group_id)
+amap_table_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, struct amap_table *src_amap_table, struct write_list *wlist, uint32_t group_id)
 {
 	struct amap *dest_amap;
 	struct amap *src_amap;
@@ -1097,18 +1135,18 @@ amap_table_clone(struct tdisk *dest_tdisk, struct amap_table *dest_amap_table, s
 
 		done++;
 		if (done == MAX_AMAP_CLONE_THREADS) {
-			clone_list_wait(dest_tdisk);
+			clone_list_wait(clone_info, dest_tdisk);
 			done = 0;
 		}
 		tdisk_set_clone_amap_id(dest_tdisk, amap_id);
 	}
 
-	clone_list_wait(dest_tdisk);
+	clone_list_wait(clone_info, dest_tdisk);
 	return tdisk_clone_error(dest_tdisk);
 }
 
 static int
-amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct amap_table_group *dest_group, struct amap_table_group *src_group, uint32_t group_id)
+amap_table_group_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct amap_table_group *dest_group, struct amap_table_group *src_group, uint32_t group_id)
 {
 	struct amap_table *src_amap_table, *dest_amap_table;
 	struct amap_table_index *src_table_index;
@@ -1167,7 +1205,7 @@ amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct
 
 		wait_on_chan_check(src_amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &src_amap_table->flags));
 		wait_on_chan_check(dest_amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &dest_amap_table->flags));
-		retval = amap_table_clone(dest_tdisk, dest_amap_table, src_amap_table, wlist, group_id);
+		retval = amap_table_clone(clone_info, dest_tdisk, dest_amap_table, src_amap_table, wlist, group_id);
 		amap_table_group_lock(dest_group);
 		amap_table_put(dest_amap_table);
 		if (atomic_read(&dest_amap_table->refs) == 1)
@@ -1175,7 +1213,7 @@ amap_table_group_clone(struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct
 		amap_table_group_unlock(dest_group);
 		amap_table_put(src_amap_table);
 		if (unlikely(retval != 0)) {
-			clone_list_wait(dest_tdisk);
+			clone_list_wait(clone_info, dest_tdisk);
 			return -1;
 		}
 	}
@@ -1259,11 +1297,8 @@ static int tdisk_clone_thr(void *data)
 	int retval = 0;
 	struct amap_table_group *src_group, *dest_group;
 	int status;
-#ifdef ENABLE_STATS
-	uint32_t start_ticks;
-#endif
+	struct usr_job job_info;
 
-	TDISK_TSTART(start_ticks);
 	tdisk_clone_lock(src_tdisk);
 	tdisk_clone_setup(tdisk, src_tdisk, clone_info);
 	tdisk_clone_unlock(src_tdisk);
@@ -1276,7 +1311,7 @@ static int tdisk_clone_thr(void *data)
 		src_group = src_tdisk->amap_table_group[i];
 		debug_check(!src_group);
 
-		retval = amap_table_group_clone(tdisk, src_tdisk, dest_group, src_group, i);
+		retval = amap_table_group_clone(clone_info, tdisk, src_tdisk, dest_group, src_group, i);
 		if (unlikely(retval != 0)) {
 			tdisk_set_clone_error(tdisk);
 			break;
@@ -1291,7 +1326,6 @@ static int tdisk_clone_thr(void *data)
 
 	atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
 	tdisk_sync(tdisk, 0);
-	TDISK_TEND(tdisk, clone_ticks, start_ticks);
 	debug_info("clone_ticks: %u\n", tdisk->clone_ticks);
 	status = tdisk_clone_error(tdisk) ? 1 : 0;
 	tdisk_clone_lock(src_tdisk);
@@ -1302,7 +1336,10 @@ static int tdisk_clone_thr(void *data)
 	sx_xlock(clone_info_lock);
 	STAILQ_REMOVE(&clone_info_list, clone_info, clone_info, i_list);
 	sx_xunlock(clone_info_lock);
-	node_usr_send_job_completed(clone_info->job_id, status);
+	clone_info->stats.elapsed_msecs = ticks_to_msecs(get_elapsed(clone_info->start_ticks));
+	job_info.job_id = clone_info->job_id;
+	memcpy(&job_info.stats, &clone_info->stats, sizeof(clone_info->stats));
+	node_usr_send_job_completed(&job_info, status);
 	free(clone_info, M_CLONE_INFO);
 	if (status == 0) {
 		cbs_new_device(tdisk, 1);
@@ -1361,6 +1398,8 @@ vdisk_clone_status(struct clone_config *config)
 			amap_max = tdisk_max_amaps(dest_tdisk);
 			config->progress = (tdisk_get_clone_amap_id(dest_tdisk) * 100) / amap_max; 
 		}
+		iter->stats.elapsed_msecs = ticks_to_msecs(get_elapsed(iter->start_ticks));
+		memcpy(&config->stats, &iter->stats, sizeof(iter->stats));
 		sx_xunlock(clone_info_lock);
 		return 0;
 	}
@@ -1419,6 +1458,7 @@ vdisk_clone(struct clone_config *config)
 	tdisk_stop_delete_thread(dest_tdisk);
 
 	clone_info = zalloc(sizeof(*clone_info), M_CLONE_INFO, Q_WAITOK);
+	clone_info->start_ticks = ticks;
 	clone_info->dest_tdisk = dest_tdisk;
 	clone_info->src_tdisk = src_tdisk;
 	clone_info->op = OP_CLONE;

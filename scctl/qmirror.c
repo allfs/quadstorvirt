@@ -116,68 +116,102 @@ start_qmirror(char *dest, char *src, char *dest_host, char *src_host, char *clon
 }
 
 static void
-dump_qmirror_list(int prune)
+job_list_calc_format_length(struct job_list *job_list, int *ret_src_len, int *ret_src_addr_len, int *ret_dest_len, int *ret_dest_addr_len, int *ret_progress_len)
 {
-	char tempfile[32];
-	char buf[512];
-	FILE *fp;
-	int fd;
-	int retval;
-	char src[50];
-	char dest[50];
-	int progress;
-	int status;
-	char progress_str[50];
+	struct job_info *job_info;
+	struct job_stats *stats;
+	int src_len = strlen("Source");
+	int src_addr_len = strlen("SAddr");
+	int dest_len = strlen("Destination");
+	int dest_addr_len = strlen("DAddr");
+	int progress_len = strlen("Progress");
+	struct sockaddr_in in_addr;
+	int len;
 
-	strcpy(tempfile, "/tmp/.quadstorqmirrlst.XXXXXX");
-	fd = mkstemp(tempfile);
-	if (fd == -1) {
-		fprintf(stderr, "Internal system error\n");
-		exit(1);
+	memset(&in_addr, 0, sizeof(in_addr));
+	TAILQ_FOREACH(job_info, job_list, c_entry) {
+		stats = &job_info->stats;
+		len = strlen(job_info->src_tdisk);
+		if (len > src_len)
+			src_len = len;
+		len = strlen(job_info->dest_tdisk);
+		if (len > dest_len)
+			dest_len = len;
+		len = strlen(job_info->progress_str);
+		if (len > progress_len)
+			progress_len = len;
+		in_addr.sin_addr.s_addr = stats->src_ipaddr;
+		len = strlen(inet_ntoa(in_addr.sin_addr));
+		if (len > src_addr_len)
+			src_addr_len = len;
+		in_addr.sin_addr.s_addr = stats->dest_ipaddr;
+		len = strlen(inet_ntoa(in_addr.sin_addr));
+		if (len > dest_addr_len)
+			dest_addr_len = len;
 	}
+	*ret_src_len = src_len;
+	*ret_src_addr_len = src_addr_len;
+	*ret_dest_len = dest_len;
+	*ret_dest_addr_len = dest_addr_len;
+	*ret_progress_len = progress_len;
+}
 
-	if (!prune)
-		retval = tl_client_list_generic(tempfile, MSG_ID_LIST_MIRRORS);
-	else
-		retval = tl_client_list_generic(tempfile, MSG_ID_LIST_MIRRORS_PRUNE);
+static void
+dump_qmirror_list(int prune, int extended)
+{
+	struct job_list job_list;
+	struct job_info *job_info;
+	struct job_stats *stats;
+	char fmt[256];
+	int retval, msg_id;
+	int src_len, src_addr_len, dest_len, dest_addr_len, progress_len;
+	char mapped[32], deduped[32];
+	char bytesr[32], blocksr[32], bytesw[32], blocksw[32];
+	char daddr[32], saddr[32];
+	struct sockaddr_in in_addr;
+
+	memset(&in_addr, 0, sizeof(in_addr));
+	msg_id = prune ? MSG_ID_LIST_MIRRORS_PRUNE : MSG_ID_LIST_MIRRORS;
+	retval = tl_client_list_clone(&job_list, msg_id);
 	if (retval != 0) {
-		remove(tempfile);
-		fprintf(stderr, "Cannot get qclone list\n");
+		fprintf(stderr, "Cannot get qmirror list\n");
 		exit(1);
 	}
 
-	fp = fopen(tempfile, "r");
-	if (!fp) {
-		remove(tempfile);
-		fprintf(stderr, "Internal system error\n");
-		exit(1);
+	if (TAILQ_EMPTY(&job_list))
+		exit(0);
+
+	job_list_calc_format_length(&job_list, &src_len, &src_addr_len, &dest_len, &dest_addr_len, &progress_len);
+	if (!extended) {
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-%ds %%-%ds %%-5s\n", src_len, src_addr_len, dest_len, dest_addr_len, progress_len);
+		fprintf(stdout, fmt, "Source", "SAddr", "Destination", "DAddr", "Progress", "Time");
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-%ds %%-%ds %%-5.1f\n", src_len, src_addr_len, dest_len, dest_addr_len, progress_len);
+	} else {
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-%ds %%-%ds %%-5s %%-5s %%-5s %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s\n", src_len, src_addr_len, dest_len, dest_addr_len, progress_len);
+		fprintf(stdout, fmt, "Source", "SAddr", "Destination", "DAddr", "Progress", "Time", "Read", "Write", "Mapped", "Deduped", "BytesR", "BlocksR", "BytesW", "BlocksW");
+		sprintf(fmt, "%%-%ds %%-%ds %%-%ds %%-%ds %%-%ds %%-5.1f %%-5.1f %%-5.1f %%-9s %%-9s %%-9s %%-9s %%-9s %%-9s\n", src_len, src_addr_len, dest_len, dest_addr_len, progress_len);
 	}
 
-	fprintf(stdout, "%30s %30s %12s\n", "Source", "Destination", "Progress");
-	while ((fgets(buf, sizeof(buf), fp) != NULL)) {
-		retval = sscanf(buf, "dest: %s src: %s progress: %d status: %d\n", dest, src, &progress, &status);
-		if (retval != 4) {
-			fprintf(stderr, "Invalid buf %s\n", buf);
-			exit(1);
-			break;
-		}
-
-		if (status == CLONE_STATUS_INPROGRESS) {
-			sprintf(progress_str, "%d%%", progress);
-		}
-		else if (status == CLONE_STATUS_SUCCESSFUL) {
-			strcpy(progress_str, "Completed");
+	TAILQ_FOREACH(job_info, &job_list, c_entry) {
+		stats = &job_info->stats;
+		in_addr.sin_addr.s_addr = stats->src_ipaddr;
+		strcpy(saddr, inet_ntoa(in_addr.sin_addr)); 
+		in_addr.sin_addr.s_addr = stats->dest_ipaddr;
+		strcpy(daddr, inet_ntoa(in_addr.sin_addr)); 
+		if (!extended) {
+			fprintf(stdout, fmt, job_info->src_tdisk, saddr, job_info->dest_tdisk, daddr, job_info->progress_str, stats->elapsed_msecs/1000.0);
 		}
 		else {
-			strcpy(progress_str, "Error");
+			get_data_str(stats->mapped_blocks << 12, mapped);
+			get_data_str(stats->deduped_blocks << 12, deduped);
+			get_data_str(stats->bytes_read, bytesr);
+			get_data_str(stats->blocks_read << 12, blocksr); 
+			get_data_str(stats->bytes_written, bytesw);
+			get_data_str(stats->blocks_written << 12, blocksw);
+			fprintf(stdout, fmt, job_info->src_tdisk, saddr, job_info->dest_tdisk, daddr, job_info->progress_str, stats->elapsed_msecs/1000.0, stats->read_msecs/1000.0, stats->write_msecs/1000.0, mapped, deduped, bytesr, blocksr, bytesw, blocksw);
 		}
-
-		fprintf(stdout, "%30s %30s %12s\n", src, dest, progress_str);
 	}
-
-	fclose(fp);
-	close(fd);
-	remove(tempfile);
+	job_list_free(&job_list);
 	exit(0);
 }
 
@@ -189,6 +223,7 @@ int main(int argc, char *argv[])
 	int cancel = 0;
 	int list = 0;
 	int prune = 0;
+	int extended = 0;
 	int attach = 0, detach = 0;
 
 	if (geteuid() != 0) {
@@ -203,7 +238,7 @@ int main(int argc, char *argv[])
 	memset(dest_host, 0, sizeof(dest_host));
 	memset(pool, 0, sizeof(pool));
 
-	while ((c = getopt(argc, argv, "s:d:h:r:q:g:lcpax")) != -1) {
+	while ((c = getopt(argc, argv, "s:d:h:r:q:g:lcpaxe")) != -1) {
 		switch (c) {
 		case 'a':
 			attach = 1;
@@ -216,6 +251,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'p':
 			prune = 1;
+			break;
+		case 'e':
+			extended = 1;
 			break;
 		case 'l':
 			list = 1;
@@ -245,7 +283,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (list) {
-		dump_qmirror_list(prune);
+		dump_qmirror_list(prune, extended);
 	}
 	else if (cancel) {
 		if (!src[0])

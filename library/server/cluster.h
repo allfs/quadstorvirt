@@ -142,6 +142,7 @@ struct clone_info {
 	int op;
 	int remote;
 	int attached;
+	struct job_stats stats;
 	TAILQ_ENTRY(clone_info) c_list;
 };
 TAILQ_HEAD(clone_info_list, clone_info);
@@ -218,6 +219,7 @@ void tl_server_msg_invalid(struct tl_comm *comm, struct tl_msg *msg);
 int tl_server_dev_mapping(struct tl_comm *comm, struct tl_msg *msg);
 int tl_server_run_diagnostics(struct tl_comm *comm, struct tl_msg *msg, int controller);
 int __list_mirrors(char *filepath, int prune);
+void print_clone_info(FILE *fp, struct clone_info *clone_info);
 
 #define DEBUG_INFO_SERVER(fmt,args...)								\
 do {												\

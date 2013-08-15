@@ -605,7 +605,7 @@ tdisk_mirror_skip_local_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, str
 	}
 	if (node_cmd_status(msg) == NODE_CMD_NEED_IO) {
 		TDISK_TSTART(start_ticks);
-		retval = node_send_write_io(ctio, comm, sock, msg, (struct pgdata **)ctio->data_ptr, ctio->pglist_cnt, mirror_sync_send_timeout, 0);
+		retval = node_send_write_io(NULL, ctio, comm, sock, msg, (struct pgdata **)ctio->data_ptr, ctio->pglist_cnt, mirror_sync_send_timeout, 0);
 		TDISK_TEND(tdisk, mirror_write_io_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			status = -1;
@@ -779,7 +779,7 @@ tdisk_mirror_check_io(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct writ
 
 	TDISK_INC(tdisk, mirror_check_io_bytes, (msg->raw->dxfer_len + sizeof(struct raw_node_msg)));
 	TDISK_TSTART(start_ticks);
-	retval = node_send_write_io(ctio, comm, sock, msg, (struct pgdata **)ctio->data_ptr, ctio->pglist_cnt, mirror_sync_send_timeout, 1);
+	retval = node_send_write_io(NULL, ctio, comm, sock, msg, (struct pgdata **)ctio->data_ptr, ctio->pglist_cnt, mirror_sync_send_timeout, 1);
 	TDISK_TEND(tdisk, mirror_write_io_ticks, start_ticks);
 	if (retval == 0)
 		return 0;
@@ -2250,8 +2250,8 @@ tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys
 	mirror_state = &setup_spec->mirror_state;
 	mirror_state->mirror_role = clone_info->mirror_role;
 	mirror_state->mirror_target_id = tdisk->target_id;
-	mirror_state->mirror_src_ipaddr = clone_info->src_ipaddr;
-	mirror_state->mirror_ipaddr = clone_info->dest_ipaddr;
+	mirror_state->mirror_src_ipaddr = clone_info->stats.src_ipaddr;
+	mirror_state->mirror_ipaddr = clone_info->stats.dest_ipaddr;
 	strcpy(mirror_state->mirror_vdisk, tdisk_name(tdisk));
 	strcpy(mirror_state->mirror_group, tdisk->group->name);
 	strcpy(mirror_state->sys_rid, sys_rid);

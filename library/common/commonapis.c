@@ -349,3 +349,4 @@ get_mirror_status_str(struct mirror_state *mirror_state, char *status)
 			strcpy(status, "Enabled");
 	}
 }
+

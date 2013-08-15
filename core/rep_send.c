@@ -82,7 +82,7 @@ node_resp_status(struct node_msg *msg, struct node_sock *sock)
 }
 
 static int
-amap_setup_read(struct tdisk *tdisk, pagestruct_t *metadata, struct pgdata ***ret_pglist, uint64_t lba, int pglist_cnt)
+amap_setup_read(struct clone_data *clone_data, struct tdisk *tdisk, pagestruct_t *metadata, struct pgdata ***ret_pglist, uint64_t lba, int pglist_cnt)
 {
 	struct pgdata **pglist, *pgtmp;
 	struct tcache *tcache;
@@ -114,6 +114,7 @@ amap_setup_read(struct tdisk *tdisk, pagestruct_t *metadata, struct pgdata ***re
 			continue;
 		}
 
+		JOB_STATS_ADD(clone_data, mapped_blocks, 1);
 		if (!prev_bint || (prev_bint->bid != BLOCK_BID(pgtmp->amap_block))) {
 			bint = bdev_find(BLOCK_BID(pgtmp->amap_block));
 			if (unlikely(!bint)) {
@@ -138,6 +139,8 @@ amap_setup_read(struct tdisk *tdisk, pagestruct_t *metadata, struct pgdata ***re
 			goto err;
 		}
 
+		JOB_STATS_ADD(clone_data, blocks_read, 1);
+		JOB_STATS_ADD(clone_data, bytes_read, lba_block_size(pgtmp->amap_block));
 		retval = tcache_add_page(tcache, pgtmp->page, BLOCK_BLOCKNR(pgtmp->amap_block), bint, lba_block_size(pgtmp->amap_block), QS_IO_READ);
 		if (unlikely(retval != 0)) {
 			debug_warn("Failed to add page to tcache\n");
@@ -179,7 +182,7 @@ err:
 }
 
 int
-node_send_write_io(struct qsio_scsiio *ctio, struct node_comm *comm, struct node_sock *sock, struct node_msg *msg, struct pgdata **pglist, int pglist_cnt, int timeout, int async)
+node_send_write_io(struct clone_data *clone_data, struct qsio_scsiio *ctio, struct node_comm *comm, struct node_sock *sock, struct node_msg *msg, struct pgdata **pglist, int pglist_cnt, int timeout, int async)
 {
 	struct pgdata_read_spec *source_spec;
 	struct pgdata *pgtmp;
@@ -192,9 +195,16 @@ node_send_write_io(struct qsio_scsiio *ctio, struct node_comm *comm, struct node
 		if (!source_spec->amap_block)
 			continue;
 
-		if (atomic_test_bit_short(DDBLOCK_ENTRY_FOUND_DUPLICATE, &source_spec->flags))
+		if (atomic_test_bit_short(DDBLOCK_ENTRY_FOUND_DUPLICATE, &source_spec->flags)) {
+			if (clone_data)
+				JOB_STATS_ADD(clone_data, deduped_blocks, 1);
 			continue;
+		}
 
+		if (clone_data) {
+			JOB_STATS_ADD(clone_data, blocks_written, 1);
+			JOB_STATS_ADD(clone_data, bytes_written, lba_block_size(source_spec->amap_block));
+		}
 		atomic_set_bit(PGDATA_NEED_REMOTE_IO, &pgtmp->flags);
 		need_remote_io++;
 	}
@@ -209,7 +219,7 @@ node_send_write_io(struct qsio_scsiio *ctio, struct node_comm *comm, struct node
 }
 
 static int 
-amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint32_t dest_target_id)
+amap_mirror(struct clone_data *clone_data, struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint32_t dest_target_id)
 {
 	struct node_sock *sock;
 	struct amap_spec *amap_spec;
@@ -228,9 +238,7 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	int dxfer_len, i;
 	int timeout = recv_config.mirror_connect_timeout ? recv_config.mirror_connect_timeout : NODE_GET_SOCK_TIMEOUT; 
 
-#ifdef ENABLE_STATS
 	uint32_t start_ticks;
-#endif
 
 	lba = amap_get_lba_start(amap->amap_id);
 	pglist_cnt = LBAS_PER_AMAP;
@@ -312,16 +320,16 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 		goto out;
 	}
 
-	TDISK_TSTART(start_ticks);
-	retval = amap_setup_read(tdisk, metadata, &pglist, lba, pglist_cnt);
-	TDISK_TEND(tdisk, mirror_amap_setup_read_ticks, start_ticks);
+	start_ticks = ticks;
+	retval = amap_setup_read(clone_data, tdisk, metadata, &pglist, lba, pglist_cnt);
+	JOB_STATS_ADD32(clone_data, read_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 	if (unlikely(retval != 0)) {
 		debug_warn("amap setup read failed for lba %llu\n", (unsigned long long)lba);
 		error = -1;
 		goto out;
 	}
 
-	TDISK_TSTART(start_ticks);
+	start_ticks = ticks;
 	chan_lock(devq_write_wait);
 	for (i = 0; i < pglist_cnt; i++) {
 		pgdata = pglist[i];
@@ -343,8 +351,9 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	chan_unlock(devq_write_wait);
 
 	wait_for_pgdata(pglist, pglist_cnt);
-	TDISK_TEND(tdisk, mirror_hash_compute_ticks, start_ticks);
+	JOB_STATS_ADD32(clone_data, hash_compute_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
 
+	start_ticks = ticks;
 	ctio = ctio_new(Q_NOWAIT);
 	if (unlikely(!ctio)) {
 		debug_warn("Allocating a new ctio failed\n");
@@ -376,9 +385,7 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	raw->msg_id = node_transaction_id();
 	msg->mirror = 1;
 
-	TDISK_TSTART(start_ticks);
 	retval = node_write_setup(comm, sock, msg, ctio, lba, transfer_length, amap->write_id, 0, mirror_send_timeout, NODE_MSG_WRITE_MIRROR_CMD);
-	TDISK_TEND(tdisk, mirror_write_setup_ticks, start_ticks);
 	if (unlikely(retval != 0)) {
 		debug_warn("node write setup failed for lba %llu retval %d\n", (unsigned long long)lba, retval);
 		error = -1;
@@ -386,9 +393,7 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	}
 
 	if (node_cmd_status(msg) == NODE_CMD_NEED_VERIFY) {
-		TDISK_TSTART(start_ticks);
 		retval = node_verify_setup(comm, sock, msg, ctio, mirror_send_timeout, 0);
-		TDISK_TEND(tdisk, mirror_verify_setup_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			debug_warn("node verify setup failed for lba %llu\n", (unsigned long long)lba);
 			error = -1;
@@ -397,9 +402,7 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	}
 
 	if (node_cmd_status(msg) == NODE_CMD_NEED_COMP) {
-		TDISK_TSTART(start_ticks);
 		retval = node_comp_setup(comm, sock, msg, ctio, mirror_send_timeout, 0);
-		TDISK_TEND(tdisk, mirror_comp_setup_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			debug_warn("node comp setup failed for lba %llu\n", (unsigned long long)lba);
 			error = -1;
@@ -408,17 +411,20 @@ amap_mirror(struct tdisk *tdisk, struct amap *amap, struct node_comm *comm, uint
 	}
 
 	if (node_cmd_status(msg) == NODE_CMD_NEED_IO) {
-		TDISK_TSTART(start_ticks);
-		retval = node_send_write_io(ctio, comm, sock, msg, pglist, pglist_cnt, mirror_send_timeout, 0);
-		TDISK_TEND(tdisk, mirror_write_io_ticks, start_ticks);
+		retval = node_send_write_io(clone_data, ctio, comm, sock, msg, pglist, pglist_cnt, mirror_send_timeout, 0);
 		if (unlikely(retval != 0)) {
 			debug_warn("node send write io failed for lba %llu\n", (unsigned long long)lba);
 			error = -1;
 			goto out;
 		}
 	}
+	else {
+		JOB_STATS_ADD(clone_data, deduped_blocks, clone_data->stats.mapped_blocks);
+	}
 
 	node_cmd_write_done(ctio, comm, sock, msg, mirror_send_timeout);
+	JOB_STATS_ADD32(clone_data, write_msecs, ticks_to_msecs(get_elapsed(start_ticks)));
+
 out:
 	tdisk_remove_lba_write(tdisk, &read_lba_write);
 
@@ -446,7 +452,7 @@ amap_mirror_data(struct clone_data *clone_data)
 	clone_info = tdisk->clone_info;
 	debug_check(!clone_info);
 	debug_check(!clone_info->comm);
-	retval = amap_mirror(tdisk, amap, clone_info->comm, clone_info->dest_target_id);
+	retval = amap_mirror(clone_data, tdisk, amap, clone_info->comm, clone_info->dest_target_id);
 
 	if (atomic_test_bit_short(AMAP_META_DATA_BUSY, &amap->flags)) {
 		atomic_clear_bit_short(AMAP_META_DATA_BUSY, &amap->flags);
@@ -485,7 +491,7 @@ amap_write_bmap_check(struct tdisk *tdisk, struct amap_table *amap_table, int id
 }
 
 static int
-amap_table_mirror(struct tdisk *tdisk, struct amap_table *amap_table, uint32_t group_id)
+amap_table_mirror(struct clone_info *clone_info, struct tdisk *tdisk, struct amap_table *amap_table, uint32_t group_id)
 {
 	struct amap *amap;
 	uint64_t block;
@@ -589,7 +595,7 @@ skip_bmap_check:
 
 		done++;
 		if (done == MAX_AMAP_MIRROR_THREADS) {
-			clone_list_wait(tdisk);
+			clone_list_wait(clone_info, tdisk);
 			done = 0;
 			if (tdisk_mirror_error(tdisk)) {
 				debug_warn("clone list wait, tdisk mirror error\n");
@@ -598,7 +604,7 @@ skip_bmap_check:
 		}
 	}
 
-	clone_list_wait(tdisk);
+	clone_list_wait(clone_info, tdisk);
 	if (tdisk_mirror_error(tdisk))
 		debug_warn("clone list wait, tdisk mirror error\n");
 	return tdisk_mirror_error(tdisk);
@@ -628,7 +634,7 @@ amap_table_write_bmap_check(struct tdisk *tdisk, struct amap_table_group *group,
 }
 
 static int
-amap_table_group_mirror(struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_id)
+amap_table_group_mirror(struct clone_info *clone_info, struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_id)
 {
 	struct amap_table *amap_table;
 	struct amap_table_index *table_index;
@@ -684,10 +690,10 @@ amap_table_group_mirror(struct tdisk *tdisk, struct amap_table_group *group, uin
 		amap_table_group_unlock(group);
 
 		wait_on_chan_check(amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &amap_table->flags));
-		retval = amap_table_mirror(tdisk, amap_table, group_id);
+		retval = amap_table_mirror(clone_info, tdisk, amap_table, group_id);
 		amap_table_put(amap_table);
 		if (unlikely(retval != 0)) {
-			clone_list_wait(tdisk);
+			clone_list_wait(clone_info, tdisk);
 			debug_warn("amap table mirror failed at id %u block %llu\n", atable_id, (unsigned long long)block);
 			return -1;
 		}
@@ -773,14 +779,10 @@ static int rep_send_thr(void *data)
 	struct node_comm *comm;
 	struct tdisk *tdisk = clone_info->src_tdisk;
 	struct amap_table_group *group;
+	struct usr_job job_info;
 	int retval, i, status;
-#ifdef ENABLE_STATS
-	uint32_t start_ticks;
-#endif
 
-	TDISK_TSTART(start_ticks);
-
-	comm = rep_comm_get(clone_info->dest_ipaddr, clone_info->src_ipaddr, 1);
+	comm = rep_comm_get(clone_info->stats.dest_ipaddr, clone_info->stats.src_ipaddr, 1);
 	if (unlikely(!comm)) {
 		tdisk_set_mirror_error(tdisk);
 		goto exit;
@@ -794,7 +796,7 @@ static int rep_send_thr(void *data)
 		group = tdisk->amap_table_group[i];
 		debug_check(!group);
 
-		retval = amap_table_group_mirror(tdisk, group, i);
+		retval = amap_table_group_mirror(clone_info, tdisk, group, i);
 		if (unlikely(retval != 0)) {
 			debug_warn("amap table group mirror failed for %d\n", i);
 			tdisk_set_mirror_error(tdisk);
@@ -809,7 +811,6 @@ static int rep_send_thr(void *data)
 	}
 
 exit:
-	TDISK_TEND(tdisk, mirror_ticks, start_ticks);
 	debug_info("mirror_amap_setup_read_ticks: %u\n", tdisk->mirror_amap_setup_read_ticks);
 	debug_info("mirror_hash_compute_ticks: %u\n", tdisk->mirror_hash_compute_ticks);
 	debug_info("mirror_write_setup_ticks: %u\n", tdisk->mirror_write_setup_ticks);
@@ -828,7 +829,10 @@ exit:
 	sx_xlock(clone_info_lock);
 	STAILQ_REMOVE(&clone_info_list, clone_info, clone_info, i_list);
 	sx_xunlock(clone_info_lock);
-	node_usr_send_job_completed(clone_info->job_id, status);
+	clone_info->stats.elapsed_msecs = ticks_to_msecs(get_elapsed(clone_info->start_ticks));
+	job_info.job_id = clone_info->job_id;
+	memcpy(&job_info.stats, &clone_info->stats, sizeof(clone_info->stats));
+	node_usr_send_job_completed(&job_info, status);
 	free(clone_info, M_CLONE_INFO);
 	if (comm)
 		rep_comm_put(comm, 1);
@@ -906,6 +910,8 @@ vdisk_mirror_status(struct clone_config *config)
 			amap_max = tdisk_max_amaps(src_tdisk);
 			config->progress = (tdisk_get_clone_amap_id(src_tdisk) * 100) / amap_max; 
 		}
+		iter->stats.elapsed_msecs = ticks_to_msecs(get_elapsed(iter->start_ticks));
+		memcpy(&config->stats, &iter->stats, sizeof(iter->stats));
 		sx_xunlock(clone_info_lock);
 		return 0;
 	}
@@ -1009,9 +1015,10 @@ __vdisk_mirror(struct clone_config *config, int internal)
 	tdisk_clear_mirror_error(tdisk);
 
 	clone_info = zalloc(sizeof(*clone_info), M_CLONE_INFO, Q_WAITOK);
+	clone_info->start_ticks = ticks;
 	clone_info->src_tdisk = tdisk;
-	clone_info->src_ipaddr = config->src_ipaddr;
-	clone_info->dest_ipaddr = config->dest_ipaddr;
+	clone_info->stats.src_ipaddr = config->src_ipaddr;
+	clone_info->stats.dest_ipaddr = config->dest_ipaddr;
 	clone_info->dest_target_id = config->dest_target_id;
 	clone_info->op = OP_MIRROR;
 	clone_info->attach = config->attach;
