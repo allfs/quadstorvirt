@@ -345,7 +345,7 @@ tl_client_list_clone(struct job_list *job_list, int msg_id)
 
 	TAILQ_INIT(job_list);
 
-	strcpy(tempfile, "/tmp/.quadstorlstcln.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1)
 		return -1;
@@ -405,7 +405,7 @@ tl_client_list_disks(struct d_list *dlist, int msg_id)
 	int retval;
 
 	TAILQ_INIT(dlist);
-	strcpy(tempfile, "/tmp/.quadstoraddsk.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1)
 		return -1;
@@ -438,7 +438,7 @@ tl_client_list_vdisks(struct tdisk_list *tdisk_list, int msg_id)
 
 	TAILQ_INIT(tdisk_list);
 
-	strcpy(tempfile, "/tmp/.quadstorlstvd.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1)
 		return -1;
@@ -471,7 +471,7 @@ tl_client_list_groups(struct group_list *group_list, int msg_id)
 
 	TAILQ_INIT(group_list);
 
-	strcpy(tempfile, "/tmp/.quadstorlstsg.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1)
 		return -1;

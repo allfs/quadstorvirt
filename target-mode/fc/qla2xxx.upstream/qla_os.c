@@ -674,7 +674,7 @@ qla2x00_sp_compl(void *data, void *ptr, int res)
 	cmd->scsi_done(cmd);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
 /* If we are SP1 here, we need to still take and release the host_lock as SP1
  * does not have the changes necessary to avoid taking host->host_lock.
  */

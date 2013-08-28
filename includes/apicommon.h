@@ -349,4 +349,6 @@ target_name_valid(char *name)
 	return 1;
 }
 
+#define MKSTEMP_PREFIX	"/quadstor/tmp/.quadstortl.XXXXXX"
+
 #endif /* API_COMMON_H_ */

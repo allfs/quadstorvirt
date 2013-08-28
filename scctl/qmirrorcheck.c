@@ -89,7 +89,7 @@ dump_qmirror_check_list(void)
 
         memset(&in_addr, 0, sizeof(in_addr));
 
-	strcpy(tempfile, "/tmp/.quadstorqmirrchklst.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1) {
 		fprintf(stderr, "Internal system error\n");

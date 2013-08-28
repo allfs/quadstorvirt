@@ -5,6 +5,9 @@ tarfile="pgsql$1.tgz"
 if [ "$1" = "sles11sp2" ]; then
 	tarfile="pgsqlsles11.tgz"
 fi
+if [ "$1" = "" ]; then
+	tarfile="pgsqlrhel6.tgz"
+fi
 
 oldpwd=`pwd`
 cd /tmp
@@ -51,9 +54,11 @@ elif [ "$1" = "bsd9" ]; then
 	cd /quadstor/quadstor/target-mode/fc && ln -s isp9.0 isp
 elif [ "$1" = "bsd" ]; then
 	cd /quadstor/quadstor/target-mode/fc && ln -s isp8.2 isp
-else
+elif [ "$1" = "rhel5" ]; then
 	cd /quadstor/quadstor/target-mode/fc && ln -s qla2xxx.58 qla2xxx
 	sed -i -e "s/:= qla2xxx.*/:= qla2xxx/" /quadstor/quadstor/target-mode/fc/Makefile
+else
+	cd /quadstor/quadstor/target-mode/fc && ln -s qla2xxx.upstream qla2xxx
 fi
 
 if [ ! -d /quadstor/quadstor/mapps/html/cgisrc/yui ]; then

@@ -41,7 +41,7 @@ quadstor_stop() {
 	/sbin/kldunload iscsit > /dev/null 2>&1
 	/sbin/kldunload ldev > /dev/null 2>&1
 	/sbin/kldunload coredev > /dev/null 2>&1
-	rm -f /tmp/.quadstortl.* > /dev/null 2>&1
+	rm -f /quadstor/tmp/.quadstortl.* > /dev/null 2>&1
 	rm -f /quadstor/quadstor.lock
 }
 
@@ -67,6 +67,9 @@ quadstor_start() {
 	fi
 	
         echo -n $"Starting $prog: "
+
+	mkdir -p /quadstor/tmp
+	chmod 777 /quadstor/tmp
 
 	touch /quadstor/quadstor.lock
 	if [ -f /tmp/.s.PGSQL.9988 -o -f /tmp/.s.PGSQL.9988.lock ]; then

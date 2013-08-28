@@ -115,7 +115,7 @@ list_mirror_configuration()
 	int retval;
 	char src[50], dest[50], pool[50], daddr[30], status[64], role[20];
 
-	strcpy(tempfile, "/tmp/.quadstorqmirrlst.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1) {
 		fprintf(stderr, "Internal system error\n");

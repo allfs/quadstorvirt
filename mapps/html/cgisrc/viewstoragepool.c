@@ -77,7 +77,7 @@ int main()
 
 	group_id = atoi(tmp);
 
-	strcpy(tempfile, "/tmp/.quadstoraddsk.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1) {
 		__cgi_print_header("Storage Pools", NULL, 1, NULL, 10);

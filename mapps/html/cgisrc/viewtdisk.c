@@ -43,7 +43,7 @@ int main()
 	if (!target_id)
 		cgi_print_header_error_page("Invalid CGI parameters passed\n");
 
-	strcpy(tempfile, "/tmp/.quadstorvwtdk.XXXXXX");
+	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
 	if (fd == -1)
 		cgi_print_header_error_page("Internal processing error\n");

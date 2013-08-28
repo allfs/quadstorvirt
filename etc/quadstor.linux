@@ -65,6 +65,9 @@ start() {
 
         echo -n $"Starting $prog: "
 
+	mkdir -p /quadstor/tmp
+	chmod 777 /quadstor/tmp
+
 	if [ -f /tmp/.s.PGSQL.9988 -o -f /tmp/.s.PGSQL.9988.lock ]; then
 		/quadstor/pgsql/etc/pgsql stop > /dev/null 2>&1
 		sleep 1
@@ -134,7 +137,7 @@ stop() {
 	/sbin/rmmod ldev > /dev/null 2>&1
 	sleep 2
 	/sbin/rmmod coredev > /dev/null 2>&1
-	rm -f /tmp/.quadstortl.* > /dev/null 2>&1
+	rm -f /quadstor/tmp/.quadstortl.* > /dev/null 2>&1
 	rm -f /var/lock/subsys/quadstor
 }
 

@@ -7,6 +7,9 @@ checkerror() {
 	fi
 }
 
+mkdir -p /quadstor/tmp
+chmod 777 /quadstor/tmp
+
 sync
 sleep 4
 /quadstor/pgsql/etc/pgsql start
