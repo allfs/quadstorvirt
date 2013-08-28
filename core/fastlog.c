@@ -436,6 +436,8 @@ amap_table_recreate(struct tdisk *tdisk, uint64_t lba, uint64_t block)
 	}
 
 	amap_table->amap_table_block = block;
+	atomic_set_bit_short(ATABLE_META_IO_PENDING, &amap_table->flags);
+	atomic_set_bit_short(ATABLE_META_DATA_NEW, &amap_table->flags);
 
 	bdev_marker(bint->b_dev, &priv);
 	retval = amap_table_io(amap_table, QS_IO_WRITE);
