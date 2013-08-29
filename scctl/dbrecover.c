@@ -79,7 +79,7 @@ read_raw_bint(struct physdisk *disk, struct raw_bdevint *raw_bint)
 }
 
 void
-scan_vdisks()
+scan_vdisks(void)
 {
 	int i, j;
 	int retval, offset;

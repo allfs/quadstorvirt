@@ -22,19 +22,19 @@
 #include <tlclntapi.h>
 
 static int
-mdaemon_reset_logs()
+mdaemon_reset_logs(void)
 {
 	return tl_client_reset_logs();
 }
 
 static int
-mdaemon_load_conf()
+mdaemon_load_conf(void)
 {
 	return tl_client_load_conf();
 }
 
 static int
-mdaemon_unload_conf()
+mdaemon_unload_conf(void)
 {
 	return tl_client_unload_conf();
 }

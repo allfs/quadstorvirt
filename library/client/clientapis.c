@@ -63,7 +63,7 @@ skip:
 }
 
 int
-tl_client_load_conf()
+tl_client_load_conf(void)
 {
 	struct tl_msg msg;
 
@@ -74,7 +74,7 @@ tl_client_load_conf()
 }
 
 int
-tl_client_reset_logs()
+tl_client_reset_logs(void)
 {
 	struct tl_msg msg;
 
@@ -85,7 +85,7 @@ tl_client_reset_logs()
 }
 
 int
-tl_client_unload_conf()
+tl_client_unload_conf(void)
 {
 	struct tl_msg msg;
 

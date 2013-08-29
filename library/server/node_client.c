@@ -928,7 +928,7 @@ node_client_test_conn(void)
 }
 
 static int
-node_client_setup_groups()
+node_client_setup_groups(void)
 {
 	struct tl_comm *comm;
 	struct tl_msg msg, *resp;
@@ -975,7 +975,7 @@ node_client_setup_groups()
 }
 
 static int
-node_client_setup_vdisks()
+node_client_setup_vdisks(void)
 {
 	struct tl_comm *comm;
 	struct tl_msg msg, *resp;
@@ -1104,7 +1104,7 @@ node_client_prune_bdev(struct bdev_spec *spec)
 }
 
 static int
-node_client_setup_bdev()
+node_client_setup_bdev(void)
 {
 	struct tl_comm *comm;
 	struct tl_msg msg, *resp;

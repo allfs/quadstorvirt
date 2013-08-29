@@ -38,7 +38,7 @@ server_openlog(void)
 }
 
 static void
-server_log_trim()
+server_log_trim(void)
 {
 	char cmd[256];
 

@@ -106,7 +106,7 @@ handle_mirror_role(char *role, char *src, int force, char *reply)
 }
 
 static void
-list_mirror_configuration()
+list_mirror_configuration(void)
 {
 	char tempfile[32];
 	char buf[512];

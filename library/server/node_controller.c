@@ -675,7 +675,7 @@ node_controller_config(void)
 }
 
 int
-node_controller_init_pre()
+node_controller_init_pre(void)
 {
 	int retval;
 

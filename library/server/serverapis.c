@@ -62,7 +62,7 @@ struct mdaemon_info mdaemon_info;
 uint64_t job_id;
 
 uint64_t
-get_job_id()
+get_job_id(void)
 {
 	return (++job_id);
 }
@@ -398,7 +398,7 @@ check_blkdev_exists(char *devname)
 
 uint32_t next_bid = 1;
 static int
-get_next_bid()
+get_next_bid(void)
 {
 	int i;
 
@@ -890,7 +890,7 @@ sys_rid_init(int nosql)
 }
 
 static int
-sys_rid_load()
+sys_rid_load(void)
 {
 	char sqlcmd[64];
 	int nrows;
@@ -1126,7 +1126,7 @@ again:
 
 uint32_t next_target_id = 1;
 static int
-get_next_target_id()
+get_next_target_id(void)
 {
 	int i;
 
@@ -2030,7 +2030,7 @@ tl_server_list_disks(struct tl_comm *comm, struct tl_msg *msg)
 }
 
 static void
-tl_server_unload_tdisks()
+tl_server_unload_tdisks(void)
 {
 	struct tdisk_info *tdisk_info;
 	int i;
@@ -2379,7 +2379,7 @@ senderr:
 
 uint32_t next_group_id = 1;
 static int
-get_next_group_id()
+get_next_group_id(void)
 {
 	int i;
 
@@ -3982,13 +3982,13 @@ tl_server_process_request(int fd, struct sockaddr_un *client_addr)
 }
 
 #ifdef FREEBSD
-long int get_random()
+long int get_random(void)
 {
 	srandomdev();
 	return random();
 }
 #else
-long int get_random()
+long int get_random(void)
 {
 	struct timeval tv;
 	struct timezone tz;

@@ -21,8 +21,8 @@
 #include <getopt.h>
 #include <tlclntapi.h>
 
-static inline void
-print_usage()
+static void
+print_usage(void)
 {
 	fprintf(stdout, "bpconfig usage: \n\n");
 	fprintf(stdout, "Listing all disks: \n");

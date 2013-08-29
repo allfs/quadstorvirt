@@ -27,7 +27,7 @@ print_error(char *msg)
 }
 
 static int
-mdaemon_run_diagnostics()
+mdaemon_run_diagnostics(void)
 {
 	char tempfile[100];
 	char diagfile[100];
