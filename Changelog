@@ -1,3 +1,9 @@
+Release 3.0.46
+	* Fixes for running on Linux 3.10.x kernel
+	* Regression where node controller did not send the VDisk list to 
+	  node clients is fixed
+	* Regression where VDisks are listed as physical storage is fixed
+
 Release 3.0.45
 	* Fix for limiting the number of dedupe table entries created. In
 	  certain cases we were not limiting based on the available memory

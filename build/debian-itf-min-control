@@ -1,5 +1,5 @@
 Package: quadstor-itf-minimal
-Version: 3.0.45 
+Version: 3.0.46 
 Section: base
 Priority: optional
 Architecture: amd64 
