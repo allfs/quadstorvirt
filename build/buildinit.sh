@@ -5,6 +5,9 @@ tarfile="pgsql$1.tgz"
 if [ "$1" = "sles11sp2" ]; then
 	tarfile="pgsqlsles11.tgz"
 fi
+if [ "$1" = "rhel5" ]; then
+	tarfile="pgsql.tgz"
+fi
 if [ "$1" = "" ]; then
 	tarfile="pgsqlrhel6.tgz"
 fi
