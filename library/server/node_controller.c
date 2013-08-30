@@ -192,7 +192,7 @@ node_msg_handle_register(struct tl_comm *comm, struct tl_msg *msg)
 	node_resp_success(comm, msg);
 }
 
-extern struct tdisk_list tdisk_list;
+extern struct tdisk_info *tdisk_list[];
 extern struct group_list group_list;
 
 static void
@@ -257,10 +257,13 @@ static void
 node_msg_list_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct tdisk_info *info;
-	int count = 0;
+	int count = 0, i;
 	struct vdisk_spec *vdisk_spec;
 
-	TAILQ_FOREACH(info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
 		if (!info->online || info->disabled)
 			continue;
 		count++;
@@ -279,7 +282,10 @@ node_msg_list_vdisk(struct tl_comm *comm, struct tl_msg *msg)
 
 	memset(msg->msg_data, 0, (count * sizeof(*vdisk_spec)));
 	vdisk_spec = (struct vdisk_spec *)(msg->msg_data);
-	TAILQ_FOREACH(info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
 		if (!info->online || info->disabled)
 			continue;
 

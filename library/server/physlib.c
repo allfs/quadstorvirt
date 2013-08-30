@@ -1663,17 +1663,20 @@ tl_common_find_vmdisk(char *name)
 	return NULL;
 }
 
-extern struct tdisk_list tdisk_list;
+extern struct tdisk_info *tdisk_list[];
 static int
 is_quadstor_vdisk(char *vendor, char *serialnumber)
 {
 	struct tdisk_info *tdisk_info;
-	int found = 0;
+	int found = 0, i;
 
 	if (strncmp(vendor, "QUADSTOR", 8))
 		return 0;
 
-	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		tdisk_info = tdisk_list[i];
+		if (!tdisk_info)
+			continue;
 		if (memcmp(tdisk_info->serialnumber, serialnumber, 32))
 			continue;
 		found = 1;
