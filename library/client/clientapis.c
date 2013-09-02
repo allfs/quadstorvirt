@@ -691,11 +691,11 @@ tl_client_get_diskconf(uint32_t bid, struct physdisk *disk)
 }
 
 int
-tl_client_set_vdiskconf(struct vdiskconf *vdiskconf, char *reply)
+tl_client_set_vdiskconf(struct vdiskconf *vdiskconf, int msg_id, char *reply)
 {
 	struct tl_msg msg;
 
-	msg.msg_id = MSG_ID_SET_VDISKCONF;
+	msg.msg_id = msg_id;
 
 	msg.msg_data = malloc(512);
 	if (!msg.msg_data)

@@ -323,6 +323,7 @@ node_client_process_vdisk_modified(struct tl_comm *comm, struct tl_msg *msg)
 	info->enable_compression = vdisk_spec->enable_compression;
 	info->enable_verify = vdisk_spec->enable_verify;
 	info->force_inline = vdisk_spec->force_inline;
+	memcpy(info->serialnumber, vdisk_spec->serialnumber, 32);
 	tl_ioctl(TLTARGIOCMODIFYTDISK, info);
 out:
 	tl_server_msg_success(comm, msg);

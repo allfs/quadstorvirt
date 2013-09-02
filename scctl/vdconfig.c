@@ -35,6 +35,11 @@ print_usage(void)
 	fprintf(stdout, "vdconfig -m -v <vdisk name> -d (dedupe) -c (compression) -y (verify) -t <threshold value>\n\n");
 	fprintf(stdout, "Resizing a VDisk: \n");
 	fprintf(stdout, "vdconfig -v <vdisk name> -s <new size> (Where 1 GB = 1024 x 1024 x 1024 bytes)\n\n");
+	fprintf(stdout, "Set VDisk serial number: \n");
+	fprintf(stdout, "vdconfig -n <New serial number> -v <vdisk name>\n");
+	fprintf(stdout, "New serial number can be left empty. System will generate its own\n");
+	fprintf(stdout, "New serial number if specified will be of the form \n");
+	fprintf(stdout, "6e... <32 characters containing only 0 - 9, a - f>\n\n");
 	exit(0);
 }
 
@@ -96,10 +101,36 @@ vdconfig_add_vdisk(char *name, char *pool, uint64_t size, int emulate)
 
 	retval = tl_client_add_tdisk(name, size, lba_shift, group_id, reply);
 	if (retval != 0) {
-		fprintf(stderr, "Unable to add VDisk. Message from server is %s\n", reply);
+		fprintf(stderr, "Unable to add VDisk. Message from server is: %s\n", reply);
 		return -1;
 	}
 	fprintf(stdout, "Adding VDisk %s successful\n", name);
+	return 0;
+}
+
+static int
+vdconfig_set_serialnumber(char *name, char *serialnumber)
+{
+	int retval, target_id;
+	struct vdiskconf vdiskconf;
+	char reply[512];
+
+	target_id = tl_client_get_target_id(name);
+	if (target_id <= 0) {
+		fprintf(stderr, "Cannot get target id for VDisk %s\n", name);
+		return -1;
+	}
+
+	memset(&vdiskconf, 0, sizeof(vdiskconf));
+	vdiskconf.target_id = target_id;
+	memcpy(vdiskconf.serialnumber, serialnumber, 32);
+	retval = tl_client_set_vdiskconf(&vdiskconf, MSG_ID_SET_SERIALNUMBER, reply);
+	if (retval != 0) {
+		fprintf(stderr, "Unable to set serial number for VDisk %s\n", name);
+		fprintf(stderr, "Message from server is: %s\n", reply);
+		exit(1);
+	}
+	fprintf(stdout, "Updating serial number for VDisk %s successful\n", name);
 	return 0;
 }
 
@@ -125,10 +156,10 @@ vdconfig_modify_vdisk(char *name, int dedupe, int compression, int verify, int t
 	vdiskconf.enable_compression = compression;
 	vdiskconf.enable_verify = verify;
 	vdiskconf.threshold = threshold;
-	retval = tl_client_set_vdiskconf(&vdiskconf, reply);
+	retval = tl_client_set_vdiskconf(&vdiskconf, MSG_ID_SET_VDISKCONF, reply);
 	if (retval != 0) {
 		fprintf(stderr, "Unable to modify VDisk %s\n", name);
-		fprintf(stderr, "Message from server is %s\n", reply);
+		fprintf(stderr, "Message from server is: %s\n", reply);
 		exit(1);
 	}
 	fprintf(stdout, "Modifying VDisk %s successful\n", name);
@@ -232,9 +263,11 @@ int main(int argc, char *argv[])
 {
 	char src[50];
 	char pool[50];
+	char serialnumber[50];
 	char reply[512];
 	int c, retval;
 	int force = 0;
+	int set_serialnumber = 0;
 	int list = 0, delete = 0, add = 0, emulate = 0;
 	int dedupe = 0, compression = 0, verify = 0;
 	int modify = 0, threshold = 0;
@@ -247,8 +280,9 @@ int main(int argc, char *argv[])
 
 	memset(src, 0, sizeof(src));
 	memset(pool, 0, sizeof(pool));
+	memset(serialnumber, 0, sizeof(serialnumber));
 	force = 0;
-	while ((c = getopt(argc, argv, "v:s:g:t:flxaedcym")) != -1) {
+	while ((c = getopt(argc, argv, "v:s:g:t:n:flxaedcym")) != -1) {
 		switch (c) {
 		case 'v':
 			strncpy(src, optarg, 36);
@@ -289,6 +323,11 @@ int main(int argc, char *argv[])
 		case 'f':
 			force = 1;
 			break;
+		case 'n':
+			set_serialnumber = 1;
+			if (optarg)
+				strncpy(serialnumber, optarg, 32);
+			break;
 		default:
 			print_usage();
 			break;
@@ -297,6 +336,17 @@ int main(int argc, char *argv[])
 
 	if (list) {
 		return vdconfig_list_vdisks();
+	}
+	if (set_serialnumber) {
+		if (!src[0])
+			print_usage();
+		if (strcmp(serialnumber, "gen") == 0)
+			memset(serialnumber, 0, sizeof(serialnumber));
+		if (serialnumber[0] && !serialnumber_valid(serialnumber)) {
+			fprintf(stderr, "Invalid serial number %.32s\n", serialnumber);
+			print_usage();
+		}
+		return vdconfig_set_serialnumber(src, serialnumber);
 	}
 	if (add) {
 		if (!size || !src[0])
@@ -331,7 +381,7 @@ int main(int argc, char *argv[])
 	retval = tl_client_vdisk_resize(src, sizebytes, force, reply);
 	if (retval != 0) {
 		fprintf(stderr, "VDisk %s resize to %llu GB failed\n", src, (unsigned long long)size);
-		fprintf(stderr, "Message from server is %s\n", reply);
+		fprintf(stderr, "Message from server is: %s\n", reply);
 		exit(1);
 	}
 	else {

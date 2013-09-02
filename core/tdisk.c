@@ -724,6 +724,24 @@ target_disk_stats(struct tdisk_info *tdisk_info, unsigned long arg)
 	return retval;
 }
 
+static int
+tdisk_modify_serialnumber(struct tdisk *tdisk, struct tdisk_info *tdisk_info)
+{
+	int retval;
+
+	tdisk_lock(tdisk);
+	tdisk_initialize(tdisk, tdisk_info->serialnumber);
+	if (tdisk->remote) {
+		tdisk_unlock(tdisk);
+		return 0;
+	}
+
+	atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
+	retval = __tdisk_sync(tdisk, 0);
+	tdisk_unlock(tdisk);
+	return retval;
+}
+
 int
 target_modify_disk(struct tdisk_info *tdisk_info, unsigned long arg)
 {
@@ -741,6 +759,20 @@ target_modify_disk(struct tdisk_info *tdisk_info, unsigned long arg)
 	tdisk = tdisks[tdisk_info->tl_id];
 	if (!tdisk)
 		return -1; 
+
+	/* Check if we are modifying the serial number */
+	if (memcmp(tdisk_info->serialnumber, tdisk->unit_identifier.serial_number, 32)) {
+		retval = tdisk_modify_serialnumber(tdisk, tdisk_info);
+		if (unlikely(retval != 0))
+			return retval;
+	}
+
+	if (tdisk->enable_deduplication == tdisk_info->enable_deduplication &&
+	    tdisk->enable_compression == tdisk_info->enable_compression &&
+	    tdisk->enable_verify == tdisk_info->enable_verify &&
+	    tdisk->threshold == tdisk_info->threshold) {
+		return 0;
+	}
 
 	spec.enable_deduplication = tdisk_info->enable_deduplication;
 	spec.enable_compression = tdisk_info->enable_compression;
@@ -966,6 +998,7 @@ __tdisk_sync(struct tdisk *tdisk, int free_alloc)
 	TDISK_SET_PROP(tdisk, enable_deduplication, raw_data, VDISK_ENABLE_DEDUPLICATION);
 	TDISK_SET_PROP(tdisk, enable_compression, raw_data, VDISK_ENABLE_COMPRESSION);
 	TDISK_SET_PROP(tdisk, enable_verify, raw_data, VDISK_ENABLE_VERIFY);
+	memcpy(raw_data->serialnumber, tdisk->unit_identifier.serial_number, 32);
 	raw_data->threshold = tdisk->threshold;
 	memcpy(&raw_data->stats, &tdisk->stats, sizeof(tdisk->stats));
 	memcpy(&raw_data->mirror_state, &tdisk->mirror_state, sizeof(tdisk->mirror_state));

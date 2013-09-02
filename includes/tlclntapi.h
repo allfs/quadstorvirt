@@ -35,7 +35,7 @@ struct vdiskconf;
 int tl_client_set_iscsiconf(struct iscsiconf *iscsiconf, char *reply);
 int tl_client_get_iscsiconf(uint32_t target_id, struct iscsiconf *iscsiconf);
 int tl_client_get_vdiskconf(uint32_t target_id, struct vdiskconf *vdiskconf);
-int tl_client_set_vdiskconf(struct vdiskconf *vdiskconf, char *reply);
+int tl_client_set_vdiskconf(struct vdiskconf *vdiskconf, int msg_id, char *reply);
 int tl_client_get_diskconf(uint32_t bid, struct physdisk *disk);
 int tl_client_set_diskconf(struct physdisk *physdisk, char *reply);
 int tl_client_get_mirrorconf(uint32_t target_id, struct mirror_state *mirror_state);

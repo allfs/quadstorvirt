@@ -3285,6 +3285,81 @@ senderr:
 }
 
 static int
+tl_server_set_vdisk_serialnumber(struct tl_comm *comm, struct tl_msg *msg)
+{
+	struct tdisk_info *tdisk_info;
+	struct vdiskconf newconf;
+	struct tdisk_info tmp;
+	char *serialnumber;
+	char errmsg[256];
+	int retval;
+
+	if (msg->msg_len != sizeof(newconf)) {
+		snprintf(errmsg, sizeof(errmsg), "Invalid msg data");
+		goto senderr;
+	}
+
+	memcpy(&newconf, msg->msg_data, sizeof(newconf));
+	tdisk_info = find_tdisk(newconf.target_id);
+	if (!tdisk_info) {
+		snprintf(errmsg, sizeof(errmsg), "Invalid target_id %u passed\n", newconf.target_id);
+		goto senderr;
+	}
+
+	if (tdisk_info->disabled) {
+		tl_server_msg_success(comm, msg);
+		return 0;
+	}
+
+	serialnumber = newconf.serialnumber;
+
+	if (serialnumber[0]) {
+		if (!serialnumber_valid(serialnumber)) {
+			snprintf(errmsg, sizeof(errmsg), "Invalid serial number %.32s passed\n", serialnumber);
+			goto senderr;
+		}
+
+		if (memcmp(serialnumber, tdisk_info->serialnumber, 32) == 0) {
+			tl_server_msg_success(comm, msg);
+			return 0;
+		}
+		if (!serial_number_unique(serialnumber)) {
+			snprintf(errmsg, sizeof(errmsg), "Serial number %.32s exists for another VDisk\n", serialnumber);
+			goto senderr;
+		}
+	}
+	else {
+		retval = construct_serialnumber(tdisk_info->target_id, serialnumber);
+		if (retval != 0) {
+			sprintf(errmsg, "Cannot generate unique serial number\n");
+			goto senderr;
+		}
+	}
+
+	memcpy(&tmp, tdisk_info, sizeof(tmp));
+	tmp.enable_deduplication = tdisk_info->enable_deduplication;
+	tmp.enable_compression = tdisk_info->enable_compression;
+	tmp.enable_verify = tdisk_info->enable_verify;
+	tmp.threshold = tdisk_info->threshold;
+	memcpy(tmp.serialnumber, serialnumber, 32);
+
+	retval = tl_ioctl(TLTARGIOCMODIFYTDISK, &tmp);
+	if (retval != 0) {
+		snprintf(errmsg, sizeof(errmsg), "VDisk modify ioctl failed\n");
+		goto senderr;
+	}
+
+	memcpy(tdisk_info->serialnumber, serialnumber, 32);
+	node_controller_vdisk_modified(tdisk_info);
+
+	tl_server_msg_success(comm, msg);
+	return 0;
+senderr:
+	tl_server_msg_failure2(comm, msg, errmsg);
+	return -1;
+}
+
+static int
 tl_server_set_vdiskconf(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct tdisk_info *tdisk_info;
@@ -3837,6 +3912,11 @@ tl_server_handle_msg(struct tl_comm *comm, struct tl_msg *msg)
 		case MSG_ID_SET_VDISKCONF:
 			pthread_mutex_lock(&daemon_lock);
 			tl_server_set_vdiskconf(comm, msg);
+			pthread_mutex_unlock(&daemon_lock);
+			break;
+		case MSG_ID_SET_SERIALNUMBER:
+			pthread_mutex_lock(&daemon_lock);
+			tl_server_set_vdisk_serialnumber(comm, msg);
 			pthread_mutex_unlock(&daemon_lock);
 			break;
 		case MSG_ID_MODIFY_TDISK:

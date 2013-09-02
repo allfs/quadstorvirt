@@ -100,7 +100,7 @@ int main()
 	if (size)
 		vdiskconf.size = (size << 30);
 
-	retval = tl_client_set_vdiskconf(&vdiskconf, reply);
+	retval = tl_client_set_vdiskconf(&vdiskconf, MSG_ID_SET_VDISKCONF, reply);
 	if (retval != 0) {
 		char errmsg[1024];
 

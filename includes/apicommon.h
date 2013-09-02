@@ -324,6 +324,7 @@ struct vdiskconf {
 	uint8_t enable_compression;
 	uint8_t enable_verify;
 	uint8_t threshold;
+	char serialnumber[36];
 };
 
 enum {
@@ -351,4 +352,21 @@ target_name_valid(char *name)
 
 #define MKSTEMP_PREFIX	"/quadstor/tmp/.quadstortl.XXXXXX"
 
+static inline int
+serialnumber_valid(char *naa)
+{
+	int i;
+
+	if (naa[0] != '6' || naa[1] != 'e')
+		return 0;
+
+	for (i = 2; i < 32; i++) {
+		if (naa[i] >= '0' && naa[i] <= '9')
+			continue;
+		if (naa[i] >= 'a' && naa[i] <= 'f')
+			continue;
+		return 0;
+	}
+	return 1;
+}
 #endif /* API_COMMON_H_ */
