@@ -23,11 +23,6 @@
 #include <libgeom.h>
 #endif
 
-struct device_vspecific_id {
-	uint8_t vspecific_id[128];
-};
-
- 
 struct device_unknown_id {
 	uint8_t unknown_id[128];
 };
@@ -52,7 +47,6 @@ struct device_id {
 	struct device_naa_id naa_id;
 	struct device_eui_id eui_id;
 	struct device_unknown_id unknown_id;
-	struct device_vspecific_id vspecific_id;
 	uint32_t  avoltag_valid;
 	uint8_t   serialnumber[32];
 };
@@ -72,7 +66,6 @@ struct element_info {
 #define ID_FLAGS_T10			0x01
 #define ID_FLAGS_EUI			0x02
 #define ID_FLAGS_NAA			0x04
-#define ID_FLAGS_VSPECIFIC		0x08
 #define ID_FLAGS_UNKNOWN		0x10
 
 
@@ -92,7 +85,6 @@ struct physdevice {
 	struct device_naa_id naa_id;
 	struct device_eui_id eui_id;
 	struct device_unknown_id unknown_id;
-	struct device_vspecific_id vspecific_id;
 };
 
 struct physdisk {

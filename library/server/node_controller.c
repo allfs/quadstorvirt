@@ -359,10 +359,6 @@ bdev_spec_fill(struct bdev_spec *bdev_spec, struct tl_blkdevinfo *blkdev)
 		memcpy(bdev_spec->identifier, &device->t10_id, sizeof(device->t10_id));
 		bdev_spec->idflags = ID_FLAGS_T10;
 	}
-	else if (device->idflags & ID_FLAGS_VSPECIFIC) {
-		memcpy(bdev_spec->identifier, &device->vspecific_id, sizeof(device->vspecific_id));
-		bdev_spec->idflags = ID_FLAGS_VSPECIFIC;
-	}
 	else if (device->idflags & ID_FLAGS_UNKNOWN) {
 		memcpy(bdev_spec->identifier, &device->unknown_id, sizeof(device->unknown_id));
 		bdev_spec->idflags = ID_FLAGS_UNKNOWN;

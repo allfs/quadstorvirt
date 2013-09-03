@@ -457,9 +457,6 @@ node_client_find_disk(struct bdev_spec *spec)
 	case ID_FLAGS_T10:
 		memcpy(&device->t10_id, spec->identifier, sizeof(device->t10_id));
 		break;
-	case ID_FLAGS_VSPECIFIC:
-		memcpy(&device->vspecific_id, spec->identifier, sizeof(device->vspecific_id));
-		break;
 	case ID_FLAGS_UNKNOWN:
 		memcpy(&device->unknown_id, spec->identifier, sizeof(device->unknown_id));
 		break;
