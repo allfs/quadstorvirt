@@ -342,7 +342,7 @@ bdev_spec_fill(struct bdev_spec *bdev_spec, struct tl_blkdevinfo *blkdev)
 	device = &disk->info;
 	memcpy(bdev_spec->vendor, device->vendor, 8);
 	memcpy(bdev_spec->product, device->product, 16);
-	memcpy(bdev_spec->serialnumber, device->serialnumber, 32);
+	memcpy(bdev_spec->serialnumber, device->serialnumber, sizeof(device->serialnumber));
 	bdev_spec->serial_len = device->serial_len;
 	bdev_spec->bid = blkdev->bid;
 	bdev_spec->partid = blkdev->disk.partid; 

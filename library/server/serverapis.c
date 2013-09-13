@@ -804,6 +804,7 @@ load_blkdev(struct tl_blkdevinfo *blkdev)
 	memcpy(binfo.vendor, blkdev->disk.info.vendor, sizeof(binfo.vendor));
 	memcpy(binfo.product, blkdev->disk.info.product, sizeof(binfo.product));
 	memcpy(binfo.serialnumber, blkdev->disk.info.serialnumber, sizeof(binfo.serialnumber));
+	binfo.serial_len = blkdev->disk.info.serial_len;
 	binfo.isnew = 0;
 	error = gen_rid(binfo.rid);
 	if (error != 0) {
@@ -1946,7 +1947,7 @@ tl_server_dev_mapping(struct tl_comm *comm, struct tl_msg *msg)
 	char name[64];
 	int retval, serial_len, i;
 	struct tdisk_info *tdisk_info, *ret = NULL;
-	char serialnumber[64];
+	char serialnumber[256];
 
 	if (sscanf(msg->msg_data, "path: %s\n", path) != 1) {
 		DEBUG_ERR_SERVER("Invalid msg data");
@@ -3066,6 +3067,7 @@ tl_server_add_disk(struct tl_comm *comm, struct tl_msg *msg)
 	memcpy(binfo.vendor, blkdev->disk.info.vendor, sizeof(binfo.vendor));
 	memcpy(binfo.product, blkdev->disk.info.product, sizeof(binfo.product));
 	memcpy(binfo.serialnumber, blkdev->disk.info.serialnumber, sizeof(binfo.serialnumber));
+	binfo.serial_len = blkdev->disk.info.serial_len;
 	node_controller_bdev_added(blkdev);
 	binfo.isnew = 1;
 	binfo.enable_comp = comp;

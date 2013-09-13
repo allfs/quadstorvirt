@@ -341,7 +341,7 @@ main(int argc, char *argv[])
 			continue;
 		}
 
-		if (memcmp(raw_bint.serialnumber, disk->info.serialnumber, disk->info.serial_len)) {
+		if (!raw_bint_serial_match(&raw_bint, disk->info.serialnumber, disk->info.serial_len)) {
 			fprintf(stdout, "Serial number mismatch %.32s %.32s\n", raw_bint.serialnumber, disk->info.serialnumber);
 			continue;
 		}

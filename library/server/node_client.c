@@ -498,6 +498,7 @@ node_client_add_bdev(struct bdev_spec *spec)
 	memcpy(binfo.vendor, disk->info.vendor, sizeof(binfo.vendor));
 	memcpy(binfo.product, disk->info.product, sizeof(binfo.product));
 	memcpy(binfo.serialnumber, disk->info.serialnumber, sizeof(binfo.serialnumber));
+	binfo.serial_len = disk->info.serial_len;
 	binfo.ddmaster = spec->ddmaster;
 	strcpy(binfo.devpath, blkdev->devname);
 	retval = tl_ioctl(TLTARGIOCNEWBDEVSTUB, &binfo);

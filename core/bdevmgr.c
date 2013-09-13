@@ -1976,7 +1976,7 @@ bint_sync(struct bdevint *bint)
 {
 	struct raw_bdevint *raw_bint;
 	int error = 0;
-	int retval;
+	int retval, serial_max;
 	pagestruct_t *page;
 
 	page = vm_pg_alloc(VM_ALLOC_ZERO);
@@ -2029,7 +2029,9 @@ bint_sync(struct bdevint *bint)
 	memcpy(raw_bint->quad_prod, "VIRT", strlen("VIRT"));
 	memcpy(raw_bint->vendor, bint->vendor, sizeof(bint->vendor));
 	memcpy(raw_bint->product, bint->product, sizeof(bint->product));
-	memcpy(raw_bint->serialnumber, bint->serialnumber, sizeof(bint->serialnumber));
+	serial_max = sizeof(raw_bint->serialnumber);
+	memcpy(raw_bint->serialnumber, bint->serialnumber, serial_max);
+	memcpy(raw_bint->ext_serialnumber, bint->serialnumber + serial_max, sizeof(raw_bint->ext_serialnumber));
 	memcpy(&raw_bint->stats, &bint->stats, sizeof(bint->stats));
 	strcpy(raw_bint->group_name, bint->group->name);
 	atomic_set_bit(BINT_DATA_DIRTY, &bint->flags);
@@ -2403,7 +2405,7 @@ bint_load(struct bdevint *bint)
 		goto err;
 	}
 
-	if (memcmp(raw_bint->serialnumber, bint->serialnumber, sizeof(bint->serialnumber))) {
+	if (!raw_bint_serial_match(raw_bint, bint->serialnumber, bint->serial_len)) {
 		debug_warn("raw bint serialnumber mismatch %.32s %.32s\n", raw_bint->serialnumber, bint->serialnumber);
 		goto err;
 	}
@@ -4033,6 +4035,7 @@ bdev_add_new(struct bdev_info *binfo)
 	memcpy(bint->vendor, binfo->vendor, sizeof(bint->vendor));
 	memcpy(bint->product, binfo->product, sizeof(bint->product));
 	memcpy(bint->serialnumber, binfo->serialnumber, sizeof(bint->serialnumber));
+	bint->serial_len = binfo->serial_len;
 	retval = bint_dev_open(bint, binfo);
 	if (unlikely(retval != 0)) {
 		bint_error_free(bint);

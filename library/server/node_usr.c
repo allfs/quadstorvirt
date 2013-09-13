@@ -201,7 +201,7 @@ __node_usr_mirror_check_scsi(struct mirror_check *mirror_check)
 	char buf[512];
 	char devname[256];
 	int retval, serial_len;
-	char serialnumber[64];
+	char serialnumber[256];
 	struct sense_info sense_info;
 
 	fp = popen(SG_SCAN_PROG_ALL, "r");

@@ -46,7 +46,7 @@ struct vdisk_spec {
 struct bdev_spec {
 	char vendor[8];
 	char product[16];
-	char serialnumber[32];
+	char serialnumber[256];
 	int serial_len;
 	uint32_t group_id;
 	uint32_t idflags;

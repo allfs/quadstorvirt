@@ -2773,71 +2773,44 @@ tdisk_cmd_read_capacity(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 }
 
 static int
-tdisk_serial_number(struct tdisk *tdisk, uint8_t *buffer, int length)
+tdisk_serial_number(struct tdisk *tdisk, uint8_t *buffer, int allocation_length)
 {
-	struct serial_number_page *page = (struct serial_number_page *) buffer;
+	struct serial_number_page *page = (struct serial_number_page *)buffer;
 	int min_len;
 
-	if (length < sizeof(struct vital_product_page))
-	{
-		return -1;
-	}
-
-	bzero(page, sizeof(struct vital_product_page));
 	page->device_type = T_DIRECT; /* peripheral qualifier */
 	page->page_code = UNIT_SERIAL_NUMBER_PAGE;
 	page->page_length =  32;
+	memcpy(page->serial_number, tdisk->unit_identifier.serial_number, 32);
 
-	min_len = min_t(int, 32, (length - sizeof(struct vital_product_page)));
-	if (min_len)
-	{
-		memcpy(page->serial_number, tdisk->unit_identifier.serial_number, min_len);
-	}
-	return (min_len+sizeof(struct vital_product_page));
+	min_len = min_t(int, allocation_length, sizeof(*page) + 32);
+	return min_len;
 }
 
 static int
-tdisk_device_identification(struct tdisk *tdisk, uint8_t *buffer, int length)
+tdisk_device_identification(struct tdisk *tdisk, uint8_t *buffer, int allocation_length)
 {
 	struct device_identification_page *page = (struct device_identification_page *)buffer;
 	struct logical_unit_identifier *unit_identifier;
 	struct logical_unit_naa_identifier *naa_identifier;
-	uint32_t page_length = 0;
-	int done = 0;
-	uint8_t idlength;
+	int idlength, t10_idlength, naa_idlength;
+	int min_len;
 
-	if (length < sizeof(struct vital_product_page))
-	{
-		return -1;
-	}
-
+	t10_idlength = tdisk->unit_identifier.identifier_length + sizeof(struct device_identifier);
+	naa_idlength = tdisk->naa_identifier.identifier_length + sizeof(struct device_identifier);
+	idlength = t10_idlength + naa_idlength;
 	page->device_type = T_DIRECT;
 	page->page_code = DEVICE_IDENTIFICATION_PAGE;
-	page_length = tdisk->unit_identifier.identifier_length + sizeof(struct device_identifier) + tdisk->naa_identifier.identifier_length + sizeof(struct device_identifier);
-	page->page_length = page_length;
+	page->page_length = idlength;
 
-	done += sizeof(struct device_identification_page);
+	unit_identifier = (struct logical_unit_identifier *)(buffer+sizeof(*page));
+	memcpy(unit_identifier, &tdisk->unit_identifier, t10_idlength);
 
-	idlength = tdisk->unit_identifier.identifier_length + sizeof(struct device_identifier);
-	if (done + idlength > length)
-	{
-		return done;
-	}
+	naa_identifier = (struct logical_unit_naa_identifier *)(buffer+sizeof(*page)+t10_idlength);
+	memcpy(naa_identifier, &tdisk->naa_identifier, naa_idlength);
 
-	unit_identifier = (struct logical_unit_identifier *)(buffer+done);
-	memcpy(unit_identifier, &tdisk->unit_identifier, idlength);
-	done += idlength;
-
-	idlength = tdisk->naa_identifier.identifier_length + sizeof(struct device_identifier);
-	if (done + idlength > length)
-	{
-		return done;
-	}
-
-	naa_identifier = (struct logical_unit_naa_identifier *)(buffer+done);
-	memcpy(naa_identifier, &tdisk->naa_identifier, idlength);
-	done += idlength;
-	return done;
+	min_len = min_t(int, allocation_length, idlength + sizeof(*page));
+	return min_len;
 }
 
 struct extended_inquiry_page extended_inquiry = {
@@ -2913,94 +2886,68 @@ struct evpd_page_info evpd_info  = {
 static int 
 tdisk_copy_vital_product_page_info(uint8_t *buffer, int allocation_length)
 {
-	struct vital_product_page tmp;
 	struct vital_product_page *page = (struct vital_product_page *)buffer;
-	int min_len;
 	int i;
-	int offset;
 
-	bzero(&tmp, sizeof(struct vital_product_page));
-	tmp.device_type = T_DIRECT;
-	tmp.page_code = 0x00;
-	tmp.page_length = evpd_info.num_pages;
+	bzero(page, sizeof(*page));
+	page->device_type = T_DIRECT;
+	page->page_code = 0x00;
+	page->page_length = evpd_info.num_pages;
 
-	min_len = min_t(int, allocation_length, sizeof(tmp));
-	memcpy(page, &tmp, min_len);
-	if (min_len < sizeof(tmp))
-		return min_len;
-
-	offset = min_len;
 	for (i = 0; i < evpd_info.num_pages; i++) {
-		if (offset == allocation_length)
-			break;
 		page->page_type[i] = evpd_info.page_code[i];
-		offset++;
 	}
 
-	return offset;
+	return min_t(int, allocation_length, evpd_info.num_pages + sizeof(*page));
 }
 
 static int
 tdisk_evpd_inquiry_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint8_t page_code, uint16_t allocation_length)
 {
 	int retval;
+	int max_allocation_length;
 
-	ctio_allocate_buffer(ctio, allocation_length, Q_NOWAIT);
+	max_allocation_length = max_t(int, 128, allocation_length);
+	ctio_allocate_buffer(ctio, max_allocation_length, Q_NOWAIT);
 	if (unlikely(!ctio->data_ptr))
-	{
 		return -1;
-	}
 
-	bzero(ctio->data_ptr, allocation_length);
+	bzero(ctio->data_ptr, max_allocation_length);
 
 	debug_info("page code %x\n", page_code);
-	switch (page_code)
-	{
-		case UNIT_SERIAL_NUMBER_PAGE:
-			retval = tdisk_serial_number(tdisk, ctio->data_ptr, allocation_length);
-			if (unlikely(retval < 0))
-			{
-				goto err;
-			}
-
-			ctio->dxfer_len = retval;
-			break;
-		case DEVICE_IDENTIFICATION_PAGE:
-			retval = tdisk_device_identification(tdisk, ctio->data_ptr, allocation_length);
-			if (unlikely(retval < 0))
-			{
-				goto err;
-			}
-
-			ctio->dxfer_len = retval;
-			break;
-		case VITAL_PRODUCT_DATA_PAGE:
-			ctio->dxfer_len = tdisk_copy_vital_product_page_info(ctio->data_ptr, allocation_length);
-			break;
-		case BLOCK_LIMITS_VPD_PAGE:
-			ctio->dxfer_len = tdisk_copy_block_limits_vpd_page(tdisk, ctio->data_ptr, allocation_length);
-			break;
-		case BLOCK_DEVICE_CHARACTERISTICS_VPD_PAGE:
-			ctio->dxfer_len = tdisk_copy_block_device_characteristics_vpd_page(ctio->data_ptr, allocation_length);
-			break;
-		case LOGICAL_BLOCK_PROVISIONING_VPD_PAGE:
-			ctio->dxfer_len = tdisk_copy_logical_block_provisioning_vpd_page(tdisk, ctio->data_ptr, allocation_length);
-			break;
-		case EXTENDED_INQUIRY_VPD_PAGE:
-			ctio->dxfer_len = tdisk_copy_extended_inquiry_vpd_page(ctio->data_ptr, allocation_length);
-			break;
-		default:
-			debug_info("Invalid page code %x\n", page_code);
-			goto err;
+	switch (page_code) {
+	case UNIT_SERIAL_NUMBER_PAGE:
+		retval = tdisk_serial_number(tdisk, ctio->data_ptr, allocation_length);
+		break;
+	case DEVICE_IDENTIFICATION_PAGE:
+		retval = tdisk_device_identification(tdisk, ctio->data_ptr, allocation_length);
+		break;
+	case VITAL_PRODUCT_DATA_PAGE:
+		retval = tdisk_copy_vital_product_page_info(ctio->data_ptr, allocation_length);
+		break;
+	case BLOCK_LIMITS_VPD_PAGE:
+		retval = tdisk_copy_block_limits_vpd_page(tdisk, ctio->data_ptr, allocation_length);
+		break;
+	case BLOCK_DEVICE_CHARACTERISTICS_VPD_PAGE:
+		retval = tdisk_copy_block_device_characteristics_vpd_page(ctio->data_ptr, allocation_length);
+		break;
+	case LOGICAL_BLOCK_PROVISIONING_VPD_PAGE:
+		retval = tdisk_copy_logical_block_provisioning_vpd_page(tdisk, ctio->data_ptr, allocation_length);
+		break;
+	case EXTENDED_INQUIRY_VPD_PAGE:
+		retval = tdisk_copy_extended_inquiry_vpd_page(ctio->data_ptr, allocation_length);
+		break;
+	default:
+		debug_info("Invalid page code %x\n", page_code);
+		ctio_free_data(ctio);
+		ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, INVALID_FIELD_IN_CDB_ASC, INVALID_FIELD_IN_CDB_ASCQ);
+		retval = 0;
 	}
 
+	ctio->dxfer_len = retval;
 #ifdef ENABLE_DEBUG
 	print_buffer(ctio->data_ptr, ctio->dxfer_len);
 #endif
-	return 0;
-err:
-	ctio_free_data(ctio);
-	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, INVALID_FIELD_IN_CDB_ASC, INVALID_FIELD_IN_CDB_ASCQ);
 	return 0;
 }
 
