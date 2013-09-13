@@ -1,7 +1,7 @@
-%define libvers 3.0.46
+%define libvers 3.0.47
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-client
-Version: 3.0.46
+Version: 3.0.47
 Release: rhel5
 Source0: %{name}-%{version}.tar.gz
 License: None 
