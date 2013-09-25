@@ -337,10 +337,11 @@ node_insert(struct ddtable *ddtable, struct ddtable_node *node, struct ddtable_d
 	ddtable_unlock(ddtable);
 }
 
-static void
+static int 
 node_sync(struct ddtable *ddtable, struct ddtable_node *node)
 {
 	struct ddtable_ddlookup_node *ddlookup;
+	int done = 0;
 
 	LIST_FOREACH(ddlookup, &node->node_list, n_list) {
 		node_ddlookup_lock(ddlookup);
@@ -348,22 +349,11 @@ node_sync(struct ddtable *ddtable, struct ddtable_node *node)
 			ddtable_ddlookup_node_wait(ddlookup);
 			ddtable_ddlookup_sync(ddtable, ddlookup, 1, -1, 0ULL);
 			ddtable_decr_sync_count(ddtable, ddlookup);
+			done++;
 		}
 		node_ddlookup_unlock(ddlookup);
 	}
-
-}
-
-static inline uint32_t
-node_ddlookup_count(struct ddtable_node *node)
-{
-	struct ddtable_ddlookup_node *ddlookup;
-	uint32_t count = 0;
-
-	LIST_FOREACH(ddlookup, &node->node_list, n_list) {
-		count++;
-	}
-	return count;
+	return done;
 }
 
 static void
@@ -413,7 +403,6 @@ node_free(struct ddtable_node *node)
 	struct ddtable_ddlookup_node *ddlookup, *tvar;
 
 	LIST_FOREACH_SAFE(ddlookup, &node->node_list, n_list, tvar) {
-		wait_on_chan(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags) && !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &ddlookup->flags));
 		node_ddlookup_lock(ddlookup);
 		LIST_REMOVE(ddlookup, n_list);
 		ddlookup->n_list.le_next = NULL;
@@ -703,80 +692,6 @@ ddtable_ddlookup_list_last(struct ddlookup_list *ddlookup_list, int *error)
 	}
 
 	return prev;
-}
-
-static void 
-ddtable_ddlookup_wait_for_sync_node_ddlookups(struct ddtable *ddtable, struct ddlookup_list *ddlookup_list)
-{
-	struct ddtable_ddlookup_node *peer;
-	struct ddtable_ddlookup_node *next;
-
-	ddlookup_list_lock(ddlookup_list);
-	peer = SLIST_FIRST(&ddlookup_list->lhead);
-	if (peer)
-		ddtable_ddlookup_node_get(peer);
-	ddlookup_list_unlock(ddlookup_list);
-
-	while (peer) {
-		wait_on_chan_check(peer->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &peer->flags));
-		ddtable_lock(ddtable);
-		if (!ddlookup_is_root(peer) && TAILQ_ENTRY_EMPTY(peer, t_list))
-			TAILQ_INSERT_TAIL(&ddtable->ddlookup_list, peer, t_list);
-		ddtable_unlock(ddtable);
-
-		ddlookup_list_lock(ddlookup_list);
-		next = SLIST_NEXT(peer, p_list);
-		if (next)
-			ddtable_ddlookup_node_get(next);
-		ddlookup_list_unlock(ddlookup_list);
-		ddtable_ddlookup_node_put(peer);
-		peer = next;
-	}
-}
-
-static int 
-ddtable_ddlookup_sync_node_ddlookups(struct ddtable *ddtable, struct ddlookup_list *ddlookup_list, int async, int root_id)
-{
-	struct ddtable_ddlookup_node *peer;
-	struct ddtable_ddlookup_node *next;
-	int done = 0;
-
-	if (node_in_standby())
-		return 0;
-
-	ddlookup_list_lock(ddlookup_list);
-	peer = SLIST_FIRST(&ddlookup_list->lhead);
-	if (peer)
-		ddtable_ddlookup_node_get(peer);
-	ddlookup_list_unlock(ddlookup_list);
-
-	while (peer) {
-		node_ddlookup_lock(peer);
-		if (atomic_test_bit_short(DDLOOKUP_META_IO_PENDING, &peer->flags)) {
-			ddtable_ddlookup_node_wait(peer);
-			ddtable_ddlookup_sync(ddtable, peer, 1, root_id, 0ULL);
-			ddtable_decr_sync_count(ddtable, peer);
-			done++;
-		}
-		node_ddlookup_unlock(peer);
-
-		if (!async) {
-			wait_on_chan_check(peer->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &peer->flags));
-			ddtable_lock(ddtable);
-			if (!ddlookup_is_root(peer) && TAILQ_ENTRY_EMPTY(peer, t_list))
-				TAILQ_INSERT_TAIL(&ddtable->ddlookup_list, peer, t_list);
-			ddtable_unlock(ddtable);
-		}
-
-		ddlookup_list_lock(ddlookup_list);
-		next = SLIST_NEXT(peer, p_list);
-		if (next)
-			ddtable_ddlookup_node_get(next);
-		ddlookup_list_unlock(ddlookup_list);
-		ddtable_ddlookup_node_put(peer);
-		peer = next;
-	}
-	return done;
 }
 
 struct ddlookup_list *
@@ -1538,6 +1453,28 @@ err:
 	return -1;
 }
 
+static void
+node_wait(struct ddtable_node *node)
+{
+	struct ddtable_ddlookup_node *ddlookup;
+
+	LIST_FOREACH(ddlookup, &node->node_list, n_list) {
+		wait_on_chan(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags) && !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &ddlookup->flags));
+	}
+}
+
+static void
+ddtable_node_wait(struct ddtable *ddtable, int start_idx, int max)
+{
+	struct ddtable_node *node;
+	int i;
+
+	for (i = start_idx; i < max; i++) {
+		node = ddnode_list_get(ddtable, i);
+		node_wait(node);
+	}
+}
+
 void
 ddtable_exit(struct ddtable *ddtable)
 {
@@ -1545,7 +1482,7 @@ ddtable_exit(struct ddtable *ddtable)
 	struct ddlookup_list *ddlookup_list;
 	int dd_idx;
 	struct tpriv priv = { 0 };
-	int done = 0;
+	int start_idx = 0, write_done = 0, done = 0, retval;
 
 	if (!atomic_read(&ddtable->inited))
 		return;
@@ -1574,36 +1511,24 @@ ddtable_exit(struct ddtable *ddtable)
 	ddtables_sync(ddtable, dd_idx, i, QS_IO_WRITE);
 	debug_info("ddtable sync count now %d\n", atomic_read(&ddtable->sync_count));
 
-#if 0
-	for (i = 0; i < ddtable->max_roots; i++) {
-		struct ddtable_node *node;
-		uint32_t count;
-
-		node = ddnode_list_get(ddtable, i);
-		count = node_ddlookup_count(node);
-		debug_info("node %d count %u\n", i, count);
-	}
-#endif
-
 	bdev_marker(ddtable->bint->b_dev, &priv);
 	for (i = 0; i < ddtable->max_roots; i++) {
-		if (node_in_standby())
-			continue;
+		struct ddtable_node *node;
 
-		ddlookup_list = ddlookup_list_get(ddtable, i);
-		if (!ddlookup_list)
-			continue;
+		node = ddnode_list_get(ddtable, i);
+		retval = node_sync(ddtable, node);
+		done += retval;
+		write_done += retval;
+		if (write_done >= 512 || ((i + 1) == ddtable->max_roots)) {
+			bdev_start(ddtable->bint->b_dev, &priv);
+			bdev_marker(ddtable->bint->b_dev, &priv);
+			write_done = 0;
+		}
 
-		done += ddtable_ddlookup_sync_node_ddlookups(ddtable, ddlookup_list, 1, i);
-#ifdef FREEBSD 
-		g_waitidle();
-#else
-		bdev_start(ddtable->bint->b_dev, &priv);
-		bdev_marker(ddtable->bint->b_dev, &priv);
-#endif
-		if (done >= 256) {
-			pause("ddtblexit", 20);
+		if (done >= 2048 || ((i + 1) == ddtable->max_roots)) {
+			ddtable_node_wait(ddtable, start_idx, i+1);
 			done = 0;
+			start_idx = i+1;
 		}
 	}
 	bdev_start(ddtable->bint->b_dev, &priv);
@@ -1613,17 +1538,13 @@ ddtable_exit(struct ddtable *ddtable)
 		if (!ddlookup_list)
 			continue;
 
-		ddtable_ddlookup_wait_for_sync_node_ddlookups(ddtable, ddlookup_list);
 		ddtable_ddlookup_free_list(ddtable, &ddlookup_list->lhead);
 	}
-	debug_info("ddtable sync count at end %d\n", atomic_read(&ddtable->sync_count));
 
-	debug_info("Free nodes\n");
 	for (i = 0; i < ddtable->max_roots; i++) {
 		struct ddtable_node *node;
 
 		node = ddnode_list_get(ddtable, i);
-		node_sync(ddtable, node);
 		node_free(node);
 	}
 
