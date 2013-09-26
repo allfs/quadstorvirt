@@ -354,7 +354,7 @@ bint_incr_free(struct bdevint *bint, uint32_t blocks)
 }
 
 
-void
+static void
 __subgroup_add_to_free_list(struct index_subgroup *subgroup, struct bintindex *index)
 {
 	struct bintindex *iter;
@@ -1389,7 +1389,7 @@ index_mark_blocks(struct bdevint *bint, struct bintindex *index, int start_idx, 
 }
 
 static inline int 
-index_ref_blocks(struct bintindex *index, int start_idx, int count)
+index_ref_blocks(struct bdevint *bint, struct bintindex *index, int start_idx, int count)
 {
 	int i;
 	uint64_t *bmap;
@@ -1405,6 +1405,7 @@ index_ref_blocks(struct bintindex *index, int start_idx, int count)
 		refs++;
 		BMAP_SET_BLOCK(bmap, i, refs, BMAP_BLOCK_BITS_UNCOMP);
 	}
+	BINT_STATS_ADD(bint, dedupe_blocks, 1);
 	return 0;
 }
 
@@ -1433,7 +1434,7 @@ bint_pgdata_scan_duplicates(struct tdisk *tdisk, struct bdevint *bint, struct bi
 			continue;
 		}
 
-		retval = index_ref_blocks(index, start_idx, count);
+		retval = index_ref_blocks(bint, index, start_idx, count);
 		if (unlikely(retval != 0)) {
 			prev = iter;
 			BINT_INC(bint, pgdata_duplicate_misses, 1);

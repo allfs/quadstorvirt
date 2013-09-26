@@ -552,8 +552,10 @@ tdisk_replay_meta_block(struct log_entry *log_entry)
 
 	amap_table = amap_table_locate(tdisk, log_entry->lba, &error);
 	if (!amap_table) {
-		if (type != INDEX_INFO_TYPE_AMAP_TABLE)
+		if (type != INDEX_INFO_TYPE_AMAP_TABLE) {
+			tdisk_put(tdisk);
 			return 0;
+		}
 
 		amap_table = amap_table_recreate(tdisk, log_entry->lba, log_entry->new_block);
 		if (!amap_table) {
@@ -570,8 +572,8 @@ tdisk_replay_meta_block(struct log_entry *log_entry)
 	}
 
 	if (type == INDEX_INFO_TYPE_AMAP_TABLE) {
-		tdisk_put(tdisk);
 		amap_table_put(amap_table);
+		tdisk_put(tdisk);
 		return 0;
 	}
 
@@ -762,7 +764,7 @@ log_entry_list_free(struct log_entry_list *log_entry_list)
 static int
 log_entry_tdisk_valid(struct log_entry *log_entry)
 {
-	struct tdisk *tdisk;
+	struct tdisk *tdisk = NULL;
 
 	if (log_entry->target_id) {
 		tdisk = tdisk_locate(log_entry->target_id);
@@ -773,16 +775,13 @@ log_entry_tdisk_valid(struct log_entry *log_entry)
 		target_id = (uint16_t)(log_entry->amap_write_id & 0xFFF);
 		tdisk = tdisk_locate(target_id);
 	}
-	else {
-		return 1;
-	}
+
 	if (tdisk) {
 		tdisk_put(tdisk);
 		return 1;
 	}
-	else {
+	else
 		return 0;
-	}
 }
 
 static int 

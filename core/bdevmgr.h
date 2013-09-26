@@ -666,20 +666,6 @@ index_id_from_block(struct bdevint *bint, uint64_t block, uint32_t *index_offset
 	return index_id;
 }
 
-void __subgroup_add_to_free_list(struct index_subgroup *subgroup, struct bintindex *index);
-static inline void
-subgroup_add_to_free_list(struct index_subgroup *subgroup, struct bintindex *index)
-{
-	mtx_lock(subgroup->free_list_lock);
-	if (TAILQ_ENTRY_EMPTY(index, i_list))
-		__subgroup_add_to_free_list(subgroup, index);
-	mtx_unlock(subgroup->free_list_lock);
-}
-
-#ifdef FREEBSD
-#else
-#endif
-
 #define TCACHE_ALLOC_SIZE	32
 
 static inline void

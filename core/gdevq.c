@@ -148,8 +148,8 @@ devq_process_dedupe_queue(void)
 	while ((ddqueue = get_next_ddqueue()) != NULL) {
 		TDISK_TSTART(start_ticks);
 		scan_dedupe_data(ddqueue->tdisk->group, ddqueue->pgdata, ddqueue->wlist);
+		TDISK_TEND(ddqueue->tdisk, scan_dedupe_ticks, start_ticks);
 		wait_complete_all(ddqueue->pgdata->completion);
-		TDISK_TEND(ddqueue->wlist->tdisk, scan_dedupe_ticks, start_ticks);
 		uma_zfree(ddqueue_cache, ddqueue);
 	}
 }
