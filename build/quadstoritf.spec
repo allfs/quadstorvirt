@@ -2,7 +2,7 @@
 
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-itf
-Version: 3.0.47
+Version: 3.0.48
 Release: rhel5
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -81,7 +81,7 @@ install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/et
 	if [ ! -f /quadstor/etc/iet/ietd.conf ]; then
 		cp /quadstor/etc/iet/ietd.conf.sample /quadstor/etc/iet/ietd.conf
 	fi
-	echo "3.0.47 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-version
+	echo "3.0.48 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-version
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf"
 	sleep 5

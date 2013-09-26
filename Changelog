@@ -1,3 +1,9 @@
+Release 3.0.48
+	* Improve dedupe tables sync time during shutdown
+	* Fixed missing tdisk reference decrement during log pages replay
+	* Added missing dedupe statistics increment, due to which the dedupe
+	  ratios shown were lower than actual
+
 Release 3.0.47
 	* Support for configuring multipath disks
 	* Fix for configuring physical disks with serial numbers > 32 bytes
