@@ -190,7 +190,7 @@ write_id_incr(uint64_t write_id, uint32_t incr)
 	uint64_t diff;
 
 	if ((write_id + incr) < WRITE_ID_MAX) {
-		write_id++;
+		write_id += incr;
 	}
 	else {
 		diff = ((write_id + incr) - (WRITE_ID_MAX - 1));

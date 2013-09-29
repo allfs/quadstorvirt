@@ -222,12 +222,14 @@ mirror_get_write_id_skip(void)
 	uint32_t ret;
 
 	if (!atomic_read(&write_id_skip))
-		return 0;
+		return 1;
 
 	mtx_lock(glbl_lock);
-	if (atomic_read(&write_id_skip))
-		atomic_dec(&write_id_skip);
 	ret = atomic_read(&write_id_skip);
+	if (ret)
+		atomic_set(&write_id_skip, 0);
+	else
+		ret = 1;
 	mtx_unlock(glbl_lock);
 	return ret;
 }
