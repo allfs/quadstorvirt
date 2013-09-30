@@ -841,7 +841,6 @@ static int dd_sync_thread(void *data)
 		debug_info("ddtable sync count %d\n", atomic_read(&ddtable->sync_count));
 		i = 0;
 		done = 0;
-		bzero(&priv, sizeof(priv));
 		while ((ddlookup = sync_list_first(ddtable)) != NULL) {
 			node_ddlookup_lock(ddlookup);
 			if (atomic_test_bit_short(DDLOOKUP_META_IO_PENDING, &ddlookup->flags) && !atomic_test_bit_short(DDLOOKUP_META_DATA_BUSY, &ddlookup->flags)) {
@@ -876,8 +875,7 @@ static int dd_sync_thread(void *data)
 
 		}
 
-		if (priv.data)
-			bdev_start(ddtable->bint->b_dev, &priv);
+		bdev_start(ddtable->bint->b_dev, &priv);
 
 		if ((atomic_read(&ddtable->sync_count) < LOOKUPS_SYNC_CACHED_COUNT)) {
 			atomic_clear_bit(DDTABLE_SYNC_START, &ddtable->flags);

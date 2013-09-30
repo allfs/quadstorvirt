@@ -3184,8 +3184,10 @@ amap_load_async(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_i
 	for (i = 0; i < AMAP_ASYNC_COUNT; i++) {
 		amap_idx++;
 		amap_id++;
-		if (amap_idx == AMAPS_PER_AMAP_TABLE)
+		if (amap_idx == AMAPS_PER_AMAP_TABLE) {
+			bdev_start(amap_bint(amap)->b_dev, &priv);
 			return amap;
+		}
 
 		if (amap_table->amap_index[amap_idx])
 			continue;
@@ -3378,8 +3380,8 @@ amap_locate(struct amap_table *amap_table, uint64_t lba, int *error)
 		*error = -1;
 		return NULL;
 	}
-	amap_get(amap);
 	bdev_start(amap_bint(amap)->b_dev, &priv);
+	amap_get(amap);
 	wait_on_chan_check(amap->amap_wait, !atomic_test_bit_short(AMAP_META_DATA_READ_DIRTY, &amap->flags));
 	return amap;
 }

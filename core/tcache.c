@@ -370,7 +370,6 @@ tcache_entry_rw(struct tcache *tcache, int rw)
 	struct tpriv priv = { 0 };
 	int log = atomic_test_bit_short(TCACHE_LOG_WRITE, &tcache->flags);
 
-	bzero(&priv, sizeof(priv));
 	tcache_get(tcache);
 	count = atomic_read(&tcache->bio_remain);
 	for (i = 0; i < count; i++) {

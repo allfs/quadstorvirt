@@ -778,6 +778,7 @@ static void
 bdev_marker(iodev_t *b_dev, struct tpriv *tpriv)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0))
+	DEBUG_BUG_ON(tpriv->data);
 	tpriv->data = kmem_cache_alloc(tpriv_cache, GFP_NOIO);
 	if (tpriv->data)
 		blk_start_plug(tpriv->data);
