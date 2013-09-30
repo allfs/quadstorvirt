@@ -338,7 +338,7 @@ node_insert(struct ddtable *ddtable, struct ddtable_node *node, struct ddtable_d
 }
 
 static int 
-node_sync(struct ddtable *ddtable, struct ddtable_node *node)
+node_sync(struct ddtable *ddtable, struct ddtable_node *node, struct ddtable_ddlookup_node_list *sync_list)
 {
 	struct ddtable_ddlookup_node *ddlookup;
 	int done = 0;
@@ -349,6 +349,7 @@ node_sync(struct ddtable *ddtable, struct ddtable_node *node)
 			ddtable_ddlookup_node_wait(ddlookup);
 			ddtable_ddlookup_sync(ddtable, ddlookup, 1, -1, 0ULL);
 			ddtable_decr_sync_count(ddtable, ddlookup);
+			TAILQ_INSERT_TAIL(sync_list, ddlookup, s_list);
 			done++;
 		}
 		node_ddlookup_unlock(ddlookup);
@@ -403,6 +404,7 @@ node_free(struct ddtable_node *node)
 	struct ddtable_ddlookup_node *ddlookup, *tvar;
 
 	LIST_FOREACH_SAFE(ddlookup, &node->node_list, n_list, tvar) {
+		wait_on_chan(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags));
 		node_ddlookup_lock(ddlookup);
 		LIST_REMOVE(ddlookup, n_list);
 		ddlookup->n_list.le_next = NULL;
@@ -1454,24 +1456,33 @@ err:
 }
 
 static void
-node_wait(struct ddtable_node *node)
+ddtable_node_wait(struct ddtable *ddtable, struct ddtable_ddlookup_node_list *sync_list, int *ret_done, int end)
 {
-	struct ddtable_ddlookup_node *ddlookup;
+	struct ddtable_ddlookup_node *ddlookup, *next;
+	int done = *ret_done, orig_done;
+	int wait = end ? 1 : 0;
 
-	LIST_FOREACH(ddlookup, &node->node_list, n_list) {
-		wait_on_chan(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags) && !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &ddlookup->flags));
+	orig_done = done;
+again:
+	TAILQ_FOREACH_SAFE(ddlookup, sync_list, s_list, next) {
+		if (!atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &ddlookup->flags)) {
+			TAILQ_REMOVE_INIT(&ddtable->sync_list, ddlookup, s_list);
+			done--;
+			continue;
+		}
+		if (!wait)
+			continue;
+		if (!end && (orig_done - done) >= 128)
+			break;
+		wait_on_chan(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_DIRTY, &ddlookup->flags));
+		TAILQ_REMOVE_INIT(&ddtable->sync_list, ddlookup, s_list);
+		done--;
 	}
-}
-
-static void
-ddtable_node_wait(struct ddtable *ddtable, int start_idx, int max)
-{
-	struct ddtable_node *node;
-	int i;
-
-	for (i = start_idx; i < max; i++) {
-		node = ddnode_list_get(ddtable, i);
-		node_wait(node);
+	debug_check(done < 0);
+	*ret_done = done;
+	if (!wait && (orig_done - done) < 128) {
+		wait = 1;
+		goto again;
 	}
 }
 
@@ -1480,13 +1491,15 @@ ddtable_exit(struct ddtable *ddtable)
 {
 	int i;
 	struct ddlookup_list *ddlookup_list;
+	struct ddtable_ddlookup_node_list sync_list;
 	int dd_idx;
 	struct tpriv priv = { 0 };
-	int start_idx = 0, write_done = 0, done = 0, retval;
+	int write_done = 0, done = 0, retval;
 
 	if (!atomic_read(&ddtable->inited))
 		return;
 
+	TAILQ_INIT(&sync_list);
 	atomic_clear_bit(DDTABLE_SYNC_ENABLED, &ddtable->flags);
 	while (atomic_read(&ddtable->inited) > 1)
 		pause("psg", 100);
@@ -1516,22 +1529,24 @@ ddtable_exit(struct ddtable *ddtable)
 		struct ddtable_node *node;
 
 		node = ddnode_list_get(ddtable, i);
-		retval = node_sync(ddtable, node);
+		retval = node_sync(ddtable, node, &sync_list);
 		done += retval;
 		write_done += retval;
 		if (write_done >= 512 || ((i + 1) == ddtable->max_roots)) {
 			bdev_start(ddtable->bint->b_dev, &priv);
 			bdev_marker(ddtable->bint->b_dev, &priv);
-			write_done = 0;
 		}
 
-		if (done >= 2048 || ((i + 1) == ddtable->max_roots)) {
-			ddtable_node_wait(ddtable, start_idx, i+1);
-			done = 0;
-			start_idx = i+1;
-		}
+		if (done >= 4096 && write_done >= 512)
+			ddtable_node_wait(ddtable, &sync_list, &done, 0);
+
+		if (write_done >= 512)
+			write_done = 0;
+
 	}
 	bdev_start(ddtable->bint->b_dev, &priv);
+	ddtable_node_wait(ddtable, &sync_list, &done, 1);
+	debug_check(done != 0);
 
 	for (i = 0; i < ddtable->max_roots; i++) {
 		ddlookup_list = ddlookup_list_get(ddtable, i);
@@ -1548,7 +1563,6 @@ ddtable_exit(struct ddtable *ddtable)
 		node_free(node);
 	}
 
-	debug_info("Free ddtable\n");
 	ddtable_free(ddtable);
 
 	PRINT_STAT("async_load", async_load);

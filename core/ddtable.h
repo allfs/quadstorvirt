@@ -75,6 +75,7 @@ struct ddtable_ddlookup_node {
 	uint16_t num_entries;
 	atomic_t refs;
 };
+TAILQ_HEAD(ddtable_ddlookup_node_list, ddtable_ddlookup_node);
 
 static inline int
 ddlookup_is_root(struct ddtable_ddlookup_node *ddlookup)
