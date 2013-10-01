@@ -1076,8 +1076,8 @@ bint_free(struct bdevint *bint, int free_alloc)
 	if (free_alloc)
 		bint_clear(bint);
 
-	if (bint->b_dev)
-	{
+	if (bint->b_dev) {
+		bdev_sync(bint);
 		bint_dev_close(bint);
 	}
 
@@ -1972,7 +1972,7 @@ bint_group_sync(struct bdevint *bint)
 }
 
 int
-bint_sync(struct bdevint *bint)
+bint_sync(struct bdevint *bint, int flush)
 {
 	struct raw_bdevint *raw_bint;
 	int error = 0;
@@ -2043,6 +2043,8 @@ bint_sync(struct bdevint *bint)
 		debug_warn("Sync failed for bdev meta at b_start %llu\n", (unsigned long long)bint->b_start);
 		error = -1;
 	}
+	else if (flush)
+		bdev_sync(bint);
 	atomic_clear_bit(BINT_DATA_DIRTY, &bint->flags);
 	vm_pg_free(page);
 	return error;
@@ -2061,7 +2063,7 @@ bint_finalize(struct bdevint *bint)
 	bint->load_task = NULL;
 	bint->free_task = NULL;
  	if (!node_in_standby()) {
-		bint_sync(bint);
+		bint_sync(bint, 0);
 		bint_group_sync(bint);
 	}
 free:
@@ -2103,9 +2105,8 @@ bdev_finalize(void)
 		if (!node_in_standby() && bint_is_group_master(bint) && !bint->in_log_replay) {
 			bint->log_write = 1;
 			atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-			bint_sync(bint);
+			bint_sync(bint, 0);
 		}
-
 		bdev_list_remove(bint);
 		bint_finalize(bint);
 	}
@@ -2189,7 +2190,7 @@ bdev_remove(struct bdev_info *binfo)
 			master_bint->log_disks--;
 			atomic_set_bit(BINT_IO_PENDING, &master_bint->flags);
 			bint_unlock(master_bint);
-			retval = bint_sync(master_bint);
+			retval = bint_sync(master_bint, 1);
 			if (unlikely(retval != 0)) {
 				bint_lock(master_bint);
 				master_bint->log_disks++;
@@ -2236,7 +2237,7 @@ bdev_wc_config(struct bdev_info *binfo)
 
 	bint->write_cache = binfo->write_cache;
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	return retval;
 }
 
@@ -2272,7 +2273,7 @@ bdev_unmap_config(struct bdev_info *binfo)
 	}
 
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	return retval;
 }
 
@@ -2309,7 +2310,7 @@ bdev_ha_config(struct bdev_info *binfo)
 		atomic_clear_bit(GROUP_FLAGS_HA_DISK, &bint->group_flags);
 
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	if (unlikely(retval != 0))
 		goto err;
 
@@ -3510,7 +3511,7 @@ int bint_sync_thread(void *data)
 			continue;
 		}
 
-		bint_sync(bint);
+		bint_sync(bint, 0);
 		bint_group_sync(bint);
 		if (kernel_thread_check(&bint->flags, BINT_SYNC_EXIT))
 			break;
@@ -3674,7 +3675,7 @@ static int bint_create_thread(void *data)
 
 	bint->initialized = 1;
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	if (unlikely(retval != 0))
 	{
 		bint->initialized = -1;
@@ -3686,7 +3687,7 @@ static int bint_create_thread(void *data)
 		master_bint->log_disks++;
 		atomic_set_bit(BINT_IO_PENDING, &master_bint->flags);
 		bint_unlock(master_bint);
-		retval = bint_sync(master_bint);
+		retval = bint_sync(master_bint, 1);
 		if (unlikely(retval != 0))
 		{
 			bint_lock(master_bint);
@@ -3859,7 +3860,7 @@ bint_fix_rid(struct bdevint *bint)
 		memcpy(bint->mrid, master_bint->mrid, TL_RID_MAX);
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
 	bint->rid_set = 1;
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	return retval;
 }
 
@@ -3892,7 +3893,7 @@ bdevs_fix_rids(void)
 			continue;
 
 		if (atomic_test_bit(BINT_IO_PENDING, &bint->flags))
-			bint_sync(bint);
+			bint_sync(bint, 1);
 	}
 	return error;
 }

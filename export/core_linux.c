@@ -803,6 +803,12 @@ bdev_start(iodev_t *b_dev, struct tpriv *tpriv)
 }
 
 static void
+bdev_sync(iodev_t *b_dev)
+{
+	blkdev_issue_flush(b_dev, NULL); 
+}
+
+static void
 __pause(const char *msg, int timo)
 {
 	msleep(timo);
@@ -1453,6 +1459,7 @@ static struct qs_kern_cbs kcbs = {
 	.shx_xlocked		= shx_xlocked,
 	.bdev_start		= bdev_start,
 	.bdev_marker		= bdev_marker,
+	.bdev_sync		= bdev_sync,
 	.cv_alloc		= cv_alloc,
 	.cv_free		= cv_free,
 	.cv_wait		= cv_wait,

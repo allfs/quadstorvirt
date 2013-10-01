@@ -522,4 +522,5 @@ do {													\
 	node_usr_notify_msg(USR_NOTIFY_INFO, 0, &msg);							\
 } while (0)
 
+void bdev_sync(struct bdevint *bint);
 #endif /* IO_H_ */

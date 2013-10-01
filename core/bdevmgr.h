@@ -464,7 +464,7 @@ int bdev_unmap_config(struct bdev_info *binfo);
 int bdev_wc_config(struct bdev_info *binfo);
 uint64_t bdev_alloc_block(struct bdevgroup *group, uint32_t size, struct bdevint **ret, struct index_info *index_info, int type);
 uint64_t __bdev_alloc_block(struct bdevint *bint, uint32_t size, struct index_info *index_info, int type);
-int bint_sync(struct bdevint *bint);
+int bint_sync(struct bdevint *bint, int flush);
 int bint_group_sync(struct bdevint *bint);
 int bdev_check_space(uint64_t vsize);
 void bdev_finalize(void);

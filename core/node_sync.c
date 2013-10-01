@@ -3237,7 +3237,7 @@ node_sync_setup_bdevs_for_takeover(void)
 		if (!bint || bint->initialized <= 0)
 			continue;
 
-		bint_sync(bint);
+		bint_sync(bint, 1);
 		bint_group_sync(bint);
 	}
 

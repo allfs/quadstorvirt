@@ -54,7 +54,7 @@ bdev_groups_fix_rids(void)
 		atomic_set_bit(GROUP_FLAGS_DEDUPEMETA, &bint->group_flags);
 		atomic_set_bit(GROUP_FLAGS_LOGDATA, &bint->group_flags);
 		atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-		retval = bint_sync(bint);
+		retval = bint_sync(bint, 1);
 		if (unlikely(retval != 0)) {
 			error = -1;
 			continue;
@@ -242,7 +242,7 @@ bdev_group_rename(struct group_conf *group_conf)
 		return 0;
 
 	atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-	retval = bint_sync(bint);
+	retval = bint_sync(bint, 1);
 	if (unlikely(retval != 0)) {
 		strcpy(group->name, prev_name);
 	}

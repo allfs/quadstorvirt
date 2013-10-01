@@ -652,3 +652,10 @@ copy_in_request_buffer(struct qsio_scsiio *ctio)
 }
 
 #define kern_panic	panic
+
+void
+bdev_sync(struct bdevint *bint)
+{
+	g_io_flush(bint->cp);
+}
+

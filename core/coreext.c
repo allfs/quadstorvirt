@@ -32,6 +32,12 @@ sys_memset(void *dest, int c, int size)
 }
 
 void
+bdev_sync(struct bdevint *bint)
+{
+	(*kcbs.bdev_sync)(bint->b_dev);
+}
+
+void
 free(void *ptr, int mtype)
 {
 	(*kcbs.free)(ptr);

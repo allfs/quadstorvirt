@@ -133,6 +133,7 @@ struct qs_kern_cbs {
 	int (*shx_xlocked)(sx_t *sx);
 	void (*bdev_start)(iodev_t *b_dev, struct tpriv *tpriv);
 	void (*bdev_marker)(iodev_t *b_dev, struct tpriv *tpriv);
+	void (*bdev_sync)(iodev_t *b_dev);
 	cv_t* (*cv_alloc)(const char *name);
 	void (*cv_free)(cv_t *);
 	void (*cv_wait)(cv_t *cv, mtx_t *lock, void *, int intr);

@@ -1022,8 +1022,10 @@ bint_reset_write_logs(struct bdevint *bint)
 		debug_info("resetting disk to v2 log format\n");
 		bint->v2_log_format = BINT_V3_LOG_FORMAT;
 		atomic_set_bit(BINT_IO_PENDING, &bint->flags);
-		retval = bint_sync(bint);
+		retval = bint_sync(bint, 1);
 	}
+	else
+		bdev_sync(bint);
 
 	return retval;
 }
@@ -1069,7 +1071,7 @@ bdev_reset_write_logs(struct bdevgroup *group)
 
 	master_bint->log_write = 1;
 	master_bint->in_log_replay = 0;
-	retval = bint_sync(master_bint);
+	retval = bint_sync(master_bint, 1);
 	if (unlikely(retval != 0)) {
 		atomic_set(&group->log_error, 1);
 		return -1;
@@ -1087,7 +1089,7 @@ bdev_reset_write_logs(struct bdevgroup *group)
 
 	debug_info("Reset master from log write mode\n");
 	master_bint->log_write = 0;
-	retval = bint_sync(master_bint);
+	retval = bint_sync(master_bint, 1);
 	if (unlikely(retval != 0)) {
 		debug_warn("Failed to sync master\n");
 		atomic_set(&group->log_error, 1);
