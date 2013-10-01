@@ -199,7 +199,7 @@ log_page_write_barrier(struct log_page *log_page)
 #endif
 	pagestruct_t *page, *tmp;
 
-	if (!atomic_test_bit_short(LOG_META_DATA_DIRTY, &log_page->flags) || atomic_test_bit_short(META_DATA_CLONED, &log_page->flags))
+	if (!atomic_test_bit_short(LOG_META_DATA_DIRTY, &log_page->flags) || atomic_test_bit_short(LOG_META_DATA_CLONED, &log_page->flags))
 		return;
 
 	GLOB_TSTART(start_ticks);
