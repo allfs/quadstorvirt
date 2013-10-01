@@ -120,6 +120,7 @@ typedef void bio_t;
 #define M_CBS			0
 #define M_QSOCK			0
 #define M_SYNC_THR		0
+#define M_AMAP_TABLE_SYNC	0
 #define M_CLIENT_NODE		0
 #define M_CLONE_AMAP_TABLE	0
 #define M_CLONE_AMAP		0

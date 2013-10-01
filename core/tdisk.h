@@ -819,6 +819,13 @@ struct amap_sync {
 };
 SLIST_HEAD(amap_sync_list, amap_sync);
 
+struct amap_table_sync {
+	struct amap_table *amap_table;
+	STAILQ_ENTRY(amap_table_sync) w_list;
+	struct iowaiter iowaiter;
+};
+STAILQ_HEAD(amap_table_sync_list, amap_table_sync);
+
 static inline void
 amap_sync_list_insert_tail(struct amap_sync_list *amap_sync_list, struct amap_sync *amap_sync)
 {

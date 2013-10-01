@@ -4948,26 +4948,76 @@ table_index_write(struct tdisk *tdisk, struct amap_table_index *table_index, uin
 	TDISK_TEND(tdisk, table_index_write_ticks, start_ticks);
 }
 
+static void
+amap_table_sync_list_index_write(struct tdisk *tdisk, struct amap_table_sync_list *sync_list)
+{
+	struct amap_table_sync *amap_table_sync;
+	struct amap_table *amap_table;
+	struct amap_table_index *table_index;
+	uint32_t index_id, index_offset;
+
+	while ((amap_table_sync = STAILQ_FIRST(sync_list)) != NULL) {
+		STAILQ_REMOVE_HEAD(sync_list, w_list);
+		amap_table = amap_table_sync->amap_table;
+		index_id = amap_table->amap_table_id >> INDEX_TABLE_GROUP_SHIFT;
+		index_offset = amap_table->amap_table_id & INDEX_TABLE_GROUP_MASK;
+		table_index = &tdisk->table_index[index_id];
+		table_index_write(tdisk, table_index, index_id, index_offset, amap_table);
+		free(amap_table_sync, M_AMAP_TABLE_SYNC);
+	}
+}
+
+static void
+amap_table_sync_list_end_wait(struct amap_table_sync_list *sync_list)
+{
+	struct amap_table_sync *amap_table_sync;
+
+	STAILQ_FOREACH(amap_table_sync, sync_list, w_list) {
+		amap_table_end_wait(amap_table_sync->amap_table, &amap_table_sync->iowaiter);
+		free_iowaiter(&amap_table_sync->iowaiter);
+	}
+}
+
+static void
+amap_table_sync_list_end_writes(struct amap_table_sync_list *sync_list)
+{
+	struct amap_table_sync *amap_table_sync;
+
+	STAILQ_FOREACH(amap_table_sync, sync_list, w_list) {
+		amap_table_end_writes(amap_table_sync->amap_table);
+	}
+}
+
+static void
+amap_table_sync_list_add(struct amap_table *amap_table, struct amap_table_sync_list *sync_list)
+{
+	struct amap_table_sync *amap_table_sync;
+
+	STAILQ_FOREACH(amap_table_sync, sync_list, w_list) {
+		if (amap_table_sync->amap_table == amap_table)
+			return;
+	}
+	amap_table_sync = zalloc(sizeof(*amap_table_sync), M_AMAP_TABLE_SYNC, Q_WAITOK);
+	amap_table_sync->amap_table = amap_table;
+	amap_table_start_writes(amap_table, &amap_table_sync->iowaiter);
+	STAILQ_INSERT_TAIL(sync_list, amap_table_sync, w_list);
+}
+
 void
 pgdata_wait_for_amap(struct tdisk *tdisk, struct amap_sync_list *amap_sync_list)
 {
 	struct amap *amap;
-	struct amap_table *amap_table1 = NULL;
-	struct amap_table *amap_table2 = NULL;
 	struct amap_table *amap_table;
-	uint32_t index_id, index_offset;
-	struct amap_table_index *table_index;
 	struct amap_sync *amap_sync;
-	struct iowaiter iowaiter1, iowaiter2;
 	uint64_t block;
+	struct amap_table_sync_list amap_table_sync_list;
 	STAILQ_HEAD(, amap_sync) amap_wait_list;
 	STAILQ_HEAD(, amap_sync) amap_list;
 #ifdef ENABLE_STATS
 	uint32_t start_ticks;
 #endif
 
-	bzero(&iowaiter1, sizeof(iowaiter1));
-	bzero(&iowaiter2, sizeof(iowaiter2));
+	STAILQ_INIT(&amap_table_sync_list);
 	STAILQ_INIT(&amap_list);
 	STAILQ_INIT(&amap_wait_list);
 	SLIST_FOREACH(amap_sync, amap_sync_list, s_list) {
@@ -4987,18 +5037,7 @@ pgdata_wait_for_amap(struct tdisk *tdisk, struct amap_sync_list *amap_sync_list)
 			continue;
 		}
 
-		if (!amap_table1) {
-			amap_table1 = amap_table;
-			amap_table_start_writes(amap_table1, &iowaiter1);
-		}
-		else if(amap_table1 != amap->amap_table && !amap_table2) {
-			amap_table2 = amap_table;
-			debug_check(amap_table2->amap_table_id < amap_table1->amap_table_id);
-			amap_table_start_writes(amap_table2, &iowaiter2);
-		}
-		else {
-			debug_check(amap->amap_table != amap_table1 && amap->amap_table != amap_table2);
-		}
+		amap_table_sync_list_add(amap_table, &amap_table_sync_list);
 		amap_table_write_barrier(amap_table);
 		set_amap_block(amap_table, amap->amap_idx, amap->amap_block);
 
@@ -5007,24 +5046,8 @@ pgdata_wait_for_amap(struct tdisk *tdisk, struct amap_sync_list *amap_sync_list)
 	}
 
 	TDISK_TSTART(start_ticks);
-	if (amap_table1) {
-		amap_table_end_writes(amap_table1);
-	}
-
-	if (amap_table2) {
-		amap_table_end_writes(amap_table2);
-	}
-
-	if (amap_table1) {
-		amap_table_end_wait(amap_table1, &iowaiter1);
-	}
-
-	if (amap_table2) {
-		amap_table_end_wait(amap_table2, &iowaiter2);
-	}
-
-	free_iowaiter(&iowaiter1);
-	free_iowaiter(&iowaiter2);
+	amap_table_sync_list_end_writes(&amap_table_sync_list);
+	amap_table_sync_list_end_wait(&amap_table_sync_list);
 
 	TDISK_TEND(tdisk, amap_table_end_wait_ticks, start_ticks);
 
@@ -5039,20 +5062,7 @@ pgdata_wait_for_amap(struct tdisk *tdisk, struct amap_sync_list *amap_sync_list)
 		wait_on_chan_check(amap->amap_wait, !atomic_test_bit_short(AMAP_META_DATA_NEW, &amap->flags));
 	}
 
-	if (amap_table1) {
-		index_id = amap_table1->amap_table_id >> INDEX_TABLE_GROUP_SHIFT;
-		index_offset = amap_table1->amap_table_id & INDEX_TABLE_GROUP_MASK;
-		table_index = &tdisk->table_index[index_id];
-		table_index_write(tdisk, table_index, index_id, index_offset, amap_table1);
-	}
-
-	if (amap_table2) {
-		index_id = amap_table2->amap_table_id >> INDEX_TABLE_GROUP_SHIFT;
-		index_offset = amap_table2->amap_table_id & INDEX_TABLE_GROUP_MASK;
-		table_index = &tdisk->table_index[index_id];
-		table_index_write(tdisk, table_index, index_id, index_offset, amap_table2);
-
-	}
+	amap_table_sync_list_index_write(tdisk, &amap_table_sync_list);
 }
 
 void
