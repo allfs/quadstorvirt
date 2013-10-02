@@ -1101,13 +1101,13 @@ bdev_conditional_free(struct bdevint *bint, uint64_t b_start, struct index_sync_
 	}
 
 	if (atomic_test_bit(META_IO_READ_PENDING, &index->flags)) {
-		atomic_clear_bit(META_IO_READ_PENDING, &index->flags);
 		retval = qs_lib_bio_lba(bint, bint_index_bstart(subgroup->group->bint, index->index_id), index->metadata, QS_IO_READ, TYPE_BINT);
 		if (unlikely(retval != 0)) {
 			sx_xunlock(subgroup->subgroup_lock);
 			index_put(index);
 			return -1;
 		}
+		atomic_clear_bit(META_IO_READ_PENDING, &index->flags);
 	}
 	sx_xunlock(subgroup->subgroup_lock);
 
@@ -1157,13 +1157,13 @@ bdev_conditional_ref(struct bdevint *bint, uint64_t b_start, struct index_sync_l
 	}
 
 	if (atomic_test_bit(META_IO_READ_PENDING, &index->flags)) {
-		atomic_clear_bit(META_IO_READ_PENDING, &index->flags);
 		retval = qs_lib_bio_lba(bint,  bint_index_bstart(subgroup->group->bint, index->index_id), index->metadata, QS_IO_READ, TYPE_BINT);
 		if (unlikely(retval != 0)) {
 			sx_xunlock(subgroup->subgroup_lock);
 			index_put(index);
 			return -1;
 		}
+		atomic_clear_bit(META_IO_READ_PENDING, &index->flags);
 	}
 	sx_xunlock(subgroup->subgroup_lock);
 

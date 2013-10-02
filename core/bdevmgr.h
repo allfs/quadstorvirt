@@ -91,14 +91,16 @@ iowaiter_end_wait(struct iowaiter *iowaiter)
 
 #define index_end_wait(indx, iwaitr)	iowaiter_end_wait((iwaitr))
 
+enum {
+	SUBGROUP_INLOAD,
+	SUBGROUP_DONEFIRSTLOAD,
+};
+
 struct index_subgroup {
 	uint16_t subgroup_id;
-	uint8_t inload:1;
-	uint8_t donefirstload:1;
-	uint8_t pad:6;
-	uint8_t slow_idx;
-	atomic16_t free_indexes;
 	uint16_t max_indexes;
+	atomic16_t flags;
+	atomic16_t free_indexes;
 	sx_t *subgroup_lock;
 	sx_t *subgroup_write_lock;
 	mtx_t *free_list_lock;
@@ -110,6 +112,7 @@ struct index_subgroup {
 	BSD_LIST_HEAD(, bintindex) index_list[SUBGROUP_INDEX_LIST_BUCKETS];
 	wait_chan_t *subgroup_wait;
 	atomic_t pending_writes;
+	uint8_t slow_idx;
 };
 
 #define subgroup_write_lock(s)				\
@@ -668,12 +671,24 @@ index_id_from_block(struct bdevint *bint, uint64_t block, uint32_t *index_offset
 
 #define TCACHE_ALLOC_SIZE	32
 
+static inline int
+subgroup_inload(struct index_subgroup *subgroup)
+{
+	return (atomic_test_bit_short(SUBGROUP_INLOAD, &subgroup->flags));
+}
+
+static inline int
+subgroup_donefirstload(struct index_subgroup *subgroup)
+{
+	return (atomic_test_bit_short(SUBGROUP_DONEFIRSTLOAD, &subgroup->flags));
+}
+
 static inline void
 subgroup_wait_for_io(struct index_subgroup *subgroup)
 {
-	if (subgroup->inload) {
+	if (subgroup_inload(subgroup)) {
 		BINT_INC(subgroup->group->bint, subgroup_waits, 1);
-		wait_on_chan(subgroup->subgroup_wait, !subgroup->inload);
+		wait_on_chan(subgroup->subgroup_wait, !subgroup_inload(subgroup));
 	}
 }
 

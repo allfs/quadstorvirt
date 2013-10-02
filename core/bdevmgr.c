@@ -1858,9 +1858,9 @@ bint_unmap_blocks(struct bintindex *index)
 	}
 
 	debug_info("unmap blocks for index %u check idx %d free blocks %u\n", index->index_id, index->check_idx, index->free_blocks);
-	atomic_clear_bit(META_DATA_UNMAP, &index->flags);
 	bint = index->subgroup->group->bint;
 	if (!bint_unmap_supported(bint) || index->free_blocks != BMAP_ENTRIES_UNCOMP || atomic_test_bit(META_DATA_ERROR, &index->flags)) {
+		atomic_clear_bit(META_DATA_UNMAP, &index->flags);
 		index_unlock(index);
 		return;
 	}
@@ -1870,6 +1870,7 @@ bint_unmap_blocks(struct bintindex *index)
 		bmapentry_t val = BMAP_GET_BLOCK(bmap, i, BMAP_BLOCK_BITS_UNCOMP);
 		debug_check(val);
 		if (val) {
+			atomic_clear_bit(META_DATA_UNMAP, &index->flags);
 			index_unlock(index);
 			return;
 		}
@@ -1885,7 +1886,6 @@ bint_unmap_blocks(struct bintindex *index)
 	retval = bio_unmap(bint->b_dev, bint->cp, block, blocks, bint->sector_shift, bio_unmap_end_bio, index);
 	if (unlikely(retval != 0)) {
 		atomic_clear_bit(META_DATA_UNMAP, &index->flags);
-		chan_wakeup(index->index_wait);
 		index_unlock(index);
 		return;
 	}
@@ -2776,7 +2776,7 @@ bint_subgroup_load_post(struct index_subgroup *subgroup, struct tcache *tcache, 
 	tcache_put(tcache);
 
 	sx_xlock(subgroup->subgroup_lock);
-	subgroup->inload = 0;
+	atomic_clear_bit_short(SUBGROUP_INLOAD, &subgroup->flags);
 	sx_xunlock(subgroup->subgroup_lock);
 	chan_wakeup(subgroup->subgroup_wait);
 	return;
@@ -2804,6 +2804,9 @@ bint_subgroup_load(struct index_subgroup *subgroup, int start, int max, uint32_t
 		prev = NULL;
 		index = subgroup_locate_index(subgroup, start_index_id + i, &prev);
 		if (index) {
+			if (atomic_test_bit(META_IO_READ_PENDING, &index->flags))
+				goto add_read_index;
+
 			if (atomic_test_bit(META_DATA_READ_DIRTY, &index->flags))
 				continue;
 
@@ -2826,13 +2829,14 @@ bint_subgroup_load(struct index_subgroup *subgroup, int start, int max, uint32_t
 			continue;
 		}
 
-		if (subgroup->donefirstload && bint_check_if_index_full(subgroup->group, start_index_id + i))
+		if (subgroup_donefirstload(subgroup) && bint_check_if_index_full(subgroup->group, start_index_id + i))
 			continue;
 
 		index = __subgroup_get_index(subgroup, start_index_id + i, 0, prev);
 		if (!index)
 			return -1;
 
+add_read_index:
 		if (atomic_test_bit(META_IO_READ_PENDING, &index->flags)) {
 			BINT_INC(subgroup->group->bint, tcache_index_count, 1);
 			retval = tcache_add_index(tcache, subgroup, index, QS_IO_READ);
@@ -2854,9 +2858,9 @@ bint_subgroup_load(struct index_subgroup *subgroup, int start, int max, uint32_t
 		return done;
 	}
 
-	subgroup->inload = 1;
+	atomic_set_bit_short(SUBGROUP_INLOAD, &subgroup->flags);
+	atomic_set_bit_short(SUBGROUP_DONEFIRSTLOAD, &subgroup->flags);
 	*ret_tcache = tcache;
-	subgroup->donefirstload = 1;
 	return done;
 err:
 	tcache_error_indexes(tcache);
@@ -3424,7 +3428,7 @@ load_next:
 			subgroup_wait_for_io(subgroup);
 			sx_xlock(subgroup->subgroup_lock);
 			debug_info("subgroup %u free indexes %d done first load %d\n", subgroup->subgroup_id, atomic16_read(&subgroup->free_indexes), subgroup->donefirstload);
-			if ((atomic16_read(&subgroup->free_indexes) || !subgroup->donefirstload) && TAILQ_EMPTY(&subgroup->free_list)) {
+			if ((atomic16_read(&subgroup->free_indexes) || !subgroup_donefirstload(subgroup)) && TAILQ_EMPTY(&subgroup->free_list)) {
 				sx_xunlock(subgroup->subgroup_lock);
 				break;
 			}
@@ -3453,7 +3457,7 @@ load_next:
 		tcache = NULL;
 		BINT_TSTART(start_ticks);
 		sx_xlock(subgroup->subgroup_lock);
-		if (atomic16_read(&subgroup->free_indexes) || !subgroup->donefirstload) {
+		if (atomic16_read(&subgroup->free_indexes) || !subgroup_donefirstload(subgroup)) {
 			debug_info("group id %u subgroup id %u\n", subgroup->group->group_id, subgroup->subgroup_id);
 			done = bint_subgroup_load(subgroup, 0, subgroup->max_indexes, &index_count, &tcache, 1);
 #ifdef ENABLE_STATS
