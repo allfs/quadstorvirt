@@ -117,16 +117,11 @@ do {							\
 #define AMAP_PENDING_WAITERS_MAX	64
 
 static inline void
-amap_entry_set_block(struct amap *amap, int idx, uint64_t block, uint16_t bid, uint16_t size_bits)
+amap_entry_set_block(struct amap *amap, int idx, uint64_t block)
 {
-	uint64_t block_block;
-	uint64_t block_bid;
-
 	debug_check(idx >= ENTRIES_PER_AMAP);
-	block_bid = (size_bits << BLOCK_BID_BITS) | bid;
-
-	block_block = ((block_bid << BLOCK_BLOCKNR_BITS) |  block);
-	BMAP_SET_BLOCK(((uint64_t *)vm_pg_address(amap->metadata)), idx, block_block, AMAP_BLOCK_BITS);
+	debug_check(block > AMAP_BLOCK_MASK);
+	BMAP_SET_BLOCK(((uint64_t *)vm_pg_address(amap->metadata)), idx, block, AMAP_BLOCK_BITS);
 }
 
 static inline uint64_t
@@ -182,15 +177,6 @@ lba_block_size(uint64_t block)
 		return (size << 9);
 	else
 		return LBA_SIZE;
-}
-
-static inline uint32_t
-lba_block_bits(uint64_t block)
-{
-	uint64_t bits;
-
-	bits = (block >> (BLOCK_BLOCKNR_BITS + BLOCK_BID_BITS)) & 0x7; 
-	return bits;
 }
 
 #define SET_BLOCK_SIZE(block,size)				\

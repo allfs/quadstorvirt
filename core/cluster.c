@@ -513,7 +513,7 @@ node_ha_amap_validate(struct tdisk *tdisk, struct pgdata_write_spec *write_spec,
 	}
 	
 	entry_id = amap_entry_id(amap, lba);
-	amap_entry_set_block(amap, entry_id, BLOCK_BLOCKNR(write_spec->amap_block), BLOCK_BID(write_spec->amap_block), lba_block_bits(write_spec->amap_block));
+	amap_entry_set_block(amap, entry_id, write_spec->amap_block);
 	atomic_set_bit_short(AMAP_META_IO_PENDING, &amap->flags);
 	amap_check_sync_list(amap, amap_sync_list, NULL, 0);
 	amap_unlock(amap);
@@ -551,7 +551,7 @@ node_ha_amap_cancel(struct tdisk *tdisk, struct pgdata_write_spec *write_spec, u
 	}
 
 	entry_id = amap_entry_id(amap, lba);
-	amap_entry_set_block(amap, entry_id, BLOCK_BLOCKNR(write_spec->old_amap_block), BLOCK_BID(write_spec->old_amap_block), lba_block_bits(write_spec->old_amap_block));
+	amap_entry_set_block(amap, entry_id, write_spec->old_amap_block);
 
 	if (write_id_greater(amap->write_id, write_spec->amap_write_id)) {
 		debug_info("amap write id > write spec amap write id, need to sync amap\n");

@@ -655,7 +655,7 @@ tdisk_replay_amap_block(struct log_entry *log_entry, struct amap_sync_list *amap
 
 	debug_info("replay amap block %u %llu\n", BLOCK_BID(log_entry->new_block), (unsigned long long)BLOCK_BLOCKNR(log_entry->new_block));
 	entry_id = amap_entry_id(amap, log_entry->lba);
-	amap_entry_set_block(amap, entry_id, BLOCK_BLOCKNR(log_entry->new_block), BLOCK_BID(log_entry->new_block), lba_block_bits(log_entry->new_block));
+	amap_entry_set_block(amap, entry_id, log_entry->new_block);
 	amap_check_sync_list(amap, amap_sync_list, NULL, WRITE_ID_MAX);
 	log_entry->amap = amap;
 	log_entry->amap_table = amap_table;

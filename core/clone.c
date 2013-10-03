@@ -690,7 +690,7 @@ amap_clone(struct clone_data *clone_data)
 			atomic_set_bit(PGDATA_SKIP_DDCHECK, &pgdata->flags);
 			atomic_set_bit(PGDATA_SKIP_UNCOMP, &pgdata->flags);
 			JOB_STATS_ADD(clone_data, refed_blocks, 1);
-			amap_entry_set_block(amap, i, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
+			amap_entry_set_block(amap, i, pgdata->amap_block);
 			continue;
 		}
 
@@ -836,13 +836,13 @@ skip_dedupe:
 			continue;
 
 		if (atomic_test_bit(DDBLOCK_ENTRY_FOUND_DUPLICATE, &pgdata->flags)) {
-			amap_entry_set_block(amap, i, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
+			amap_entry_set_block(amap, i, pgdata->amap_block);
 			if (!atomic_test_bit(PGDATA_SKIP_DDCHECK, &pgdata->flags))
 				JOB_STATS_ADD(clone_data, deduped_blocks, 1);
 			continue;
 		}
 
-		amap_entry_set_block(amap, i, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
+		amap_entry_set_block(amap, i, pgdata->amap_block);
 		if (!prev_bint || (prev_bint->bid != BLOCK_BID(pgdata->amap_block))) {
 			bint = bdev_find(BLOCK_BID(pgdata->amap_block));
 			if (unlikely(!bint)) {

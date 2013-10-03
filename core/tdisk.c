@@ -4529,7 +4529,7 @@ pgdata_cancel(struct tdisk *tdisk, struct pgdata **pglist, int pglist_cnt, struc
 			continue;
 		}
 		amap_write_barrier(amap);
-		amap_entry_set_block(amap, entry_id, BLOCK_BLOCKNR(pgdata->old_amap_block), BLOCK_BID(pgdata->old_amap_block), lba_block_bits(pgdata->old_amap_block));
+		amap_entry_set_block(amap, entry_id, pgdata->old_amap_block);
 		if (write_id_greater(amap->write_id, pgdata->amap_write_id)) {
 			atomic_set_bit_short(AMAP_META_IO_PENDING, &amap->flags);
 			amap_check_sync_list(amap, amap_sync_list, NULL, WRITE_ID_MAX);
@@ -4649,7 +4649,7 @@ __pgdata_amap_io(struct tdisk *tdisk, struct amap_sync *amap_sync)
 		has_updates = 1;
 		pgdata->old_amap_block = entry_block;
 		pgdata->amap_write_id = amap->write_id;
-		amap_entry_set_block(amap, entry_id, BLOCK_BLOCKNR(pgdata->amap_block), BLOCK_BID(pgdata->amap_block), lba_block_bits(pgdata->amap_block));
+		amap_entry_set_block(amap, entry_id, pgdata->amap_block);
 		atomic_set_bit(PGDATA_DONE_AMAP_UPDATE, &pgdata->flags);
 	}
 	amap_unlock(amap);
