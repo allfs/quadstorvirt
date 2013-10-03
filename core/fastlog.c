@@ -230,12 +230,9 @@ void
 fastlog_add_transaction(struct index_info *index_info, struct tdisk *tdisk, uint64_t lba, struct log_page *log_page, int insert_idx)
 {
 	struct v2_log_entry *entry;
-	uint64_t block;
 	uint64_t index_write_id;
 	uint64_t amap_write_id;
 	struct bdevint *bint = index_info->index->subgroup->group->bint;
-
-	SET_BLOCK(block, index_info->b_start, bint->bid);
 
 	if (bint->v2_disk)
 		index_write_id = index_info->index_write_id;
@@ -244,7 +241,7 @@ fastlog_add_transaction(struct index_info *index_info, struct tdisk *tdisk, uint
 
 	amap_write_id = (((uint64_t)index_info->meta_type) << 14 | tdisk->target_id);
 	entry = log_page_get_v2_entry(log_page, insert_idx);
-	v2_log_entry_set_block(entry, block, 0, lba, index_write_id, amap_write_id);
+	v2_log_entry_set_block(entry, index_info->block, 0, lba, index_write_id, amap_write_id);
 	index_info->log_page = log_page;
 	index_info->log_offset = insert_idx;
 }

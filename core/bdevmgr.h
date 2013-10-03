@@ -250,7 +250,7 @@ enum {
 
 struct index_info {
 	struct bintindex *index;
-	uint64_t b_start;
+	uint64_t block;
 	uint64_t index_write_id;
 	TAILQ_ENTRY(index_info) i_list;
 	struct log_page *log_page;

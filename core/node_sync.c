@@ -2771,7 +2771,6 @@ node_newmeta_sync_start(struct tdisk *tdisk, struct write_list *wlist)
 	struct newmeta_spec *newmeta_spec;
 	struct amap *amap;
 	struct amap_table *amap_table;
-	struct bdevint *bint;
 	int retval, count;
 
 	if (TAILQ_EMPTY(&wlist->meta_index_info_list))
@@ -2790,16 +2789,15 @@ node_newmeta_sync_start(struct tdisk *tdisk, struct write_list *wlist)
 
 	newmeta_spec = (struct newmeta_spec *)(msg->raw->data);
 	TAILQ_FOREACH(index_info, &wlist->meta_index_info_list, i_list) {
-		bint = index_info->index->subgroup->group->bint;
 		if (index_info->meta_type == INDEX_INFO_TYPE_AMAP) {
-			amap = amap_locate_by_block(index_info->b_start, bint, &wlist->amap_sync_list);
+			amap = amap_locate_by_block(index_info->block, &wlist->amap_sync_list);
 			newmeta_spec->lba = amap_get_lba_start(amap->amap_id);
 		}
 		else if (index_info->meta_type == INDEX_INFO_TYPE_AMAP_TABLE) {
-			amap_table = amap_table_locate_by_block(index_info->b_start, bint, &wlist->amap_sync_list);
+			amap_table = amap_table_locate_by_block(index_info->block, &wlist->amap_sync_list);
 			newmeta_spec->lba = amap_table_get_lba_start(amap_table->amap_table_id);
 		}
-		SET_BLOCK(newmeta_spec->block, index_info->b_start, index_info->index->subgroup->group->bint->bid);
+		newmeta_spec->block = index_info->block;
 		newmeta_spec->meta_type = index_info->meta_type;
 		newmeta_spec++;
 	}

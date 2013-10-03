@@ -156,7 +156,7 @@ process_delete_block(struct ddtable *ddtable, uint64_t old_block, struct index_i
 			return;
 		}
 		index_info->index = index;
-		index_info->b_start = BLOCK_BLOCKNR(old_block);
+		index_info->block = old_block;
 	}
 
 	index_lock(index);
@@ -406,7 +406,6 @@ handle_meta_list_sync(struct tdisk *tdisk, struct index_info_list *meta_index_in
 {
 	struct index_info *index_info, *next;
 	struct bintindex *index;
-	struct bdevint *bint;
 	struct amap *amap;
 	struct amap_table *amap_table;
 
@@ -424,8 +423,7 @@ handle_meta_list_sync(struct tdisk *tdisk, struct index_info_list *meta_index_in
 		if (index_info->meta_type != INDEX_INFO_TYPE_AMAP)
 			continue;
 
-		bint = index->subgroup->group->bint;
-		amap = amap_locate_by_block(index_info->b_start, bint, amap_sync_list);
+		amap = amap_locate_by_block(index_info->block, amap_sync_list);
 		debug_check(!amap);
 		node_amap_meta_sync_send(amap);
 		TAILQ_REMOVE(meta_index_info_list, index_info, i_list);
@@ -436,8 +434,7 @@ handle_meta_list_sync(struct tdisk *tdisk, struct index_info_list *meta_index_in
 	TAILQ_FOREACH_SAFE(index_info, meta_index_info_list, i_list, next) {
 		index = index_info->index;
 		if (index_info->meta_type == INDEX_INFO_TYPE_AMAP_TABLE) {
-			bint = index->subgroup->group->bint;
-			amap_table = amap_table_locate_by_block(index_info->b_start, bint, amap_sync_list);
+			amap_table = amap_table_locate_by_block(index_info->block, amap_sync_list);
 			debug_check(!amap_table);
 			node_amap_table_meta_sync_send(amap_table);
 		}

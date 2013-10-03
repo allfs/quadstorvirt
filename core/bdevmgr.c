@@ -1503,7 +1503,7 @@ bint_alloc_for_pgdata(struct tdisk *tdisk, struct bdevint *bint, struct bintinde
 						goto out;
 					}
 
-					index_info->b_start = block;
+					SET_BLOCK(index_info->block, block, bint->bid);
 					index_get(index);
 					index_info->index = index;
 					index_info->index_write_id = index->write_id;

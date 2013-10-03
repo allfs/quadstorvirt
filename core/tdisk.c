@@ -3069,7 +3069,7 @@ amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_
 
 	SET_BLOCK(amap_table->amap_table_block, b_start, bint->bid);
 	atomic_set_bit_short(ATABLE_CSUM_CHECK_DONE, &amap_table->flags);
-	index_info->b_start = b_start;
+	index_info->block = amap_table->amap_table_block;
 	index_info->meta_type = INDEX_INFO_TYPE_AMAP_TABLE;
 	TAILQ_INSERT_HEAD(meta_index_info_list, index_info, i_list);
 
@@ -3783,7 +3783,7 @@ __free_block_refs(struct tdisk *tdisk, struct index_info_list *ref_index_info_li
 
 	index_list_insert(&index_sync_list, ref_index_info_list);
 	TAILQ_FOREACH(index_info, ref_index_info_list, i_list) {
-		process_delete_block(bdev_group_ddtable(tdisk->group), index_info->b_start, &index_info_list, &index_sync_list, NULL, TYPE_DATA_BLOCK);
+		process_delete_block(bdev_group_ddtable(tdisk->group), index_info->block, &index_info_list, &index_sync_list, NULL, TYPE_DATA_BLOCK);
 	}
 
 	index_sync_start_io(&index_sync_list, 1);
@@ -3852,7 +3852,7 @@ tdisk_add_block_ref(struct bdevgroup *group, uint64_t block, struct index_info_l
 		return -1;
 	}
 
-	index_info->b_start = block;
+	index_info->block = block;
 	TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
 	return 0;
 }
@@ -4658,7 +4658,7 @@ __pgdata_amap_io(struct tdisk *tdisk, struct amap_sync *amap_sync)
 }
 
 struct amap *
-amap_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_list *amap_sync_list)
+amap_locate_by_block(uint64_t block, struct amap_sync_list *amap_sync_list)
 {
 	struct amap_sync *amap_sync;
 	struct amap *amap;
@@ -4666,7 +4666,7 @@ amap_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_li
 	SLIST_FOREACH(amap_sync, amap_sync_list, s_list) {
 		amap = amap_sync->amap;
 
-		if (amap_bstart(amap) == b_start && amap_bint(amap) == bint)
+		if (amap->amap_block == block)
 			return amap;
 	}
 	debug_check(1);
@@ -4674,7 +4674,7 @@ amap_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_li
 }
 
 struct amap_table *
-amap_table_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_list *amap_sync_list)
+amap_table_locate_by_block(uint64_t block, struct amap_sync_list *amap_sync_list)
 {
 	struct amap_sync *amap_sync;
 	struct amap *amap;
@@ -4684,7 +4684,7 @@ amap_table_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_s
 		amap = amap_sync->amap;
 		amap_table = amap->amap_table;
 
-		if (amap_table_bstart(amap_table) == b_start && amap_table_bint(amap_table) == bint)
+		if (amap_table->amap_table_block == block)
 			return amap_table;
 	}
 	debug_check(1);
@@ -4699,9 +4699,7 @@ amap_allocated_by_thr(struct amap *amap, struct write_list *wlist)
 	TAILQ_FOREACH(index_info, &wlist->meta_index_info_list, i_list) {
 		if (index_info->meta_type != INDEX_INFO_TYPE_AMAP)
 			continue;
-		if (index_info->b_start != amap_bstart(amap))
-			continue;
-		if (index_info->index->subgroup->group->bint != amap_bint(amap))
+		if (index_info->block != amap->amap_block)
 			continue;
 		return 1;
 	}
@@ -4716,9 +4714,7 @@ amap_table_allocated_by_thr(struct amap_table *amap_table, struct write_list *wl
 	TAILQ_FOREACH(index_info, &wlist->meta_index_info_list, i_list) {
 		if (index_info->meta_type != INDEX_INFO_TYPE_AMAP_TABLE)
 			continue;
-		if (index_info->b_start != amap_table_bstart(amap_table))
-			continue;
-		if (index_info->index->subgroup->group->bint != amap_table_bint(amap_table))
+		if (index_info->block != amap_table->amap_table_block)
 			continue;
 		return 1;
 	}
@@ -4748,7 +4744,6 @@ tdisk_handle_meta_log(struct tdisk *tdisk, struct write_list *wlist, int error)
 	struct bdevgroup *group = bdev_group_get_log_group(tdisk->group);
 	struct log_page *log_page;
 	struct index_info *index_info;
-	struct bdevint *bint;
 	struct amap_table *amap_table;
 	struct amap_sync *amap_sync;
 	struct amap *amap;
@@ -4770,8 +4765,7 @@ tdisk_handle_meta_log(struct tdisk *tdisk, struct write_list *wlist, int error)
 			continue;
 		if (group->free_idx == V2_LOG_ENTRIES)
 			log_page = get_free_log_page(group, &wlist->log_list);
-		bint = index_info->index->subgroup->group->bint;
-		amap_table = amap_table_locate_by_block(index_info->b_start, bint, &wlist->amap_sync_list);
+		amap_table = amap_table_locate_by_block(index_info->block, &wlist->amap_sync_list);
 		fastlog_add_transaction(index_info, tdisk, amap_table_get_lba_start(amap_table->amap_table_id), log_page, group->free_idx);
 		atomic_set_bit_short(ATABLE_META_LOG_DONE, &amap_table->flags);
 		chan_wakeup(amap_table->amap_table_wait);
@@ -4803,8 +4797,7 @@ skip_amap_table_insert:
 
 		if (group->free_idx == V2_LOG_ENTRIES)
 			log_page = get_free_log_page(group, &wlist->log_list);
-		bint = index_info->index->subgroup->group->bint;
-		amap = amap_locate_by_block(index_info->b_start, bint, &wlist->amap_sync_list);
+		amap = amap_locate_by_block(index_info->block, &wlist->amap_sync_list);
 		fastlog_add_transaction(index_info, tdisk, amap_get_lba_start(amap->amap_id), log_page, group->free_idx);
 		atomic_set_bit_short(AMAP_META_LOG_DONE, &amap->flags);
 		chan_wakeup(amap->amap_wait);
@@ -5612,10 +5605,10 @@ pgdata_alloc_blocks(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdata
 			pause("outofspc", OUT_OF_SPACE_PAUSE);
 			return ERR_CODE_NOSPACE;
 		}
-		index_info->b_start = b_start;
-		TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
 		SET_BLOCK(pgdata->amap_block, b_start, bint->bid);
 		SET_BLOCK_SIZE(pgdata->amap_block, pgdata->write_size);
+		index_info->block = pgdata->amap_block;
+		TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
 		atomic_set_bit(DDBLOCK_ENTRY_DONE_ALLOC, &pgdata->flags);
 		debug_info("bstart %llu bid %u\n", (unsigned long long)b_start, bint->bid);
 		pgdata->index_info = index_info;

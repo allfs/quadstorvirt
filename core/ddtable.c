@@ -1809,7 +1809,7 @@ ddblock_info_get(struct ddtable *ddtable, struct ddtable_ddlookup_node *ddlookup
 		index_info_free(index_info);
 		return NULL;
 	}
-	index_info->b_start = BLOCK_BLOCKNR(entry_block);
+	index_info->block = entry_block;
 
 	ddtable_ddlookup_write_barrier(ddlookup);
 	entry = ddtable_ddlookup_get_block_entry(ddlookup, entry_idx);

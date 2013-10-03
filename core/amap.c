@@ -417,15 +417,15 @@ amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, str
 		return NULL;
 	}
 
-	index_info->b_start = b_start; 
-	index_info->meta_type = INDEX_INFO_TYPE_AMAP;
-	TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
-
 	amap->write_id = 1;
 	SET_BLOCK(amap->amap_block, b_start, bint->bid);
 	atomic_set_bit_short(AMAP_META_IO_PENDING, &amap->flags);
 	atomic_set_bit_short(AMAP_META_DATA_NEW, &amap->flags);
 	atomic_set_bit_short(AMAP_CSUM_CHECK_DONE, &amap->flags);
+
+	index_info->block = amap->amap_block;
+	index_info->meta_type = INDEX_INFO_TYPE_AMAP;
+	TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
 
 	amap_insert(amap_table, amap, amap_idx);
 	return amap;

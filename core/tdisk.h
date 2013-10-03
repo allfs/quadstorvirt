@@ -1378,8 +1378,8 @@ vdisk_ready(struct tdisk *tdisk)
 void free_block_refs(struct tdisk *tdisk, struct index_info_list *index_info_list);
 void pglist_calc_hash(struct tdisk *tdisk, struct pgdata **pglist, int pglist_cnt, int mirror_enabled, int use_refs);
 void check_pending_ddblocks(struct tdisk *tdisk, struct pgdata_wlist *pending_list, struct pgdata_wlist *dedupe_list, struct write_list *wlist, int verify_data, int *verify_count);
-struct amap * amap_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_list *amap_sync_list);
-struct amap_table * amap_table_locate_by_block(uint64_t b_start, struct bdevint *bint, struct amap_sync_list *amap_sync_list);
+struct amap * amap_locate_by_block(uint64_t block, struct amap_sync_list *amap_sync_list);
+struct amap_table * amap_table_locate_by_block(uint64_t block, struct amap_sync_list *amap_sync_list);
 
 void wlist_release_log_reserved(struct tdisk *tdisk, struct write_list *wlist);
 void pglist_check_free(struct pgdata **pglist, int pglist_cnt, int norefs);
