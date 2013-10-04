@@ -23,9 +23,6 @@
 #include "../common/commondefs.h"
 #include "ddblock.h"
 
-#define ILOOKUPS_ARRAY_MAX	512 /* Will span upto 32 TB for 512 sector size disks */
-
-
 /* For now a subgroup is just a place holder for indexes */
 #define SUBGROUP_INDEX_LIST_BUCKETS	8
 #define SUBGROUP_INDEX_LIST_MASK	(SUBGROUP_INDEX_LIST_BUCKETS - 1)
@@ -481,7 +478,7 @@ int bint_log_replay(struct bdevint *bint, struct bintindex *index, uint32_t entr
 
 void bint_reset_stats(struct bdevint *bint);
 static inline uint64_t
-bint_index_bstart(struct bdevint *bint, int index)
+bint_index_bstart(struct bdevint *bint, uint32_t index_id)
 {
 	uint32_t blocks;
 	uint32_t sector_mask = ((1U << bint->sector_shift) - 1);
@@ -489,7 +486,7 @@ bint_index_bstart(struct bdevint *bint, int index)
 	blocks = BINT_INDEX_META_SIZE >> bint->sector_shift;
 	if (BINT_INDEX_META_SIZE & sector_mask)
 		blocks++;
-	return (bint->index_b_start + (index * blocks));
+	return (bint->index_b_start + (index_id * blocks));
 }
 
 

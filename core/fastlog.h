@@ -102,9 +102,6 @@ write_log_entry_clear_block(struct write_log_entry *entry)
 	bzero(entry, sizeof(*entry));
 }
 
-#define TARGET_ID_BITS	12
-#define LBA_BITS	37 /* 512 TB max addressable */
-
 static inline struct write_log_entry *
 log_page_get_entry(struct log_page *log_page, int idx)
 {
@@ -138,7 +135,7 @@ v2_log_entry_set_block(struct v2_log_entry *entry, uint64_t new_block, uint16_t 
 
 #define V2_ENTRY_TARGET_ID(ent)		((ent->bit2 >> 20) & 0xFFF)
 #define V2_ENTRY_NEW_BLOCK(ent)		(ent->bit1 & 0x3FFFFFFFFFFFF)
-#define V2_ENTRY_LBA(ent)		((ent->bit2 & 0xFFFFF) << 14 | (ent->bit1 >> 50))
+#define V2_ENTRY_LBA(ent)		(((uint64_t)(ent->bit2 & 0xFFFFF) << 14) | (ent->bit1 >> 50))
 #define V2_ENTRY_AMAP_WRITE_ID(ent)	(((uint64_t)ent->amap1) | (((uint64_t)ent->amap2) << 32))
 #define V2_ENTRY_INDEX_WRITE_ID(ent)	(((uint64_t)ent->index1) | (((uint64_t)ent->index2) << 32))
 

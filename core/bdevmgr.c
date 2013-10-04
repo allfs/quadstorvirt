@@ -4052,6 +4052,19 @@ bdev_add_new(struct bdev_info *binfo)
 		goto err;
 	}
 
+	if (bint->sector_shift > LBA_SHIFT) {
+		debug_warn("Invalid bint, sector size > %u not supported\n", (1U << LBA_SHIFT));
+		goto err;
+	}
+
+	if (binfo->isnew) {
+		uint64_t max_blocks = (bint->usize >> bint->sector_shift);
+		if (max_blocks > (1ULL << BLOCK_BLOCKNR_BITS)) {
+			debug_warn("Invalid bint, sectors/blocks %llu exceeds max supported\n", (unsigned long long)max_blocks);
+			goto err;
+		}
+	}
+
 	bint->b_start = BDEV_META_OFFSET >> bint->sector_shift;
 	if (!binfo->isnew)
 	{
