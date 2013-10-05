@@ -808,7 +808,7 @@ bdev_sync(iodev_t *b_dev)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0))
 	blkdev_issue_flush(b_dev, GFP_NOIO, NULL);
 #else
-	__blkdev_issue_flush(b_dev, GFP_NOIO, NULL);
+	blkdev_issue_flush(b_dev, NULL);
 #endif
 }
 
