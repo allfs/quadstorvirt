@@ -1,3 +1,13 @@
+Release 3.0.49
+	* Async load of deduplication tables. This was removed sometime back
+	  due to performance issues.
+	* Fixed possible data corruptions with VDisks greater than 16TB in size
+	  due to log entries read resulting in a truncated LBA. log entries are
+	  read on a prior system panic, unclean shutdown etc.
+	* Added checks for unsupported physical disk sizes (> 128 TB) and 
+	  unsupported sector sizes (> 4096)
+	* Further improvements to dedupe tables sync time during shutdown
+
 Release 3.0.48
 	* Improve dedupe tables sync time during shutdown
 	* Fixed missing tdisk reference decrement during log pages replay

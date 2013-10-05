@@ -1,7 +1,7 @@
-%define libvers 3.0.48
+%define libvers 3.0.49
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-core 
-Version: 3.0.48
+Version: 3.0.49
 Release: sles11sp1
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -105,7 +105,7 @@ cd $RPM_BUILD_ROOT/quadstor/lib && ln -fs libtlmsg.so.%{libvers} libtlmsg.so
 
 	cp -f /srv/www/htdocs/qsindex.html /srv/www/htdocs/index.html
 	mkdir -p /quadstor/etc
-	echo "3.0.48 for SLES 11 SP1" > /quadstor/etc/quadstor-core-version
+	echo "3.0.49 for SLES 11 SP1" > /quadstor/etc/quadstor-core-version
 	exit 0
 
 %preun
