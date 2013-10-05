@@ -67,7 +67,6 @@ struct ddtable_ddlookup_node {
 	struct ddlookup_list *ddlookup_list;
 	LIST_ENTRY(ddtable_ddlookup_node) n_list;
 	SLIST_ENTRY(ddtable_ddlookup_node) p_list;
-	TAILQ_ENTRY(ddtable_ddlookup_node) t_list; /* table list */
 	TAILQ_ENTRY(ddtable_ddlookup_node) s_list; /* sync list */
 	sx_t *ddlookup_lock;
 	wait_chan_t *ddlookup_wait;
@@ -121,13 +120,10 @@ struct ddtable {
 	uint32_t max_roots;
 	atomic_t sync_count;
 	mtx_t *ddtable_lock;
-	TAILQ_HEAD(, ddtable_ddlookup_node) ddlookup_list;
 	TAILQ_HEAD(, ddtable_ddlookup_node) sync_list;
 	wait_chan_t *sync_wait;
-	wait_chan_t *free_wait;
 	wait_chan_t *load_wait;
 	kproc_t *sync_task;
-	kproc_t *free_task;
 	kproc_t *load_task;
 };
 
@@ -136,6 +132,8 @@ struct ddtable_global {
 	uint64_t ddlookup_count;
 	uint64_t max_ddlookup_count;
 	int max_ddtables;
+	uint32_t max_roots;
+	int peer_count;
 	atomic_t cur_ddtables;
 	int max_log_disks;
 	atomic_t cur_log_disks;
@@ -181,13 +179,28 @@ ddtable_global_ddlookup_decr(void)
 	mtx_unlock(ddtable_global.global_lock);
 }
 
+static inline void
+ddtable_global_update_peer_count(struct ddtable *ddtable)
+{
+	int ddtable_count = atomic_read(&ddtable_global.cur_ddtables);
+
+	if (!ddtable_count)
+		ddtable_count = 1;
+
+	if (ddtable->max_roots > ddtable_global.max_roots)
+		ddtable_global.max_roots = ddtable->max_roots;
+	ddtable_global.peer_count = ddtable_global.max_ddlookup_count / (ddtable_global.max_roots * ddtable_count);
+	debug_info("max ddtables %d max ddlookup_count %llu max roots %u peer count %d\n", ddtable_global.max_ddtables, (unsigned long long)ddtable_global.max_ddlookup_count, ddtable_global.max_roots, ddtable_global.peer_count);
+}
+
 static inline int
-ddtable_global_can_add_ddlookup(void)
+ddtable_global_can_add_ddlookup(int peer_count)
 {
 	int ret;
 
 	mtx_lock(ddtable_global.global_lock);
-	ret = ddtable_global.ddlookup_count < ddtable_global.max_ddlookup_count;
+	debug_info("ddlookup count %llu max ddlookup count %llu peer count %d global peer count %d\n", (unsigned long long)ddtable_global.ddlookup_count, (unsigned long long)ddtable_global.max_ddlookup_count, peer_count, ddtable_global.peer_count);
+	ret = (ddtable_global.ddlookup_count < ddtable_global.max_ddlookup_count) && (peer_count < ddtable_global.peer_count);
 	mtx_unlock(ddtable_global.global_lock);
 	return ret;
 }
@@ -203,8 +216,6 @@ struct ddtable_stats {
 	uint32_t ddlookups_synced;
 	uint32_t ddlookups_alloced;
 	uint32_t ddlookups_freed;
-	uint32_t free_thread;
-	uint32_t free_run;
 	uint32_t sync_thread;
 	uint32_t sync_run;
 	uint32_t hash_remove_misses;
@@ -431,7 +442,6 @@ void node_insert(struct ddtable *ddtable, struct ddtable_node *node, struct ddta
 struct ddlookup_list * ddlookup_list_get(struct ddtable *ddtable, uint32_t id);
 struct ddtable_ddlookup_node * ddtable_sync_list_first(struct ddtable *ddtable);
 struct ddtable_ddlookup_node * ddtable_sync_list_next(struct ddtable *ddtable, struct ddtable_ddlookup_node *prev);
-void node_ddtable_ha_takeover(struct bdevgroup *group);
 void ddtable_check_count(struct ddtable *ddtable);
 
 #endif

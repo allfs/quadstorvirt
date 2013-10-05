@@ -110,7 +110,6 @@ int bdev_groups_replay_write_logs(void);
 int bdev_groups_reset_write_logs(void);
 void bdev_groups_setup_log_list(void);
 void bdev_groups_ddtable_wait_sync_busy(void);
-void bdev_groups_node_ddtable_ha_takeover(void);
 
 struct bdevint * bdev_group_get_ha_bint(void);
 void bdev_group_set_ha_bint(struct bdevint *bint);

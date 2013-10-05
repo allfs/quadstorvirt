@@ -113,19 +113,6 @@ bdev_groups_ddtable_wait_sync_busy(void)
 }
 
 void
-bdev_groups_node_ddtable_ha_takeover(void)
-{
-	struct bdevgroup *group;
-
-	SLIST_FOREACH(group, &group_list, g_list) {
-		if (!group->dedupemeta)
-			continue;
-
-		node_ddtable_ha_takeover(group);
-	}
-}
-
-void
 bdev_groups_ddtable_exit(void)
 {
 	struct bdevgroup *group;

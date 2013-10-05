@@ -3817,7 +3817,6 @@ bint_load_post(struct bdevint *bint)
 void
 bdevs_load_ddtables_post(void)
 {
-#if 0
 	struct bdevint *bint;
 	int i;
 
@@ -3828,7 +3827,6 @@ bdevs_load_ddtables_post(void)
 
 		ddtable_load_thr_start(&bint->group->ddtable);
 	}
-#endif
 }
 
 int

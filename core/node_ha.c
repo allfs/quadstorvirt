@@ -1491,8 +1491,6 @@ node_ha_takeover(struct ha_config *ha_config, int graceful)
 	debug_info("tdisk amap syncs\n");
 	node_ha_tdisk_amaps_sync();
 
-	bdev_groups_node_ddtable_ha_takeover();
-
 	debug_info("reset log entries\n");
 #if 0
 	/* replay logs */
