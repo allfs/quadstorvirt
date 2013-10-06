@@ -113,7 +113,7 @@ list_mirror_configuration(void)
 	FILE *fp;
 	int fd;
 	int retval;
-	char src[50], dest[50], pool[50], daddr[30], status[64], role[20];
+	char src[TDISK_MAX_NAME_LEN], dest[TDISK_MAX_NAME_LEN], pool[GROUP_MAX_NAME_LEN], daddr[30], status[64], role[20];
 
 	strcpy(tempfile, MKSTEMP_PREFIX);
 	fd = mkstemp(tempfile);
@@ -155,7 +155,7 @@ list_mirror_configuration(void)
 
 int main(int argc, char *argv[])
 {
-	char src[50], dest[50], dest_host[30], pool[50], role[30], reply[256];
+	char src[TDISK_MAX_NAME_LEN], dest[TDISK_MAX_NAME_LEN], dest_host[30], pool[GROUP_MAX_NAME_LEN], role[30], reply[256];
 	int c;
 	int detach = 0, list = 0, force = 0;
 
@@ -176,13 +176,13 @@ int main(int argc, char *argv[])
 			detach = 1;
 			break;
 		case 'g':
-			strncpy(pool, optarg, 40);
+			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		case 's':
-			strncpy(src, optarg, 40);
+			strncpy(src, optarg, TDISK_NAME_LEN);
 			break;
 		case 'd':
-			strncpy(dest, optarg, 40); 
+			strncpy(dest, optarg, TDISK_NAME_LEN); 
 			break;
 		case 'r':
 			strncpy(dest_host, optarg, 20); 

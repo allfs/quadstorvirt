@@ -156,7 +156,7 @@ dump_qclone_list(int prune, int extended)
 
 int main(int argc, char *argv[])
 {
-	char src[50], dest[50], pool[50];
+	char src[TDISK_MAX_NAME_LEN], dest[TDISK_MAX_NAME_LEN], pool[GROUP_MAX_NAME_LEN];
 	int c;
 	int cancel = 0;
 	int list = 0;
@@ -187,13 +187,13 @@ int main(int argc, char *argv[])
 			list = 1;
 			break;
 		case 's':
-			strncpy(src, optarg, 40);
+			strncpy(src, optarg, TDISK_NAME_LEN);
 			break;
 		case 'd':
-			strncpy(dest, optarg, 40); 
+			strncpy(dest, optarg, TDISK_NAME_LEN); 
 			break;
 		case 'g':
-			strncpy(pool, optarg, 40);
+			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		default:
 			print_usage();

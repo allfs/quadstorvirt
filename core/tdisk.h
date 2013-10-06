@@ -161,7 +161,7 @@ struct clone_info {
 	uint8_t  in_sync;
 	uint8_t  mirror_role;
 	char mirror_vdisk[TDISK_MAX_NAME_LEN];
-	char mirror_group[TDISK_MAX_NAME_LEN];
+	char mirror_group[GROUP_MAX_NAME_LEN];
 	struct job_stats stats;
 	STAILQ_ENTRY(clone_info) i_list;
 };

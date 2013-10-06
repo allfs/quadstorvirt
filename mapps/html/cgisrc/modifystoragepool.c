@@ -34,7 +34,7 @@ int main()
 	group_id = atoi(tmp);
 
 	name = cgi_val(entries, "groupname");
-	if (!name || strlen(name) > TDISK_NAME_LEN)
+	if (!name || strlen(name) > GROUP_NAME_LEN)
 		cgi_print_header_error_page("Invalid CGI parameters passed\n");
 
 	retval = tl_client_rename_pool(group_id, name, reply);

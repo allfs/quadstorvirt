@@ -960,6 +960,21 @@ do {								\
 		tdk->tdkvar = 0;				\
 } while (0)
 
+static void
+raw_index_set_name(struct raw_index_data *raw_data, uint8_t *name)
+{
+	int name_len, min_len;
+
+	name_len = strlen(name) + 1;
+	min_len = min_t(int, sizeof(raw_data->name), name_len);
+	memcpy(raw_data->name, name, min_len);
+	name_len -= min_len;
+	if (!name_len)
+		return;
+	name += min_len;
+	memcpy(raw_data->ext_name, name, name_len);
+}
+
 int
 __tdisk_sync(struct tdisk *tdisk, int free_alloc)
 {
@@ -999,6 +1014,7 @@ __tdisk_sync(struct tdisk *tdisk, int free_alloc)
 	TDISK_SET_PROP(tdisk, enable_compression, raw_data, VDISK_ENABLE_COMPRESSION);
 	TDISK_SET_PROP(tdisk, enable_verify, raw_data, VDISK_ENABLE_VERIFY);
 	memcpy(raw_data->serialnumber, tdisk->unit_identifier.serial_number, 32);
+	raw_index_set_name(raw_data, tdisk->name);
 	raw_data->threshold = tdisk->threshold;
 	memcpy(&raw_data->stats, &tdisk->stats, sizeof(tdisk->stats));
 	memcpy(&raw_data->mirror_state, &tdisk->mirror_state, sizeof(tdisk->mirror_state));
@@ -1753,7 +1769,7 @@ tdisk_initialize_index(struct tdisk *tdisk, uint8_t *name)
 	tdisk->metadata = page;
 	raw_data = (struct raw_index_data *)(vm_pg_address(page));
 	memcpy(raw_data->magic, DISK_INDEX_MAGIC, strlen(DISK_INDEX_MAGIC));
-	strcpy(raw_data->name, name);
+	raw_index_set_name(raw_data, name);
 	memcpy(raw_data->serialnumber, tdisk->unit_identifier.serial_number, 32);
 	raw_data->group_id = tdisk->group->group_id;
 	raw_data->target_id = tdisk->target_id;

@@ -369,4 +369,12 @@ serialnumber_valid(char *naa)
 	}
 	return 1;
 }
+
+static inline void
+mirror_state_get_vdisk_name(struct mirror_state *mirror_state, char *name)
+{
+	memcpy(name, mirror_state->mirror_vdisk, sizeof(mirror_state->mirror_vdisk));
+	memcpy(name + sizeof(mirror_state->mirror_vdisk), mirror_state->mirror_vdisk_ext, sizeof(mirror_state->mirror_vdisk_ext));
+}
+
 #endif /* API_COMMON_H_ */

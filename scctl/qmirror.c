@@ -162,7 +162,7 @@ dump_qmirror_list(int prune, int extended)
 	struct job_list job_list;
 	struct job_info *job_info;
 	struct job_stats *stats;
-	char fmt[256];
+	char fmt[512];
 	int retval, msg_id;
 	int src_len, src_addr_len, dest_len, dest_addr_len, progress_len;
 	char mapped[32], deduped[32];
@@ -217,8 +217,8 @@ dump_qmirror_list(int prune, int extended)
 
 int main(int argc, char *argv[])
 {
-	char src[50], dest[50], dest_host[30], src_host[30], pool[50];
-	char clone[50];
+	char src[TDISK_MAX_NAME_LEN], dest[TDISK_MAX_NAME_LEN], dest_host[30], src_host[30], pool[GROUP_MAX_NAME_LEN];
+	char clone[TDISK_MAX_NAME_LEN];
 	int c;
 	int cancel = 0;
 	int list = 0;
@@ -259,16 +259,16 @@ int main(int argc, char *argv[])
 			list = 1;
 			break;
 		case 'g':
-			strncpy(pool, optarg, 40);
+			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		case 's':
-			strncpy(src, optarg, 40);
+			strncpy(src, optarg, TDISK_NAME_LEN);
 			break;
 		case 'd':
-			strncpy(dest, optarg, 40); 
+			strncpy(dest, optarg, TDISK_NAME_LEN); 
 			break;
 		case 'q':
-			strncpy(clone, optarg, 40); 
+			strncpy(clone, optarg, TDISK_NAME_LEN); 
 			break;
 		case 'h':
 			strncpy(src_host, optarg, 20); 
@@ -302,4 +302,3 @@ int main(int argc, char *argv[])
 	}
 	return 0;
 }
-

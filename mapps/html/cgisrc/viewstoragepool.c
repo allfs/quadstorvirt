@@ -153,7 +153,7 @@ int main()
 	printf ("<tr>\n");
 	printf ("<td>Pool Name:</td>\n");
 	printf ("<td>");
-	cgi_print_text_input("groupname", 15, name, TDISK_NAME_LEN);
+	cgi_print_text_input("groupname", 15, name, GROUP_NAME_LEN);
 	printf ("</td>\n");
 	printf ("</tr>\n");
 	printf("</table>\n");

@@ -131,7 +131,7 @@ spconfig_list_pools(void)
 
 int main(int argc, char *argv[])
 {
-	char pool[50];
+	char pool[GROUP_MAX_NAME_LEN];
 	int c;
 	int add = 0, delete = 0, list = 0;
 	int dedupemeta = 0, logdata = 0;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "g:axldo")) != -1) {
 		switch (c) {
 		case 'g':
-			strncpy(pool, optarg, 36);
+			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		case 'a':
 			add = 1;

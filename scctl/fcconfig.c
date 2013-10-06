@@ -73,7 +73,7 @@ dump_fc_rule_list(void)
 	int fd;
 	int retval;
 	int rule;
-	char vdisk[40];
+	char vdisk[TDISK_MAX_NAME_LEN];
 	char wwpn[64];
 
 	strcpy(tempfile, MKSTEMP_PREFIX);

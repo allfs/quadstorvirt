@@ -207,7 +207,7 @@ bdev_group_rename(struct group_conf *group_conf)
 {
 	struct bdevgroup *group;
 	struct bdevint *bint;
-	char prev_name[TDISK_MAX_NAME_LEN];
+	char prev_name[GROUP_MAX_NAME_LEN];
 	int retval;
 
 	group = bdev_group_locate(group_conf->group_id, NULL);

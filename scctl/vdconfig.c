@@ -261,8 +261,8 @@ vdconfig_list_vdisks(void)
 
 int main(int argc, char *argv[])
 {
-	char src[50];
-	char pool[50];
+	char src[TDISK_MAX_NAME_LEN];
+	char pool[GROUP_MAX_NAME_LEN];
 	char serialnumber[50];
 	char reply[512];
 	int c, retval;
@@ -285,13 +285,13 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "v:s:g:t:n:flxaedcym")) != -1) {
 		switch (c) {
 		case 'v':
-			strncpy(src, optarg, 36);
+			strncpy(src, optarg, TDISK_NAME_LEN);
 			break;
 		case 's':
 			size = strtoull(optarg, NULL, 10);
 			break;
 		case 'g':
-			strncpy(pool, optarg, 36);
+			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		case 't':
 			threshold = atoi(optarg);

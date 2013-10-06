@@ -22,7 +22,7 @@
 #include "tdisk.h"
 
 struct bdevgroup {
-	char name[TDISK_MAX_NAME_LEN];
+	char name[GROUP_MAX_NAME_LEN];
 	SLIST_HEAD(, bdevint) alloc_list;
 	TAILQ_HEAD(, log_page) glog_list;
 	struct bdev_log_list bdev_log_list;

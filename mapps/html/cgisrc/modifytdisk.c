@@ -29,6 +29,7 @@ int main()
 	struct mirror_state mirror_state;
 	struct sockaddr_in in_addr;
 	char status[256];
+	char name[TDISK_MAX_NAME_LEN];
 	char tmpstr[32];
 
         memset(&in_addr, 0, sizeof(in_addr));
@@ -194,9 +195,10 @@ int main()
 		printf ("<input type=\"hidden\" name=\"op\" value=\"2\">\n");
 		printf("<table class=\"ctable\">\n");
 
+		mirror_state_get_vdisk_name(&mirror_state, name);
 		printf ("<tr>\n");
 		printf ("<td>Destination VDisk:</td>\n");
-		printf ("<td>%s</td>\n", mirror_state.mirror_vdisk);
+		printf ("<td>%s</td>\n", name);
 		printf ("</tr>\n");
 
 		printf ("<tr>\n");

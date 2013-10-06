@@ -23,7 +23,7 @@
 
 struct group_spec {
 	uint32_t group_id;
-	char name[TDISK_MAX_NAME_LEN];
+	char name[GROUP_MAX_NAME_LEN];
 	int dedupemeta;
 	int logdata;
 };

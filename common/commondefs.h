@@ -35,8 +35,11 @@ struct mdaemon_info {
 	char sys_rid[TL_RID_MAX];
 };
 
-#define TDISK_NAME_LEN		36
-#define TDISK_MAX_NAME_LEN	40
+#define TDISK_NAME_LEN		128
+#define TDISK_MAX_NAME_LEN	136
+#define TDISK_MIN_NAME_LEN	40
+#define GROUP_NAME_LEN		32
+#define GROUP_MAX_NAME_LEN	40
 
 struct iscsiconf {
 	uint32_t target_id;
@@ -93,11 +96,12 @@ struct mirror_state {
 	uint32_t pad3;
 	uint32_t mirror_src_ipaddr;
 	uint32_t mirror_ipaddr;
-	char mirror_vdisk[TDISK_MAX_NAME_LEN];
-	char mirror_group[TDISK_MAX_NAME_LEN];
+	char mirror_vdisk[40];
+	char mirror_group[GROUP_MAX_NAME_LEN];
 	uint64_t pad4;
 	uint64_t pad5;
 	char sys_rid[40];
+	char mirror_vdisk_ext[96];
 } __attribute__ ((__packed__));
 
 enum {
@@ -109,7 +113,7 @@ struct tdisk_info {
 	uint64_t block;
 	uint64_t size;
 	char name[TDISK_MAX_NAME_LEN];
-	char group_name[TDISK_MAX_NAME_LEN];
+	char group_name[GROUP_MAX_NAME_LEN];
 	char serialnumber[36];
 	struct mirror_state mirror_state;
 	uint32_t target_id;
@@ -203,7 +207,7 @@ struct raw_bdevint {
 	uint64_t pad10;
 	struct bint_stats stats;
 	char mrid[TL_RID_MAX];
-	char group_name[TDISK_MAX_NAME_LEN];
+	char group_name[GROUP_MAX_NAME_LEN];
 	uint8_t ext_serialnumber[224];
 } __attribute__ ((__packed__));
 
@@ -224,7 +228,7 @@ raw_bint_serial_match(struct raw_bdevint *raw_bint, char *serialnumber, int seri
 }
 
 struct group_conf {
-	char name[TDISK_MAX_NAME_LEN];
+	char name[GROUP_MAX_NAME_LEN];
 	uint32_t group_id;
 	int dedupemeta;
 	int logdata;
@@ -284,6 +288,7 @@ struct raw_index_data {
 	uint64_t table_pad[INDEX_TABLE_PAD_MAX]; 
 	struct tdisk_stats stats;
 	struct mirror_state mirror_state;
+	uint8_t ext_name[96];
 } __attribute__ ((__packed__));
 
 struct node_config {
@@ -365,7 +370,7 @@ struct clone_config {
 	uint8_t  mirror_type;
 	uint8_t  mirror_role;
 	char mirror_vdisk[TDISK_MAX_NAME_LEN];
-	char mirror_group[TDISK_MAX_NAME_LEN];
+	char mirror_group[GROUP_MAX_NAME_LEN];
 	char sys_rid[40];
 	char errmsg[256];
 	struct job_stats stats;

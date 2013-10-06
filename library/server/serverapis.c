@@ -35,7 +35,7 @@ struct tdisk_info *tdisk_list[TL_MAX_TDISKS];
 struct mirror_check_list mirror_check_list = TAILQ_HEAD_INITIALIZER(mirror_check_list);  
 struct fc_rule_list fc_rule_list = TAILQ_HEAD_INITIALIZER(fc_rule_list);  
 
-char default_group[TDISK_MAX_NAME_LEN];
+char default_group[GROUP_MAX_NAME_LEN];
 struct tl_blkdevinfo *bdev_list[TL_MAX_DISKS];
 char sys_rid[TL_RID_MAX];
 pthread_mutex_t daemon_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -659,8 +659,8 @@ load_quadstor_conf(void)
 			DEBUG_WARN_SERVER("Default pool name %s already in use\n", buf);
 			return 0;
 		}
-		if (strlen(buf) >= TDISK_MAX_NAME_LEN) {
-			DEBUG_WARN_SERVER("Default pool name %s length exceeds maximum %d\n", buf, TDISK_MAX_NAME_LEN - 1);
+		if (strlen(buf) >= GROUP_MAX_NAME_LEN) {
+			DEBUG_WARN_SERVER("Default pool name %s length exceeds maximum %d\n", buf, GROUP_MAX_NAME_LEN - 1);
 			return 0;
 		}
 		strcpy(default_group, buf);
@@ -1625,6 +1625,7 @@ __list_sync_mirrors(char *filepath)
 	struct mirror_state *mirror_state;
 	struct sockaddr_in in_addr;
 	char status[64];
+	char name[TDISK_MAX_NAME_LEN];
 	int retval, i;
 
 	fp = fopen(filepath, "w");
@@ -1655,7 +1656,8 @@ __list_sync_mirrors(char *filepath)
 
 		get_mirror_status_str(mirror_state, status);
 
-		fprintf(fp, "dest: %s src: %s pool: %s daddr: %s role: %s status: %s\n", mirror_state->mirror_vdisk, tdisk_info->name, mirror_state->mirror_group, inet_ntoa(in_addr.sin_addr), mirror_role_str(mirror_state->mirror_role), status);
+		mirror_state_get_vdisk_name(mirror_state, name);
+		fprintf(fp, "dest: %s src: %s pool: %s daddr: %s role: %s status: %s\n", name, tdisk_info->name, mirror_state->mirror_group, inet_ntoa(in_addr.sin_addr), mirror_role_str(mirror_state->mirror_role), status);
 	}
 	fclose(fp);
 	return 0;
@@ -1685,7 +1687,7 @@ tl_server_list_sync_mirrors(struct tl_comm *comm, struct tl_msg *msg)
 static int
 tl_server_set_vdisk_role(struct tl_comm *comm, struct tl_msg *msg)
 {
-	char src[40];
+	char src[TDISK_MAX_NAME_LEN];
 	char errmsg[256];
 	int mirror_role, retval, force, i;
 	struct tdisk_info *tdisk_info;
@@ -1740,7 +1742,7 @@ senderr:
 static int
 tl_server_vdisk_resize(struct tl_comm *comm, struct tl_msg *msg)
 {
-	char src[40];
+	char src[TDISK_MAX_NAME_LEN];
 	char errmsg[256];
 	unsigned long long size;
 	struct tdisk_info *tdisk_info;
@@ -1944,7 +1946,7 @@ int
 tl_server_dev_mapping(struct tl_comm *comm, struct tl_msg *msg)
 {
 	char path[256];
-	char name[64];
+	char name[TDISK_MAX_NAME_LEN];
 	int retval, serial_len, i;
 	struct tdisk_info *tdisk_info, *ret = NULL;
 	char serialnumber[256];
@@ -2304,7 +2306,7 @@ tl_server_rename_pool(struct tl_comm *comm, struct tl_msg *msg)
 	char errmsg[256];
 	struct group_info *group_info;
 	struct group_conf group_conf;
-	char name[TDISK_MAX_NAME_LEN], newname[TDISK_MAX_NAME_LEN];
+	char name[GROUP_MAX_NAME_LEN], newname[GROUP_MAX_NAME_LEN];
 	uint32_t group_id;
 	int retval;
 
@@ -2324,8 +2326,8 @@ tl_server_rename_pool(struct tl_comm *comm, struct tl_msg *msg)
 		return 0;
 	}
 
-	if (strlen(newname) > TDISK_NAME_LEN) {
-		snprintf(errmsg, sizeof(errmsg), "Pool name can be upto a maximum of %d characters", TDISK_NAME_LEN);
+	if (strlen(newname) > GROUP_NAME_LEN) {
+		snprintf(errmsg, sizeof(errmsg), "Pool name can be upto a maximum of %d characters", GROUP_NAME_LEN);
 		goto senderr;
 	}
 
@@ -2418,8 +2420,8 @@ tl_server_add_group(struct tl_comm *comm, struct tl_msg *msg)
 		goto senderr;
 	}
 
-	if (strlen(groupname) > TDISK_NAME_LEN) {
-		snprintf(errmsg, sizeof(errmsg), "Pool name can be upto a maximum of %d characters", TDISK_NAME_LEN);
+	if (strlen(groupname) > GROUP_NAME_LEN) {
+		snprintf(errmsg, sizeof(errmsg), "Pool name can be upto a maximum of %d characters", GROUP_NAME_LEN);
 		goto senderr;
 	}
 
@@ -2489,7 +2491,7 @@ senderr:
 static int
 tl_server_add_target(struct tl_comm *comm, struct tl_msg *msg)
 {
-	char targetname[256];
+	char targetname[TDISK_MAX_NAME_LEN];
 	char errmsg[256];
 	unsigned long long targetsize;
 	int lba_shift;

@@ -86,6 +86,7 @@ scan_vdisks(void)
 	char buf[4096];
 	struct raw_index_data *raw_data;
 	char msg[256];
+	char tdisk_name[TDISK_MAX_NAME_LEN];
 	struct tdisk_info info;
 	PGconn *conn;
 	struct group_info *group_info;
@@ -113,22 +114,24 @@ scan_vdisks(void)
 			if (memcmp(raw_data->magic, DISK_INDEX_MAGIC, strlen(DISK_INDEX_MAGIC)))
 				continue;
 
-			if (target_name_exists((char *)(raw_data->name)))
+			memcpy(tdisk_name, raw_data->name, sizeof(raw_data->name));
+			memcpy(tdisk_name + sizeof(raw_data->name), raw_data->ext_name, sizeof(raw_data->ext_name));
+			if (target_name_exists(tdisk_name))
 				continue;
 
 			if (!disk->mrid[0]) {
-				sprintf(msg, "Add VDisk with name %s ? ", raw_data->name);
+				sprintf(msg, "Add VDisk with name %s ? ", tdisk_name);
 				retval = tl_client_prompt_user(msg);
 				if (retval != 1)
 					continue;
 			}
 
-			fprintf(stdout, "Adding VDisk %s\n", raw_data->name);
+			fprintf(stdout, "Adding VDisk %s\n", tdisk_name);
 			if (testmode)
 				continue;
 
 			memset(&info, 0, sizeof(info));
-			strcpy(info.name, (char *)(raw_data->name));
+			strcpy(info.name, tdisk_name);
 			info.size = raw_data->size;
 			info.lba_shift = raw_data->lba_shift;
 			info.target_id = raw_data->target_id;

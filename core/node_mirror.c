@@ -2230,6 +2230,21 @@ out:
 	return 0;
 }
 
+static void
+mirror_state_set_vdisk_name(struct mirror_state *mirror_state, char *name)
+{
+	int name_len, min_len;
+
+	name_len = strlen(name) + 1;
+	min_len = min_t(int, sizeof(mirror_state->mirror_vdisk), name_len);
+	memcpy(mirror_state->mirror_vdisk, name, min_len);
+	name_len -= min_len;
+	if (!name_len)
+		return;
+	name += min_len;
+	memcpy(mirror_state->mirror_vdisk_ext, name, name_len);
+}
+
 int
 tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys_rid)
 {
@@ -2252,7 +2267,7 @@ tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys
 	mirror_state->mirror_target_id = tdisk->target_id;
 	mirror_state->mirror_src_ipaddr = clone_info->stats.src_ipaddr;
 	mirror_state->mirror_ipaddr = clone_info->stats.dest_ipaddr;
-	strcpy(mirror_state->mirror_vdisk, tdisk_name(tdisk));
+	mirror_state_set_vdisk_name(mirror_state, tdisk_name(tdisk));
 	strcpy(mirror_state->mirror_group, tdisk->group->name);
 	strcpy(mirror_state->sys_rid, sys_rid);
 
@@ -2266,7 +2281,7 @@ tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys
 
 	memcpy(&tdisk->mirror_state, mirror_state, sizeof(*mirror_state));
 	tdisk->mirror_state.mirror_target_id = clone_info->dest_target_id;
-	strcpy(tdisk->mirror_state.mirror_vdisk, clone_info->mirror_vdisk);
+	mirror_state_set_vdisk_name(&tdisk->mirror_state, clone_info->mirror_vdisk);
 	strcpy(tdisk->mirror_state.mirror_group, clone_info->mirror_group);
 
 	tdisk_mirror_connect(tdisk);
