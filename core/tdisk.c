@@ -2473,6 +2473,7 @@ copy_current_rw_error_recovery_page(uint8_t *buffer, int min_len)
 struct control_mode_page control_mode_page = {
 	.page_code = CONTROL_MODE_PAGE,
 	.page_length = 0x0A,
+	.tst = 0x20,
 	.tas = 0x40,
 };
 
