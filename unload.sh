@@ -3,6 +3,10 @@ set -x
 
 root=`pwd`
 
+pkill ietd
+rm -f /var/run/iet.sock
+sleep 2
+
 cd $root/scctl
 ./scctl -u
 sleep 4
