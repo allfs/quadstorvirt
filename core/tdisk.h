@@ -95,6 +95,7 @@ struct lba_write {
 TAILQ_HEAD(lba_list, lba_write);
 
 #define THRESHOLD_UA_MAX		4
+#define THRESHOLD_UA_INTERVAL		5000
 #define THRESHOLD_SET_SIZE		8 	/* 1 MB */
 #define THRESHOLD_SET_SIZE_LEGACY	11 	/* 1 MB */
 #define OUT_OF_SPACE_PAUSE		3000
@@ -115,6 +116,7 @@ struct initiator_state {
 	atomic16_t threshold_ua;
 	atomic_t refs;
 	uint32_t timestamp;
+	uint32_t threshold_ua_timestamp;
 	SLIST_ENTRY(initiator_state) i_list;
 	SLIST_HEAD(, sense_info) sense_list;
 	wait_chan_t *istate_wait;

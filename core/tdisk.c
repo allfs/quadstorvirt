@@ -5510,8 +5510,9 @@ tdisk_check_threshold(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 	uint64_t avail, threshold_min, threshold_cur, threshold_max;
 	struct initiator_state *istate;
 	int set_size = tdisk->lba_shift == LBA_SHIFT ? THRESHOLD_SET_SIZE : THRESHOLD_SET_SIZE_LEGACY;
-	int retval;
+	int retval, threshold_done;
 	struct usr_notify notify_msg;
+	unsigned long elapsed;
 
 	if (!tdisk->threshold || !ctio || ctio->init_int == TARGET_INT_MIRROR || ctio_in_sync(ctio))
 		return;
@@ -5527,9 +5528,12 @@ tdisk_check_threshold(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 		return;
 	}
 
-	threshold_cur = ((tdisk->end_lba << tdisk->lba_shift) / 100) * (tdisk->threshold - (atomic16_read(&istate->threshold_ua) * 2));
-	if (avail > threshold_cur)
-		return;
+	threshold_done = ((int)tdisk->threshold) - (atomic16_read(&istate->threshold_ua) * 2);
+	if (threshold_done > 0) {
+		threshold_cur = ((tdisk->end_lba << tdisk->lba_shift) / 100) * threshold_done;
+		if (avail > threshold_cur)
+			return;
+	}
 
 	tdisk_reservation_lock(tdisk);
 	if (atomic16_read(&istate->threshold_ua) > THRESHOLD_UA_MAX) {
@@ -5543,10 +5547,17 @@ tdisk_check_threshold(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 		return;
 	}
 
+	elapsed = get_elapsed(istate->threshold_ua_timestamp);
+	if (elapsed && elapsed <= ticks_to_msecs(THRESHOLD_UA_INTERVAL)) {
+		tdisk_reservation_unlock(tdisk);
+		return;
+	}
+
 	bzero(&notify_msg, sizeof(notify_msg));
 	sprintf(notify_msg.notify_msg, "%llu %d",  (unsigned long long)avail, tdisk->threshold);
 	node_usr_notify_msg(USR_NOTIFY_VDISK_THRESHOLD, tdisk->target_id, &notify_msg);
 	atomic16_inc(&istate->threshold_ua);
+	istate->threshold_ua_timestamp = ticks;
 	device_add_sense(ctio->istate, SSD_CURRENT_ERROR, SSD_KEY_UNIT_ATTENTION, offsetof(struct logical_block_provisioning_mode_page, desc), THIN_PROVISIONING_SOFT_THRESHOLD_REACHED_ASC, THIN_PROVISIONING_SOFT_THRESHOLD_REACHED_ASCQ);
 	tdisk_reservation_unlock(tdisk);
 }
