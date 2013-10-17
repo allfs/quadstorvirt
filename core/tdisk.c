@@ -6391,14 +6391,15 @@ sync_amap_post:
 	ctio->dxfer_len = 0;
 	if (ctio_norefs(ctio))
 		pglist_reset_pages(pglist, pglist_cnt);
-	if (sendstatus) {
-		node_pgdata_sync_client_done(tdisk, wlist.transaction_id);
-		device_send_ccb(ctio);
-	}
 
 	TDISK_TSTART(start_ticks);
 	pgdata_post_write(tdisk, pglist, pglist_cnt, &wlist);
 	TDISK_TEND(tdisk, post_write_ticks, start_ticks);
+
+	if (sendstatus) {
+		node_pgdata_sync_client_done(tdisk, wlist.transaction_id);
+		device_send_ccb(ctio);
+	}
 
 #if 0
 	TDISK_TSTART(start_ticks);
