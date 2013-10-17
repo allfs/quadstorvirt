@@ -2826,9 +2826,6 @@ node_master_proc_cmd(void *disk, void *iop)
 	int retval = 0;
 	struct initiator_state *istate;
 	struct sense_info *sinfo;
-#ifdef ENABLE_STATS
-	uint32_t start_ticks;
-#endif
 
 #ifdef ENABLE_DEBUG
 	if (cdb[0])
@@ -2932,36 +2929,36 @@ node_master_proc_cmd(void *disk, void *iop)
 			goto skip_send;
 			break;
 		case WRITE_SAME:
-			TDISK_TSTART(start_ticks);
+			atomic_inc(&write_requests);
 			tdisk_cmd_write_same(tdisk, ctio);
-			TDISK_TEND(tdisk, write_same_ticks, start_ticks);
+			atomic_dec(&write_requests);
 			goto skip_send;
 			break;
 		case WRITE_SAME_16:
-			TDISK_TSTART(start_ticks);
+			atomic_inc(&write_requests);
 			tdisk_cmd_write_same16(tdisk, ctio);
-			TDISK_TEND(tdisk, write_same_ticks, start_ticks);
+			atomic_dec(&write_requests);
 			goto skip_send;
 			break;
 		case UNMAP:
-			TDISK_TSTART(start_ticks);
+			atomic_inc(&write_requests);
 			tdisk_cmd_unmap(tdisk, ctio);
-			TDISK_TEND(tdisk, unmap_ticks, start_ticks);
+			atomic_dec(&write_requests);
 			goto skip_send;
 			break;
 		case EXTENDED_COPY:
-			TDISK_TSTART(start_ticks);
+			atomic_inc(&write_requests);
 			tdisk_cmd_extended_copy_read(tdisk, ctio);
-			TDISK_TEND(tdisk, extended_copy_read_ticks, start_ticks);
+			atomic_dec(&write_requests);
 			goto skip_send;
 			break;
 		case RECEIVE_COPY_RESULTS:
 			retval = tdisk_cmd_receive_copy_results(tdisk, ctio);
 			break;
 		case COMPARE_AND_WRITE:
-			TDISK_TSTART(start_ticks);
+			atomic_inc(&write_requests);
 			tdisk_cmd_compare_and_write(tdisk, ctio);
-			TDISK_TEND(tdisk, compare_write_ticks, start_ticks);
+			atomic_dec(&write_requests);
 			goto skip_send;
 			break;
 		case WRITE_6:

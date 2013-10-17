@@ -45,7 +45,7 @@ node_msg_wait(struct node_msg *msg, struct node_sock *sock, int timo)
 	retval = wait_for_done_timeout(msg->completion, timo);
 	if (retval)
 		return;
-	debug_warn("msg timedout ticks %llu msg timestamp %llu cmd %d msg_id %llx xchg id %llx\n", (unsigned long long)ticks, (unsigned long long)msg->timestamp, msg->raw->msg_cmd, (unsigned long long)msg->raw->msg_id, (unsigned long long)msg->raw->xchg_id);
+	debug_warn("msg timedout ticks %llu msg timestamp %llu cmd %d msg_id %llx xchg id %llx timo %d\n", (unsigned long long)ticks, (unsigned long long)msg->timestamp, msg->raw->msg_cmd, (unsigned long long)msg->raw->msg_id, (unsigned long long)msg->raw->xchg_id, timo);
 	retval = node_cmd_hash_remove(sock->comm->node_hash, msg, msg->raw->msg_id);
 	if (!retval) {
 		wait_for_done(msg->completion);

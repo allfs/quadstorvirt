@@ -662,7 +662,7 @@ cv_wait(cv_t *cv, mtx_t *mtx, void *data, int intr)
 }
 
 static long 
-cv_timedwait(cv_t *cv, mtx_t *mtx, void *data, int timo)
+cv_timedwait(cv_t *cv, mtx_t *mtx, void *data, long timo)
 {
 	unsigned long *flags = data;
 	DEFINE_WAIT(wait);
@@ -671,7 +671,7 @@ cv_timedwait(cv_t *cv, mtx_t *mtx, void *data, int timo)
 	add_wait_queue_exclusive(cv, &wait);
 	set_current_state(TASK_INTERRUPTIBLE);
 	mtx_unlock_irqrestore(mtx, *flags);
-	ret = schedule_timeout(msecs_to_jiffies(timo));
+	ret = schedule_timeout(timo);
 	mtx_lock_irqsave(mtx, *flags);
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(cv, &wait);

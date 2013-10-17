@@ -137,7 +137,7 @@ struct qs_kern_cbs {
 	cv_t* (*cv_alloc)(const char *name);
 	void (*cv_free)(cv_t *);
 	void (*cv_wait)(cv_t *cv, mtx_t *lock, void *, int intr);
-	long (*cv_timedwait)(cv_t *cv, mtx_t *lock, void *, int timo);
+	long (*cv_timedwait)(cv_t *cv, mtx_t *lock, void *, long timo);
 	void (*cv_wait_sig)(cv_t *cv, mtx_t *lock, int intr);
 	void (*wakeup_one_compl)(cv_t *cv, mtx_t *mtx, int *done);
 	void (*wakeup_compl)(cv_t *cv, mtx_t *mtx, int *done);

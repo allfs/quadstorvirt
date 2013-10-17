@@ -263,7 +263,6 @@ tdisk_print_stats(struct tdisk *tdisk)
 	PRINT_STAT("amap_table_get_amap_ticks", amap_table_get_amap_ticks);
 	PRINT_STAT("get_amap_block_ticks", get_amap_block_ticks);
 	PRINT_STAT("set_amap_block_ticks", set_amap_block_ticks);
-	PRINT_STAT("read_ticks", read_ticks);
 	PRINT_STAT("post_read_io_ticks", post_read_io_ticks);
 	PRINT_STAT("read_free_amaps_ticks", read_free_amaps_ticks);
 	PRINT_STAT("read_amap_block_ticks", read_amap_block_ticks);
@@ -271,10 +270,6 @@ tdisk_print_stats(struct tdisk *tdisk)
 	PRINT_STAT("tcache_read_add_page_ticks", tcache_read_add_page_ticks);
 	PRINT_STAT("sync_cache_ticks", sync_cache_ticks);
 	PRINT_STAT("sync_cache16_ticks", sync_cache16_ticks);
-	PRINT_STAT("write_ticks", write_ticks);
-	PRINT_STAT("write_same_ticks", write_same_ticks);
-	PRINT_STAT("unmap_ticks", unmap_ticks);
-	PRINT_STAT("extended_copy_read_ticks", extended_copy_read_ticks);
 	PRINT_STAT("unmap_cmds", unmap_cmds);
 	PRINT_STAT("wsame_cmds", wsame_cmds);
 	PRINT_STAT("wsame_unmap_cmds", wsame_unmap_cmds);
@@ -7965,9 +7960,7 @@ tdisk_proc_cmd(void *disk, void *iop)
 	int retval = 0;
 	struct initiator_state *istate;
 	struct sense_info *sinfo;
-#ifdef ENABLE_STATS
 	uint32_t start_ticks;
-#endif
 
 #ifdef ENABLE_STATS
 	tdisk_update_ctio_stats(tdisk, ctio);
@@ -8074,51 +8067,59 @@ tdisk_proc_cmd(void *disk, void *iop)
 			retval = tdisk_cmd_mode_sense10(tdisk, ctio);
 			break;
 		case READ_6:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_read6(tdisk, ctio);
-			TDISK_TEND(tdisk, read_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, read_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, read_cmds, 1);
 			goto skip_send;
 			break;
 		case READ_10:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_read10(tdisk, ctio);
-			TDISK_TEND(tdisk, read_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, read_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, read_cmds, 1);
 			goto skip_send;
 			break;
 		case READ_12:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_read12(tdisk, ctio);
-			TDISK_TEND(tdisk, read_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, read_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, read_cmds, 1);
 			goto skip_send;
 			break;
 		case READ_16:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_read16(tdisk, ctio);
-			TDISK_TEND(tdisk, read_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, read_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, read_cmds, 1);
 			goto skip_send;
 			break;
 		case WRITE_SAME:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write_same(tdisk, ctio);
-			TDISK_TEND(tdisk, write_same_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, wsame_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, wsame_cmds, 1);
 			goto skip_send;
 			break;
 		case WRITE_SAME_16:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write_same16(tdisk, ctio);
-			TDISK_TEND(tdisk, write_same_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, wsame_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, wsame_cmds, 1);
 			goto skip_send;
 			break;
 		case UNMAP:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_unmap(tdisk, ctio);
-			TDISK_TEND(tdisk, unmap_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, unmap_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, unmap_cmds, 1);
 			goto skip_send;
 			break;
 		case EXTENDED_COPY:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_extended_copy_read(tdisk, ctio);
-			TDISK_TEND(tdisk, extended_copy_read_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, xcopy_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, xcopy_cmds, 1);
 			goto skip_send;
 			break;
 		case RECEIVE_COPY_RESULTS:
@@ -8131,27 +8132,31 @@ tdisk_proc_cmd(void *disk, void *iop)
 			goto skip_send;
 			break;
 		case WRITE_6:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write6(tdisk, ctio);
-			TDISK_TEND(tdisk, write_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, write_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, write_cmds, 1);
 			goto skip_send;
 			break;
 		case WRITE_10:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write10(tdisk, ctio);
-			TDISK_TEND(tdisk, write_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, write_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, write_cmds, 1);
 			goto skip_send;
 			break;
 		case WRITE_12:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write12(tdisk, ctio);
-			TDISK_TEND(tdisk, write_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, write_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, write_cmds, 1);
 			goto skip_send;
 			break;
 		case WRITE_16:
-			TDISK_TSTART(start_ticks);
+			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_write16(tdisk, ctio);
-			TDISK_TEND(tdisk, write_ticks, start_ticks);
+			TDISK_TICKS_END(tdisk, write_ticks, start_ticks);
+			TDISK_STATS_ADD(tdisk, write_cmds, 1);
 			goto skip_send;
 			break;
 		case REPORT_LUNS:

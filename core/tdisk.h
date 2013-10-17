@@ -415,7 +415,6 @@ struct tdisk {
 	uint32_t mirror_write_done_post_ticks;
 
 	uint32_t lba_unmapped_ticks;
-	uint32_t read_ticks;
 	uint32_t mirror_ticks;
 	uint32_t clone_ticks;
 	uint32_t mirror_amap_setup_read_ticks;
@@ -431,10 +430,6 @@ struct tdisk {
 	uint32_t tcache_read_add_page_ticks;
 	uint32_t sync_cache_ticks;
 	uint32_t sync_cache16_ticks;
-	uint32_t write_ticks;
-	uint32_t write_same_ticks;
-	uint32_t unmap_ticks;
-	uint32_t extended_copy_read_ticks;
 	uint32_t compare_write_ticks;
 	uint32_t post_write_ticks;
 	uint32_t post_io_ticks;
@@ -658,12 +653,19 @@ void tdisk_reset(struct tdisk *tdisk, uint64_t i_prt[], uint64_t t_prt[], uint8_
 void pgdata_cleanup(struct pgdata *pgdata);
 void ctio_check_free_data(struct qsio_scsiio *ctio);
 
+#define TDISK_TICKS_START(sjiff) (sjiff = ticks)
+#define TDISK_TICKS_END(tdk,count,sjiff)				\
+do {									\
+	atomic64_add((ticks - sjiff), (atomic64_t *)&tdk->stats.count);	\
+	if (!atomic_test_bit(VDISK_SYNC_START, &tdk->flags))		\
+		atomic_set_bit(VDISK_SYNC_START, &tdk->flags);		\
+} while (0)
+
 #define TDISK_STATS_ADD(tdk,count,val)					\
 do {									\
 	atomic64_add(val, (atomic64_t *)&tdk->stats.count);		\
-	if (!atomic_test_bit(VDISK_SYNC_START, &tdk->flags)) {		\
+	if (!atomic_test_bit(VDISK_SYNC_START, &tdk->flags))		\
 		atomic_set_bit(VDISK_SYNC_START, &tdk->flags);		\
-	}								\
 } while (0)
 
 #ifdef ENABLE_STATS

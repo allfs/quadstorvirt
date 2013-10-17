@@ -491,7 +491,7 @@ do {								\
 #define wait_on_chan_timeout(chn, condition, timo)		\
 ({								\
 	unsigned long flags;					\
-	long __ret = timo;						\
+	long __ret = msecs_to_ticks(timo);			\
 	mtx_lock_intr(chn->chan_lock, &flags);			\
 	while (!(condition)) {					\
 		__ret = cv_timedwait(chn->chan_cond, chn->chan_lock, &flags, __ret);\

@@ -82,7 +82,23 @@ struct tdisk_stats {
 	uint64_t xcopy_write;
 	uint64_t xcopy_read;
 	uint64_t wsame_blocks;
-	uint64_t pad[63];
+	uint64_t write_cmds;
+	uint64_t read_cmds;
+	uint64_t unmap_cmds;
+	uint64_t wsame_cmds;
+	uint64_t xcopy_cmds;
+	uint64_t populate_token_cmds;
+	uint64_t write_using_token_cmds;
+	uint64_t populate_token_size;
+	uint64_t write_using_token_size;
+	uint64_t write_ticks;
+	uint64_t read_ticks;
+	uint64_t unmap_ticks;
+	uint64_t wsame_ticks;
+	uint64_t xcopy_ticks;
+	uint64_t populate_token_ticks;
+	uint64_t write_using_token_ticks;
+	uint64_t pad[47];
 } __attribute__ ((__packed__));
 
 struct mirror_state {
