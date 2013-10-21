@@ -1146,7 +1146,7 @@ amap_table_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, struct
 }
 
 static int
-amap_table_group_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct amap_table_group *dest_group, struct amap_table_group *src_group, uint32_t group_id)
+amap_table_group_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, struct tdisk *src_tdisk, struct amap_table_group *dest_group, struct amap_table_group *src_group, uint32_t group_id, uint32_t amap_table_max)
 {
 	struct amap_table *src_amap_table, *dest_amap_table;
 	struct amap_table_index *src_table_index;
@@ -1158,7 +1158,7 @@ amap_table_group_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, 
 
 	atable_id = group_id << AMAP_TABLE_GROUP_SHIFT;
 	src_table_index = &src_tdisk->table_index[group_id];
-	debug_check(dest_group->amap_table_max != src_group->amap_table_max);
+	debug_check(dest_group->amap_table_max != amap_table_max);
 
 	tdisk_bmap_lock(dest_tdisk);
 	bmap = amap_group_table_bmap_locate(dest_tdisk, group_id, &error);
@@ -1166,7 +1166,7 @@ amap_table_group_clone(struct clone_info *clone_info, struct tdisk *dest_tdisk, 
 	if (unlikely(!bmap))
 		return -1;
 
-	for (i = 0; i < src_group->amap_table_max; i++, atable_id++) {
+	for (i = 0; i < amap_table_max; i++, atable_id++) {
 		amap_table_group_lock(src_group);
 		block = get_amap_table_block(src_table_index, i);
 		src_amap_table = src_group->amap_table[i];
@@ -1296,6 +1296,9 @@ static int tdisk_clone_thr(void *data)
 	int i;
 	int retval = 0;
 	struct amap_table_group *src_group, *dest_group;
+	uint64_t size = tdisk->end_lba << tdisk->lba_shift;
+	uint64_t end_lba;
+	uint32_t amap_table_max, amap_table_group_max, min;
 	int status;
 	struct usr_job job_info;
 
@@ -1303,15 +1306,25 @@ static int tdisk_clone_thr(void *data)
 	tdisk_clone_setup(tdisk, src_tdisk, clone_info);
 	tdisk_clone_unlock(src_tdisk);
 	debug_check(tdisk->end_lba != src_tdisk->end_lba);
-	debug_check(tdisk->amap_table_group_max != src_tdisk->amap_table_group_max);
-	for (i = 0; i < tdisk->amap_table_group_max; i++) {
+	end_lba = size >> LBA_SHIFT;
+	amap_table_max = end_lba / LBAS_PER_AMAP_TABLE;
+	if (end_lba % LBAS_PER_AMAP_TABLE)
+		amap_table_max++;
+	amap_table_group_max = amap_table_max >> AMAP_TABLE_GROUP_SHIFT;
+	if (amap_table_max & AMAP_TABLE_GROUP_MASK)
+		amap_table_group_max++;
+
+	debug_check(tdisk->amap_table_group_max != amap_table_group_max);
+	for (i = 0; i < amap_table_group_max; i++) {
 		dest_group = tdisk->amap_table_group[i];
 		debug_check(!dest_group);
 
 		src_group = src_tdisk->amap_table_group[i];
 		debug_check(!src_group);
 
-		retval = amap_table_group_clone(clone_info, tdisk, src_tdisk, dest_group, src_group, i);
+		min = min_t(uint32_t, AMAP_TABLE_PER_GROUP, amap_table_max);
+		amap_table_max -= min;
+		retval = amap_table_group_clone(clone_info, tdisk, src_tdisk, dest_group, src_group, i, min);
 		if (unlikely(retval != 0)) {
 			tdisk_set_clone_error(tdisk);
 			break;

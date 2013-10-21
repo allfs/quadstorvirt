@@ -634,7 +634,7 @@ amap_table_write_bmap_check(struct tdisk *tdisk, struct amap_table_group *group,
 }
 
 static int
-amap_table_group_mirror(struct clone_info *clone_info, struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_id)
+amap_table_group_mirror(struct clone_info *clone_info, struct tdisk *tdisk, struct amap_table_group *group, uint32_t group_id, uint32_t amap_table_max)
 {
 	struct amap_table *amap_table;
 	struct amap_table_index *table_index;
@@ -652,7 +652,7 @@ amap_table_group_mirror(struct clone_info *clone_info, struct tdisk *tdisk, stru
 	atable_id = group_id << AMAP_TABLE_GROUP_SHIFT;
 	table_index = &tdisk->table_index[group_id];
 
-	for (i = 0; i < group->amap_table_max; i++, atable_id++) {
+	for (i = 0; i < amap_table_max; i++, atable_id++) {
 		amap_table_group_lock(group);
 		tdisk_bmap_lock(tdisk);
 		if (tdisk_in_sync(tdisk)) {
@@ -780,6 +780,9 @@ static int rep_send_thr(void *data)
 	struct tdisk *tdisk = clone_info->src_tdisk;
 	struct amap_table_group *group;
 	struct usr_job job_info;
+	uint64_t size = tdisk->end_lba << tdisk->lba_shift;
+	uint64_t end_lba;
+	uint32_t amap_table_max, amap_table_group_max, min;
 	int retval, i, status;
 
 	comm = rep_comm_get(clone_info->stats.dest_ipaddr, clone_info->stats.src_ipaddr, 1);
@@ -792,11 +795,21 @@ static int rep_send_thr(void *data)
 	tdisk_clone_lock(tdisk);
 	tdisk_clone_setup(tdisk, NULL, clone_info);
 	tdisk_clone_unlock(tdisk);
-	for (i = 0; i < tdisk->amap_table_group_max; i++) {
+	end_lba = size >> LBA_SHIFT;
+	amap_table_max = end_lba / LBAS_PER_AMAP_TABLE;
+	if (end_lba % LBAS_PER_AMAP_TABLE)
+		amap_table_max++;
+	amap_table_group_max = amap_table_max >> AMAP_TABLE_GROUP_SHIFT;
+	if (amap_table_max & AMAP_TABLE_GROUP_MASK)
+		amap_table_group_max++;
+
+	for (i = 0; i < amap_table_group_max; i++) {
 		group = tdisk->amap_table_group[i];
 		debug_check(!group);
 
-		retval = amap_table_group_mirror(clone_info, tdisk, group, i);
+		min = min_t(uint32_t, AMAP_TABLE_PER_GROUP, amap_table_max);
+		amap_table_max -= min;
+		retval = amap_table_group_mirror(clone_info, tdisk, group, i, min);
 		if (unlikely(retval != 0)) {
 			debug_warn("amap table group mirror failed for %d\n", i);
 			tdisk_set_mirror_error(tdisk);
