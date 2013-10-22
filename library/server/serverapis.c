@@ -1542,7 +1542,8 @@ __tl_server_vdisk_rename(struct tdisk_info *tdisk_info, char *targetname, char *
 {
 	PGconn *conn;
 	struct tdisk_info tmp;
-	int retval;
+	struct iscsiconf newconf;
+	int retval, update_iqn;
 
 	if (target_name_exists(targetname)) {
 		sprintf(err, "VDisk name %s exists\n", targetname);
@@ -1558,6 +1559,19 @@ __tl_server_vdisk_rename(struct tdisk_info *tdisk_info, char *targetname, char *
 		sprintf(err, "VDisk name can only contain alphabets, numbers, underscores and hyphens");
 		return -1;
 	}
+
+	memcpy(&newconf, &tdisk_info->iscsiconf, sizeof(newconf));
+	snprintf(newconf.iqn, sizeof(newconf.iqn), "iqn.2006-06.com.quadstor.vdisk.%s", tdisk_info->name);
+	if (strcmp(newconf.iqn, tdisk_info->iscsiconf.iqn) == 0) {
+		snprintf(newconf.iqn, sizeof(newconf.iqn), "iqn.2006-06.com.quadstor.vdisk.%s", targetname);
+		if (iqn_exists(newconf.iqn)) {
+			sprintf(err, "IQN %s exists for another VDisk\n", newconf.iqn);
+			return -1;
+		}
+		update_iqn = 1;
+	}
+	else
+		update_iqn = 0;
 
 	conn = pgsql_begin();
 	if (!conn) {
@@ -1585,6 +1599,14 @@ __tl_server_vdisk_rename(struct tdisk_info *tdisk_info, char *targetname, char *
 		goto senderr;
 	}
 	strcpy(tdisk_info->name, targetname);
+
+	if (!update_iqn)
+		return 0;
+
+	ietadm_mod_target(tdisk_info->iscsi_tid, &newconf, &tdisk_info->iscsiconf);
+	memcpy(&tdisk_info->iscsiconf, &newconf, sizeof(newconf));
+
+	sql_update_iscsiconf(tdisk_info->target_id, &tdisk_info->iscsiconf);
 	return 0;
 
 rollback:
