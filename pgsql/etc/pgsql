@@ -38,17 +38,21 @@ PGCTL="$prefix/bin/pg_ctl"
 # Only start if we can find the postmaster.
 test -x "$DAEMON" || exit 0
 
+if [ -x /sbin/runuser ]
+then
+    SU=/sbin/runuser
+else
+    SU=su
+fi
+
 case $1 in
     start)
-#	su -l $PGUSER -c "$DAEMON -D '$PGDATA' &" >>$PGLOG 2>&1
-#	echo 'postgresql server started'
 	rm -f /quadstor/pgsql/data/postmaster.pid
 	rm -f /quadstor/pgsql/pg.log
-	su -l $PGUSER -c "$PGCTL start -w -D '$PGDATA' -l /quadstor/pgsql/pg.log > /dev/null 2>&1"
+	$SU -l $PGUSER -c "$PGCTL start -w -D '$PGDATA' -l /quadstor/pgsql/pg.log > /dev/null 2>&1"
 	;;
     stop)
-	su -l $PGUSER -c "$PGCTL stop -w -D '$PGDATA' -s -m fast > /dev/null 2>&1"
-	sleep 3
+	$SU -l $PGUSER -c "$PGCTL stop -w -D '$PGDATA' -s -m fast > /dev/null 2>&1"
 	pkill -f /quadstor/pgsql/bin/postmaster > /dev/null 2>&1
 	pkill -f /quadstor/pgsql/bin/postgres > /dev/null 2>&1
 	rm -f /var/run/postmaster.9988.pid > /dev/null 2>&1
@@ -61,7 +65,7 @@ case $1 in
 	start
 	;;
     status)
-	su -l $PGUSER -c "$PGCTL status -D '$PGDATA'"
+	$SU -l $PGUSER -c "$PGCTL status -D '$PGDATA'"
 	;;
     *)
 	# Print help

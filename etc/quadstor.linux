@@ -16,9 +16,12 @@
 # Description:			Start/Stop QUADStor services
 ### END INIT INFO
 
-if [ -f /etc/rc.d/init.d/functions ]; then
-. /etc/rc.d/init.d/functions
+if [ -f /etc/init.d/functions ] ; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ] ; then
+  . /etc/rc.d/init.d/functions
 fi
+
 
 prog=quadstor
 
@@ -36,6 +39,41 @@ PIDOF="/sbin/pidof"
 if [ ! -f /sbin/pidof ]; then
 	PIDOF="/bin/pidof"
 fi
+
+DAEMON_CMD="daemon"
+if [ -f /sbin/start-stop-daemon ]; then
+        DAEMON_CMD="/sbin/start-stop-daemon --start --quiet --exec"
+fi
+
+unload_module() {
+	/sbin/rmmod $1 > /dev/null 2>&1
+	modpresent=`/sbin/lsmod | grep $1`
+	tries="0"
+	while [ "$modpresent" != "" ]; do
+		sleep .1
+		/sbin/rmmod $1 > /dev/null 2>&1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		modpresent=`/sbin/lsmod | grep $1`
+	done
+}
+
+kill_prog() {
+	pkill -f $1
+	progpid=`$PIDOF $1 2> /dev/null`
+	tries="0"
+	while [ "$progpid" != "" ]; do
+		sleep .1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		progpid=`$PIDOF $1 2> /dev/null`
+	done
+}
+
 start() {
 
 	mdaemonpid=`$PIDOF /quadstor/sbin/mdaemon 2> /dev/null`
@@ -70,14 +108,10 @@ start() {
 
 	if [ -f /tmp/.s.PGSQL.9988 -o -f /tmp/.s.PGSQL.9988.lock ]; then
 		/quadstor/pgsql/etc/pgsql stop > /dev/null 2>&1
-		sleep 1
-		rm -f /tmp/.s.PGSQL.9988*
-		sleep 1
 	fi
 
 	/quadstor/pgsql/etc/pgsql start
 	check_error "Cannot start database"
-	sleep 10 
 
 	/sbin/modprobe -q scsi_mod > /dev/null 2>&1
 	/sbin/modprobe -q sg > /dev/null 2>&1
@@ -99,19 +133,15 @@ start() {
 	if [ -f /quadstor/etc/initd.iscsi ]; then
 		/sbin/insmod /quadstor/lib/modules/$kvers/iscsit.ko > /dev/null 2>&1
 		check_error "Failed to insert iscsi target module"
+		$DAEMON_CMD /quadstor/sbin/ietd
 	fi
 
-	pkill mdaemon
 	export PATH=$PATH:/quadstor/bin:/sbin:/usr/sbin
 	rm -f /quadstor/.mdaemon
 	/quadstor/sbin/mdaemon > /dev/null 2>&1
 	check_error "Cannot start master daemon"
 
-	if [ -f /quadstor/etc/initd.iscsi ]; then
-		/quadstor/etc/initd.iscsi start
-	fi
-
-	sleep 10 
+	sleep 5
 	/quadstor/bin/scctl -l > /dev/null 2>&1
 
 	if [ -d /var/lock/subsys ]; then
@@ -121,22 +151,19 @@ start() {
 
 stop() {
 	echo -n $"Stopping $prog: "
-	if [ -f /quadstor/etc/initd.iscsi ]; then
-		/quadstor/etc/initd.iscsi stop > /dev/null 2>&1
-	fi
+	/quadstor/bin/ietadm --op delete >/dev/null 2>/dev/null
+	kill_prog "/quadstor/sbin/ietd"
 
 	/quadstor/bin/scctl -u > /dev/null 2>&1
-	sleep 10 
 
-	pkill mdaemon
+	kill_prog "/quadstor/sbin/mdaemon"
 	rm -f /quadstor/.mdaemon
 
 	/quadstor/pgsql/etc/pgsql stop
 
-	/sbin/rmmod iscsit > /dev/null 2>&1
-	/sbin/rmmod ldev > /dev/null 2>&1
-	sleep 2
-	/sbin/rmmod coredev > /dev/null 2>&1
+	unload_module "iscsit"
+	unload_module "ldev"
+	unload_module "coredev"
 	rm -f /quadstor/tmp/.quadstortl.* > /dev/null 2>&1
 	rm -f /var/lock/subsys/quadstor
 }

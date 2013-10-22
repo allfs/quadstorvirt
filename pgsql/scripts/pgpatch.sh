@@ -10,7 +10,6 @@ rm -f /tmp/.s.PGSQL.9988* > /dev/null 2>&1
 
 
 /quadstor/pgsql/etc/pgsql start > /dev/null 2>&1
-sleep 5
 
 if [ -x /sbin/runuser ]
 then

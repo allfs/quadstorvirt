@@ -507,6 +507,21 @@ detach_tdisk(struct tdisk_info *tdisk_info)
 #endif
 }
 
+static void
+wait_for_ddtables(void)
+{
+	int max_wait = (4 * 60); /* Wait for 4 minutes */
+	int retval;
+
+	while (max_wait) {
+		retval = tl_ioctl_void(TLTARGIOCDDTABLELOADSTATUS);
+		if (retval == 0)
+			break;
+		max_wait -= 15;
+		sleep(15);
+	}
+}
+
 static int
 attach_tdisks(void)
 {
@@ -3754,6 +3769,8 @@ tl_server_load_conf(struct tl_comm *comm, struct tl_msg *msg)
 	retval = node_recv_init();
 	if (retval != 0)
 		exit(EXIT_FAILURE); 
+
+	wait_for_ddtables();
 
 	attach_tdisks();
 	done_init = 1;

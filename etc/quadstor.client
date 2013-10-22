@@ -16,11 +16,39 @@ stop_cmd="quadstor_stop"
 status_cmd="quadstor_status"
 rcvar=`set_rcvar`
 
+unload_module() {
+	/sbin/kldunload $1 > /dev/null 2>&1
+	modpresent=`/sbin/kldstat | grep $1`
+	tries="0"
+	while [ "$modpresent" != "" ]; do
+		sleep .1
+		/sbin/kldunload $1 > /dev/null 2>&1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		modpresent=`/sbin/kldstat | grep $1`
+	done
+}
+
+kill_prog() {
+	pkill -f $1
+	progpid=`/quadstor/bin/pidof $1 2> /dev/null`
+	tries="0"
+	while [ "$progpid" != "" ]; do
+		sleep .1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		progpid=`/quadstor/bin/pidof $1 2> /dev/null`
+	done
+}
+
 quadstor_stop() {
 
-	if [ -f /quadstor/etc/iscsit ]; then
-		/quadstor/etc/iscsit stop > /dev/null 2>&1
-	fi
+	/quadstor/bin/ietadm --op delete >/dev/null 2>/dev/null
+	kill_prog "/quadstor/sbin/ietd"
 
 	pkill ncdaemon
 	while [ 1 ]; do
@@ -32,9 +60,9 @@ quadstor_stop() {
 	done
 	rm -f /quadstor/.mdaemon
 
-	/sbin/kldunload iscsit > /dev/null 2>&1
-	/sbin/kldunload ldev > /dev/null 2>&1
-	/sbin/kldunload coredev > /dev/null 2>&1
+	unload_module "iscsit" > /dev/null 2>&1
+	unload_module "ldev" > /dev/null 2>&1
+	unload_module "coredev" > /dev/null 2>&1
 }
 
 check_error() {
@@ -64,11 +92,11 @@ quadstor_start() {
 	if [ -f /quadstor/lib/modules/iscsit.ko ]; then
 		/sbin/kldload /quadstor/lib/modules/iscsit.ko > /dev/null 2>&1
 		check_error "Failed to insert iscsi target module"
-		/quadstor/etc/iscsit start
+		daemon /quadstor/sbin/ietd
 	fi
 
-	pkill ncdaemon
 	export PATH=$PATH:/quadstor/bin
+	rm -f /quadstor/.mdaemon
 	/quadstor/sbin/ncdaemon > /dev/null 2>&1
 	check_error "Cannot start node client daemon"
 }

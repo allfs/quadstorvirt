@@ -1071,6 +1071,7 @@ kern_interface_init(struct qs_kern_cbs *kern_cbs)
 	kern_cbs->coremod_load_done = coremod_load_done;
 	kern_cbs->coremod_reset_logs = coremod_reset_logs;
 	kern_cbs->coremod_exit = __kern_exit;
+	kern_cbs->ddtable_load_status = bdev_groups_ddtable_load_status;
 	kern_cbs->target_load_vdisk = target_load_disk;
 	kern_cbs->target_attach_vdisk = target_attach_disk;
 	kern_cbs->target_modify_vdisk = target_modify_disk;

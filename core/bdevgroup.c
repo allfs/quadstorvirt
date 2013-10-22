@@ -112,6 +112,27 @@ bdev_groups_ddtable_wait_sync_busy(void)
 	}
 }
 
+int
+bdev_groups_ddtable_load_status(void)
+{
+	struct bdevgroup *group;
+	int status = 0, done;
+
+	SLIST_FOREACH(group, &group_list, g_list) {
+		if (!group->dedupemeta)
+			continue;
+		if (!atomic_read(&group->ddtable.inited))
+			continue;
+
+		done = ddtable_load_status(&group->ddtable);
+		if (!done) {
+			status = -1;
+			break;
+		}
+	}
+	return status;
+}
+
 void
 bdev_groups_ddtable_exit(void)
 {

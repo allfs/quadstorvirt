@@ -209,6 +209,7 @@ struct qs_kern_cbs {
 	int (*coremod_load_done)(void);
 	int (*coremod_reset_logs)(void);
 	int (*coremod_exit)(void);
+	int (*ddtable_load_status)(void);
 	int (*target_load_vdisk)(struct tdisk_info *, unsigned long);
 	int (*target_attach_vdisk)(struct tdisk_info *, unsigned long);
 	int (*target_modify_vdisk)(struct tdisk_info *, unsigned long);

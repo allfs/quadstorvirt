@@ -443,5 +443,6 @@ struct ddlookup_list * ddlookup_list_get(struct ddtable *ddtable, uint32_t id);
 struct ddtable_ddlookup_node * ddtable_sync_list_first(struct ddtable *ddtable);
 struct ddtable_ddlookup_node * ddtable_sync_list_next(struct ddtable *ddtable, struct ddtable_ddlookup_node *prev);
 void ddtable_check_count(struct ddtable *ddtable);
+int ddtable_load_status(struct ddtable *ddtable);
 
 #endif

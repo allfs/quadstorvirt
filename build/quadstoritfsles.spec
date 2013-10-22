@@ -53,7 +53,6 @@ mkdir -p $RPM_BUILD_ROOT/quadstor/etc/iet/
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/targets.allow $RPM_BUILD_ROOT/quadstor/etc/iet/targets.allow.sample
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/initiators.allow $RPM_BUILD_ROOT/quadstor/etc/iet/initiators.allow.sample
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/ietd.conf $RPM_BUILD_ROOT/quadstor/etc/iet/ietd.conf.sample
-install -m 744 /quadstor/quadstor/target-mode/iscsi/etc/initd/initd.redhat $RPM_BUILD_ROOT/quadstor/etc/initd.iscsi
 
 mkdir -p $RPM_BUILD_ROOT/quadstor/src/target-mode/fc/common
 install -m 744 /quadstor/quadstor/target-mode/fc/common/fccommon.c $RPM_BUILD_ROOT/quadstor/src/target-mode/fc/common/
@@ -85,7 +84,7 @@ install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/et
 
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf"
-	sleep 5
+	sleep 2
 	/quadstor/bin/builditf
 
 %preun
@@ -138,7 +137,6 @@ install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/et
 /quadstor/etc/iet/ietd.conf.sample
 /quadstor/etc/iet/initiators.allow.sample
 /quadstor/etc/iet/targets.allow.sample
-/quadstor/etc/initd.iscsi
 /quadstor/bin/builditf
 /quadstor/bin/qlainst
 /quadstor/bin/qlauninst

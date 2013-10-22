@@ -1784,6 +1784,9 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 	case TLTARGIOCUNLOAD:
 		retval = (*kcbs.coremod_exit)();
 		break;
+	case TLTARGIOCDDTABLELOADSTATUS:
+		retval = (*kcbs.ddtable_load_status)();
+		break;
 	case TLTARGIOCADDGROUP:
 	case TLTARGIOCDELETEGROUP:
 	case TLTARGIOCRENAMEGROUP:

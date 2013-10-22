@@ -16,9 +16,12 @@
 # Description:			Start/Stop QUADStor services
 ### END INIT INFO
 
-if [ -f /etc/rc.d/init.d/functions ]; then
-. /etc/rc.d/init.d/functions
+if [ -f /etc/init.d/functions ] ; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ] ; then
+  . /etc/rc.d/init.d/functions
 fi
+
 
 prog=quadstor
 
@@ -36,6 +39,41 @@ PIDOF="/sbin/pidof"
 if [ ! -f /sbin/pidof ]; then
 	PIDOF="/bin/pidof"
 fi
+
+DAEMON_CMD="daemon"
+if [ -f /sbin/start-stop-daemon ]; then
+        DAEMON_CMD="/sbin/start-stop-daemon --start --quiet --exec"
+fi
+
+unload_module() {
+	/sbin/rmmod $1 > /dev/null 2>&1
+	modpresent=`/sbin/lsmod | grep $1`
+	tries="0"
+	while [ "$modpresent" != "" ]; do
+		sleep .1
+		/sbin/rmmod $1 > /dev/null 2>&1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		modpresent=`/sbin/lsmod | grep $1`
+	done
+}
+
+kill_prog() {
+	pkill -f $1
+	progpid=`$PIDOF $1 2> /dev/null`
+	tries="0"
+	while [ "$progpid" != "" ]; do
+		sleep .1
+		if [ "$tries" = "50" ]; then
+			break
+		fi
+		tries=`expr $tries + 1`
+		progpid=`$PIDOF $1 2> /dev/null`
+	done
+}
+
 start() {
 
 	ncdaemonpid=`$PIDOF /quadstor/sbin/ncdaemon 2> /dev/null`
@@ -75,10 +113,10 @@ start() {
 	/sbin/insmod /quadstor/lib/modules/$kvers/iscsit.ko > /dev/null 2>&1
 	check_error "Failed to insert iscsi target module"
 
-	/quadstor/etc/initd.iscsi start
+	$DAEMON_CMD /quadstor/sbin/ietd
 
-	pkill ncdaemon
 	export PATH=$PATH:/quadstor/bin:/sbin:/usr/sbin
+	rm -f /quadstor/.mdaemon
 	/quadstor/sbin/ncdaemon > /dev/null 2>&1
 	check_error "Cannot start master daemon"
 
@@ -92,7 +130,8 @@ start() {
 stop() {
 	echo -n $"Stopping $prog: "
 
-	/quadstor/etc/initd.iscsi stop > /dev/null 2>&1
+	/quadstor/bin/ietadm --op delete >/dev/null 2>/dev/null
+	kill_prog "/quadstor/sbin/ietd"
 
 	pkill ncdaemon
 	while [ 1 ]; do
@@ -104,10 +143,9 @@ stop() {
 	done
 	rm -f /quadstor/.mdaemon
 
-	/sbin/rmmod iscsit > /dev/null 2>&1
-	/sbin/rmmod ldev > /dev/null 2>&1
-	sleep 2
-	/sbin/rmmod coredev > /dev/null 2>&1
+	unload_module "iscsit"
+	unload_module "ldev"
+	unload_module "coredev"
 	rm -f /var/lock/subsys/quadstor
 }
 

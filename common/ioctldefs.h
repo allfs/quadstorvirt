@@ -72,5 +72,6 @@ struct msgblock {
 #define TLTARGIOCRENAMETDISK		_IOWR(TL_MAGIC, 42, struct tdisk_info)
 #define TLTARGIOCWCCONFIG		_IOWR(TL_MAGIC, 43, struct bdev_info)
 #define TLTARGIOCSETMIRRORROLE		_IOWR(TL_MAGIC, 44, struct tdisk_info)
+#define TLTARGIOCDDTABLELOADSTATUS	_IO(TL_MAGIC, 45) 
 
 #endif

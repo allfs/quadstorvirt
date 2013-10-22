@@ -152,6 +152,9 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 	case TLTARGIOCUNLOAD:
 		retval = (*kcbs.coremod_exit)();
 		break;
+	case TLTARGIOCDDTABLELOADSTATUS:
+		retval = (*kcbs.ddtable_load_status)();
+		break;
 	case TLTARGIOCADDGROUP:
 	case TLTARGIOCDELETEGROUP:
 	case TLTARGIOCRENAMEGROUP:

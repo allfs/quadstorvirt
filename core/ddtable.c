@@ -32,7 +32,7 @@
 struct ddtable_stats ddtable_stats;
 struct ddtable_global ddtable_global;
 static void ddtable_free(struct ddtable *ddtable);
-static int ddlookup_check_read_io(struct ddtable *ddtable, struct ddtable_ddlookup_node *ddlookup);
+static int ddlookup_check_read_io(struct ddtable *ddtable, struct ddtable_ddlookup_node *ddlookup, int start_io);
 struct locate_spec;
 static inline void ddtable_clear_invalid_entries(struct ddtable *ddtable, struct ddtable_ddlookup_node *parent, struct pgdata *pgdata, struct locate_spec *locate_spec, int *insert_idx);
 
@@ -487,7 +487,7 @@ ddtable_ddlookup_list_last(struct ddtable *ddtable, struct ddlookup_list *ddlook
 	ddlookup_list_unlock(ddlookup_list);
 
 	while (ddlookup) {
-		if (ddlookup_check_read_io(ddtable, ddlookup))
+		if (ddlookup_check_read_io(ddtable, ddlookup, 0))
 			DD_INC(async_load, 1);
 	
 		wait_on_chan_check(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags));
@@ -956,7 +956,7 @@ ddtable_load_peers(struct ddtable *ddtable)
 {
 	int i;
 	int has_peers;
-	int done = 0, error = 0;
+	int error = 0;
 	uint64_t next_block;
 	struct tpriv priv = { 0 };
 
@@ -992,13 +992,17 @@ ddtable_load_peers(struct ddtable *ddtable)
 				return -1;
 			}
 
-			if (ddlookup_check_read_io(ddtable, next)) {
+			if (ddlookup_check_read_io(ddtable, next, 0)) {
 				DD_INC(async_load, 1);
-				done++;
 			}
 				
 			ddtable_ddlookup_node_put(peer);
 			ddtable_ddlookup_node_put(next);
+
+			if (i && ((i + 1) % 512 == 0)) {
+				bdev_start(ddtable->bint->b_dev, &priv);
+				bdev_marker(ddtable->bint->b_dev, &priv);
+			}
 
 			has_peers = 1;
 			if (i && ((i + 1) % DDLOOKUP_LOAD_INCREMENT == 0)) {
@@ -1023,6 +1027,7 @@ static int dd_load_thread(void *data)
 
 	thread_start();
 	ddtable_load_peers(ddtable);
+	atomic_set_bit(DDTABLE_LOAD_DONE, &ddtable->flags);
 	wait_on_chan_interruptible(ddtable->load_wait, kernel_thread_check(&ddtable->flags, DDTABLE_LOAD_EXIT));
 	thread_end();
 #ifdef FREEBSD 
@@ -1030,6 +1035,12 @@ static int dd_load_thread(void *data)
 #else
 	return 0;
 #endif
+}
+
+int
+ddtable_load_status(struct ddtable *ddtable)
+{
+	return (atomic_test_bit(DDTABLE_LOAD_DONE, &ddtable->flags));
 }
 
 void
@@ -1765,7 +1776,7 @@ ddtable_ddlookup_get_next(struct ddtable *ddtable, struct ddlookup_list *ddlooku
 		}
 	}
 
-	if (ddlookup_check_read_io(ddtable, next))
+	if (ddlookup_check_read_io(ddtable, next, 1))
 		DD_INC(hash_load, 1);
 	return next;
 }
@@ -1785,7 +1796,7 @@ ddtable_hash_ddlookup(struct bdevgroup *group, struct pgdata *pgdata, int *error
 #ifdef ENABLE_STATS
 	uint32_t start_ticks;
 #endif
-	int retval, tmp;
+	int retval;
 
 	DD_INC(hash_ddlookups, 1);
 	*error = 0;
@@ -1816,18 +1827,13 @@ ddtable_hash_ddlookup(struct bdevgroup *group, struct pgdata *pgdata, int *error
 		info = ddtable_ddlookup_find_entry(group, ddtable, NULL, child, hash, error, status, &wlist->index_info_list, NULL, 0, wlist);
 		node_ddlookup_unlock(child);
 
-		next_block = ddlookup_get_next_block(child);
 		DD_TEND(find_entry_ticks, start_ticks);
 		if (info || *status || *error) {
-			if (next_block) { 
-				next = ddtable_ddlookup_get_next(ddtable, ddlookup_list, child, next_block, &tmp);
-				if (next)
-					ddtable_ddlookup_node_put(next);
-			}
 			ddtable_ddlookup_node_put(child);
 			return info;
 		}
 
+		next_block = ddlookup_get_next_block(child);
 		if (!next_block) {
 			ddlookup_list_lock(ddlookup_list);
 			next = SLIST_NEXT(child, p_list);
@@ -2006,8 +2012,9 @@ rollback:
 }
 
 static int
-ddlookup_check_read_io(struct ddtable *ddtable, struct ddtable_ddlookup_node *ddlookup)
+ddlookup_check_read_io(struct ddtable *ddtable, struct ddtable_ddlookup_node *ddlookup, int start_io)
 {
+	struct tpriv priv = { 0 };
 	int retval;
 
 	if (!atomic_test_bit_short(DDLOOKUP_META_IO_READ_PENDING, &ddlookup->flags))
@@ -2016,8 +2023,12 @@ ddlookup_check_read_io(struct ddtable *ddtable, struct ddtable_ddlookup_node *dd
 	retval = 0;
 	node_ddlookup_lock(ddlookup);
 	if (atomic_test_bit_short(DDLOOKUP_META_IO_READ_PENDING, &ddlookup->flags)) {
+		if (start_io)
+			bdev_marker(ddtable->bint->b_dev, &priv);
 		ddtable_ddlookup_io(ddtable, ddlookup, QS_IO_READ, -1, 0ULL);
 		retval = 1;
+		if (start_io)
+			bdev_start(ddtable->bint->b_dev, &priv);
 	}
 	node_ddlookup_unlock(ddlookup);
 	return retval;
@@ -2043,7 +2054,7 @@ ddtable_ddlookup_find_node(struct ddtable *ddtable, uint64_t node_block)
 		node_insert(ddtable, node, ddlookup);
 	}
 	node_unlock(node);
-	if (ddlookup_check_read_io(ddtable, ddlookup))
+	if (ddlookup_check_read_io(ddtable, ddlookup, 1))
 		DD_INC(find_load, 1);
 
 	wait_on_chan_check(ddlookup->ddlookup_wait, !atomic_test_bit_short(DDLOOKUP_META_DATA_READ_DIRTY, &ddlookup->flags));

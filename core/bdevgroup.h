@@ -116,9 +116,12 @@ void bdev_group_set_ha_bint(struct bdevint *bint);
 void bdev_group_clear_ha_bint(struct bdevint *bint);
 struct ddtable * bdev_group_ddtable(struct bdevgroup *);
 void bdev_groups_ddtable_exit(void);
+
 static inline uint64_t
  bdev_group_get_avail(struct bdevgroup *group)
 {
 	return atomic64_read(&group->free);
 }
+
+int bdev_groups_ddtable_load_status(void);
 #endif

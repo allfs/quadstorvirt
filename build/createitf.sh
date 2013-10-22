@@ -16,7 +16,6 @@ sh buildcluster.sh clean
 sh buildcluster.sh 
 sh buildcluster.sh install
 
-install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/initd/initd.bsd /quadstor/etc/iscsit
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/targets.allow /quadstor/etc/iet/targets.allow.sample
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/initiators.allow /quadstor/etc/iet/initiators.allow.sample
 install -m 755 /quadstor/quadstor/target-mode/iscsi/etc/ietd.conf /quadstor/etc/iet/ietd.conf.sample
@@ -44,7 +43,6 @@ rm /quadstor/quadstor/build/pkg-plist
 echo "quadstor/bin/ietadm" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/sbin/ietd" >> /quadstor/quadstor/build/pkg-plist
 echo "quadstor/lib/modules/iscsit.ko" >> /quadstor/quadstor/build/pkg-plist
-echo "quadstor/etc/iscsit" >> /quadstor/quadstor/build/pkg-plist
 cd / && find quadstor/etc/iet/* >> /quadstor/quadstor/build/pkg-plist
 
 for i in `cd / && find quadstor/src/`;do
