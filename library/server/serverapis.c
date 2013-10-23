@@ -3788,11 +3788,11 @@ tl_server_load_conf(struct tl_comm *comm, struct tl_msg *msg)
 		return;
 	}
 
+	wait_for_ddtables();
+
 	retval = node_recv_init();
 	if (retval != 0)
 		exit(EXIT_FAILURE); 
-
-	wait_for_ddtables();
 
 	attach_tdisks();
 	done_init = 1;
