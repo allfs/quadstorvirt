@@ -510,7 +510,7 @@ detach_tdisk(struct tdisk_info *tdisk_info)
 static void
 wait_for_ddtables(void)
 {
-	int max_wait = (4 * 60); /* Wait for 4 minutes */
+	int max_wait = (12 * 60); /* Wait for 12 minutes */
 	int retval;
 
 	while (max_wait) {
