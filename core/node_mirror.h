@@ -37,6 +37,7 @@ int tdisk_mirror_check_io(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct 
 int tdisk_mirror_write_post_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist);
 int tdisk_mirror_write_done_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist);
 int tdisk_mirror_write_done_post(struct tdisk *tdisk, struct write_list *wlist);
+void tdisk_mirror_write_done_wait(struct tdisk *tdisk, struct write_list *wlist);
 int tdisk_mirror_write_error(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist);
 int tdisk_mirror_update_properties(struct tdisk *tdisk, struct vdisk_update_spec *spec);
 int tdisk_mirror_resize(struct tdisk *tdisk, uint64_t new_size);

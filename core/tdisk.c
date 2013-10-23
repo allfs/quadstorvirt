@@ -6389,23 +6389,19 @@ sync_amap_post:
 	ctio->data_ptr = NULL;
 	ctio->pglist_cnt = 0;
 	ctio->dxfer_len = 0;
-	if (ctio_norefs(ctio))
+	if (ctio_norefs(ctio)) {
+		tdisk_mirror_write_done_wait(tdisk, &wlist);
 		pglist_reset_pages(pglist, pglist_cnt);
-
-	TDISK_TSTART(start_ticks);
-	pgdata_post_write(tdisk, pglist, pglist_cnt, &wlist);
-	TDISK_TEND(tdisk, post_write_ticks, start_ticks);
+	}
 
 	if (sendstatus) {
 		node_pgdata_sync_client_done(tdisk, wlist.transaction_id);
 		device_send_ccb(ctio);
 	}
 
-#if 0
 	TDISK_TSTART(start_ticks);
-	tdisk_mirror_write_done_post(tdisk, ctio, &wlist);
-	TDISK_TEND(tdisk, mirror_write_done_post_ticks, start_ticks);
-#endif
+	pgdata_post_write(tdisk, pglist, pglist_cnt, &wlist);
+	TDISK_TEND(tdisk, post_write_ticks, start_ticks);
 
 	return 0;
 

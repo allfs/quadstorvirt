@@ -691,6 +691,18 @@ tdisk_mirror_write_done_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio, struc
 	return __tdisk_mirror_write_done(tdisk, ctio, wlist);
 }
 
+void
+tdisk_mirror_write_done_wait(struct tdisk *tdisk, struct write_list *wlist)
+{
+	if (!wlist->msg)
+		return;
+
+	if (!tdisk_mirror_master(tdisk))
+		return;
+
+	node_mirror_wait_for_prev_resp(tdisk, NULL, wlist);
+}
+
 int
 tdisk_mirror_write_done_post(struct tdisk *tdisk, struct write_list *wlist)
 {
