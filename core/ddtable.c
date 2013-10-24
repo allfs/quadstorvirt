@@ -1024,9 +1024,12 @@ static int dd_load_thread(void *data)
 #endif
 {
 	struct ddtable *ddtable = data;
+	uint32_t start_ticks;
 
 	thread_start();
+	start_ticks = ticks;
 	ddtable_load_peers(ddtable);
+	debug_print("ddtable load for group %s took %u msecs\n", ddtable->bint->group->name, ticks_to_msecs(ticks - start_ticks));
 	atomic_set_bit(DDTABLE_LOAD_DONE, &ddtable->flags);
 	wait_on_chan_interruptible(ddtable->load_wait, kernel_thread_check(&ddtable->flags, DDTABLE_LOAD_EXIT));
 	thread_end();
@@ -1318,6 +1321,7 @@ ddtable_exit(struct ddtable *ddtable)
 	int dd_idx;
 	struct tpriv priv = { 0 };
 	int write_done = 0, done = 0, retval;
+	uint32_t total_sync_count, sync_count, start_ticks;
 
 	if (!atomic_read(&ddtable->inited))
 		return;
@@ -1341,7 +1345,10 @@ ddtable_exit(struct ddtable *ddtable)
 		}
 	}
 
+	total_sync_count = atomic_read(&ddtable->sync_count);
 	ddtables_sync(ddtable, dd_idx, i, QS_IO_WRITE);
+	sync_count = atomic_read(&ddtable->sync_count);
+	start_ticks = ticks;
 	debug_info("ddtable sync count now %d\n", atomic_read(&ddtable->sync_count));
 
 	bdev_marker(ddtable->bint->b_dev, &priv);
@@ -1367,6 +1374,7 @@ ddtable_exit(struct ddtable *ddtable)
 	bdev_start(ddtable->bint->b_dev, &priv);
 	ddtable_node_wait(ddtable, &sync_list, &done, 1);
 	debug_check(done != 0);
+	debug_print("ddtable sync for group %s took %u msecs total sync count %u peer sync count %u\n", ddtable->bint->group->name, ticks_to_msecs(ticks - start_ticks), total_sync_count, sync_count);
 
 	for (i = 0; i < ddtable->max_roots; i++) {
 		ddlookup_list = ddlookup_list_get(ddtable, i);
