@@ -56,69 +56,14 @@ tdisk_list_free(struct tdisk_list *tdisk_list)
 void
 dump_tdisk_stats(FILE *fp, struct tdisk_stats *stats)
 {
-	fprintf(fp, "<tdisk>\n");
-	fprintf(fp, "write_size: %llu\n", (unsigned long long)stats->write_size);
-	fprintf(fp, "read_size: %llu\n", (unsigned long long)stats->read_size);
-	fprintf(fp, "unaligned_size: %llu\n", (unsigned long long)stats->unaligned_size);
-	fprintf(fp, "blocks_deduped: %llu\n", (unsigned long long)stats->blocks_deduped);
-	fprintf(fp, "inline_deduped: %llu\n", (unsigned long long)stats->inline_deduped);
-	fprintf(fp, "post_deduped: %llu\n", (unsigned long long)stats->post_deduped);
-	fprintf(fp, "zero_blocks: %llu\n", (unsigned long long)stats->zero_blocks);
-	fprintf(fp, "unmap_blocks: %llu\n", (unsigned long long)stats->unmap_blocks);
-	fprintf(fp, "wsame_blocks: %llu\n", (unsigned long long)stats->wsame_blocks);
-	fprintf(fp, "uncompressed_size: %llu\n", (unsigned long long)stats->uncompressed_size);
-	fprintf(fp, "compressed_size: %llu\n", (unsigned long long)stats->compressed_size);
-	fprintf(fp, "compression_hits: %llu\n", (unsigned long long)stats->compression_hits);
-	fprintf(fp, "compression_misses: %llu\n", (unsigned long long)stats->compression_misses);
-	fprintf(fp, "verify_hits: %llu\n", (unsigned long long)stats->verify_hits);
-	fprintf(fp, "verify_misses: %llu\n", (unsigned long long)stats->verify_misses);
-	fprintf(fp, "verify_errors: %llu\n", (unsigned long long)stats->verify_errors);
-	fprintf(fp, "inline_waits: %llu\n", (unsigned long long)stats->inline_waits);
-	fprintf(fp, "cw_hits: %llu\n", (unsigned long long)stats->cw_hits);
-	fprintf(fp, "cw_misses: %llu\n", (unsigned long long)stats->cw_misses);
-	fprintf(fp, "xcopy_write: %llu\n", (unsigned long long)stats->xcopy_write);
-	fprintf(fp, "xcopy_read: %llu\n", (unsigned long long)stats->xcopy_read);
-	fprintf(fp, "</tdisk>\n");
+	fwrite(stats, sizeof(*stats), 1, fp);
 	fclose(fp);
 }
 
 void
 parse_tdisk_stats(FILE *fp, struct tdisk_stats *stats)
 {
-	char buf[512];
-
-	memset(stats, 0, sizeof(*stats));
-
-	while (fgets(buf, sizeof(buf), fp) != NULL)
-	{
-		if (strncmp(buf, "<tdisk>", strlen("<tdisk>")) != 0)
-		{
-			continue;
-		}
-
-		fscanf(fp, "write_size: %"PRIu64"\n", &stats->write_size);
-		fscanf(fp, "read_size: %"PRIu64"\n", &stats->read_size);
-		fscanf(fp, "unaligned_size: %"PRIu64"\n", &stats->unaligned_size);
-		fscanf(fp, "blocks_deduped: %"PRIu64"\n", &stats->blocks_deduped);
-		fscanf(fp, "inline_deduped: %"PRIu64"\n", &stats->inline_deduped);
-		fscanf(fp, "post_deduped: %"PRIu64"\n", &stats->post_deduped);
-		fscanf(fp, "zero_blocks: %"PRIu64"\n", &stats->zero_blocks);
-		fscanf(fp, "unmap_blocks: %"PRIu64"\n", &stats->unmap_blocks);
-		fscanf(fp, "wsame_blocks: %"PRIu64"\n", &stats->wsame_blocks);
-		fscanf(fp, "uncompressed_size: %"PRIu64"\n", &stats->uncompressed_size);
-		fscanf(fp, "compressed_size: %"PRIu64"\n", &stats->compressed_size);
-		fscanf(fp, "compression_hits: %"PRIu64"\n", &stats->compression_hits);
-		fscanf(fp, "compression_misses: %"PRIu64"\n", &stats->compression_misses);
-		fscanf(fp, "verify_hits: %"PRIu64"\n", &stats->verify_hits);
-		fscanf(fp, "verify_misses: %"PRIu64"\n", &stats->verify_misses);
-		fscanf(fp, "verify_errors: %"PRIu64"\n", &stats->verify_errors);
-		fscanf(fp, "inline_waits: %"PRIu64"\n", &stats->inline_waits);
-		fscanf(fp, "cw_hits: %"PRIu64"\n", &stats->cw_hits);
-		fscanf(fp, "cw_misses: %"PRIu64"\n", &stats->cw_misses);
-		fscanf(fp, "xcopy_write: %"PRIu64"\n", &stats->xcopy_write);
-		fscanf(fp, "xcopy_read: %"PRIu64"\n", &stats->xcopy_read);
-		break;
-	}
+	fread(stats, sizeof(*stats), 1, fp);
 }
 
 int

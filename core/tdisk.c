@@ -698,6 +698,14 @@ target_disk_stats(struct tdisk_info *tdisk_info, unsigned long arg)
 		return -1; 
 
 	memcpy(&tdisk_info->stats, &tdisk->stats, sizeof(tdisk->stats));
+	tdisk_info->stats.write_ticks = ticks_to_msecs(tdisk_info->stats.write_ticks);
+	tdisk_info->stats.read_ticks = ticks_to_msecs(tdisk_info->stats.read_ticks);
+	tdisk_info->stats.unmap_ticks = ticks_to_msecs(tdisk_info->stats.unmap_ticks);
+	tdisk_info->stats.wsame_ticks = ticks_to_msecs(tdisk_info->stats.wsame_ticks);
+	tdisk_info->stats.xcopy_read_ticks = ticks_to_msecs(tdisk_info->stats.xcopy_read_ticks);
+	tdisk_info->stats.xcopy_write_ticks = ticks_to_msecs(tdisk_info->stats.xcopy_write_ticks);
+	tdisk_info->stats.populate_token_ticks = ticks_to_msecs(tdisk_info->stats.populate_token_ticks);
+	tdisk_info->stats.write_using_token_ticks = ticks_to_msecs(tdisk_info->stats.write_using_token_ticks);
 	memcpy(&tdisk_info->mirror_state, &tdisk->mirror_state, sizeof(tdisk->mirror_state));
 	tdisk_info->enable_deduplication = tdisk->enable_deduplication;
 	tdisk_info->enable_compression = tdisk->enable_compression;
@@ -7238,7 +7246,7 @@ extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended
 	int pglist_cnt;
 	struct index_info_list index_info_list;
 	int mirror_enabled, use_refs;
-	uint32_t xchg_id;
+	uint32_t xchg_id, start_ticks;
 	struct lba_write *lba_write;
 
 	TAILQ_INIT(&index_info_list);
@@ -7264,6 +7272,7 @@ extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended
 			return 0;
 		}
 
+		TDISK_TICKS_START(start_ticks);
 		TDISK_STATS_ADD(src_tdisk, xcopy_read, size);
 		TDISK_STATS_ADD(dest_tdisk, xcopy_write, size);
 		src_lba = be64toh(b2b->src_lba);
@@ -7309,12 +7318,15 @@ extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended
 				}
 			}
 		}
+		TDISK_TICKS_END(src_tdisk, xcopy_read_ticks, start_ticks);
 
+		TDISK_TICKS_START(start_ticks);
 		ctio->dxfer_len = size;
 		ctio->data_ptr = (void *)pglist;
 		ctio->pglist_cnt = pglist_cnt;
 		pglist_calc_hash(dest_tdisk, pglist, pglist_cnt, mirror_enabled, use_refs);
 		retval = __tdisk_cmd_write(dest_tdisk, ctio, dest_lba, num_blocks, 0, 0, &index_info_list, 0, 0, xchg_id);
+		TDISK_TICKS_END(dest_tdisk, xcopy_write_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			free_block_refs(tdisk, &index_info_list);
 			return -1;
@@ -8113,9 +8125,7 @@ tdisk_proc_cmd(void *disk, void *iop)
 			goto skip_send;
 			break;
 		case EXTENDED_COPY:
-			TDISK_TICKS_START(start_ticks);
 			tdisk_cmd_extended_copy_read(tdisk, ctio);
-			TDISK_TICKS_END(tdisk, xcopy_ticks, start_ticks);
 			TDISK_STATS_ADD(tdisk, xcopy_cmds, 1);
 			goto skip_send;
 			break;

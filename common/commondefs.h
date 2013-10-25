@@ -95,10 +95,11 @@ struct tdisk_stats {
 	uint64_t read_ticks;
 	uint64_t unmap_ticks;
 	uint64_t wsame_ticks;
-	uint64_t xcopy_ticks;
+	uint64_t xcopy_read_ticks;
+	uint64_t xcopy_write_ticks;
 	uint64_t populate_token_ticks;
 	uint64_t write_using_token_ticks;
-	uint64_t pad[47];
+	uint64_t pad[46];
 } __attribute__ ((__packed__));
 
 struct mirror_state {
