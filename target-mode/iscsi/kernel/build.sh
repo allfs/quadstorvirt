@@ -2,7 +2,7 @@ set -e
 os=`uname`
 
 if [ "$QUADSTOR_ROOT" = "" ]; then
-	QUADSTOR_ROOT=`cd .. && pwd`
+	QUADSTOR_ROOT=`cd ../../.. && pwd`
 fi
 
 if [ "$1" = "install" ]; then
