@@ -70,3 +70,36 @@ sudo rm -rf /quadstor/pgsql/scripts
 sudo rm -rf /quadstor/pgsql/share
 sudo rm -rf /quadstor/pgsql/bin
 sudo rm -f /quadstor/pgsql/*.log
+
+if [ -d /usr/local/www/apache22/ ]; then 
+	htdocs=/usr/local/www/apache22/data;
+	cgibin=/usr/local/www/apache22/cgi-bin;
+elif [ -d /usr/local/www/ ]; then
+	htdocs=/usr/local/www/data;
+	cgibin=//usr/local/www/cgi-bin;
+elif [ -f /etc/debian_version ]; then
+	htdocs="/var/www"
+	cgibin="/usr/lib/cgi-bin"
+elif [ -f /etc/SuSE-release ]; then
+	htdocs="/srv/www/htdocs"
+	cgibin="/srv/www/cgi-bin"
+elif [ -f /etc/redhat-release ]; then
+	htdocs=/var/www/html
+	cgibin=/var/www/cgi-bin
+else
+	htdocs="/var/www"
+	cgibin="/usr/lib/cgi-bin"
+fi
+
+sudo rm -rf $htdocs/quadstor
+if [ -f $htdocs/index.html.qsave ]; then
+	sudo mv -f $htdocs/index.html.qsave $htdocs/index.html
+fi
+
+if [ -d $QUADSTOR_ROOT/httpd/cgi-bin ]; then
+	cgilist=`cd $QUADSTOR_ROOT/httpd/cgi-bin && ls -1 *.cgi`
+	for i in $cgilist; do
+		sudo rm -f $cgibin/$i
+	done
+fi
+
