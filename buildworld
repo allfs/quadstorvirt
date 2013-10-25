@@ -1,0 +1,73 @@
+#!/bin/sh
+
+set -x
+buildroot=`pwd`
+export QUADSTOR_ROOT="$buildroot"
+os=`uname`
+GMAKE="make"
+if [ "$os" = "FreeBSD" ]; then
+	GMAKE="gmake"
+fi
+
+checkerror() {
+	if [ "$?" != "0" ]; then
+		exit 1
+	fi
+}
+
+clean=$1
+if [ "$1" = "clobber" ]; then
+	clean="clean"
+fi
+
+rm -f $QUADSTOR_ROOT/export/corelib.o
+cd $QUADSTOR_ROOT/core && sh buildcluster.sh clean && sh buildcluster.sh $clean
+checkerror
+
+if [ "$clean" != install ]; then
+if [ "$os" = "FreeBSD" ]; then
+	cd $QUADSTOR_ROOT/export && make -f Makefile.core $clean
+	checkerror
+	cd $QUADSTOR_ROOT/export && make -f Makefile.ldev $clean
+	checkerror
+else
+	cd $QUADSTOR_ROOT/export && make $clean
+	checkerror
+fi
+fi
+
+cd $QUADSTOR_ROOT/target-mode/iscsi/kernel && $GMAKE -f Makefile.kmod $clean
+checkerror
+
+cd $QUADSTOR_ROOT/target-mode/fc/ && $GMAKE $clean
+checkerror
+
+cd $QUADSTOR_ROOT/others/ && $GMAKE $clean
+checkerror
+cd $QUADSTOR_ROOT/library && $GMAKE $clean
+checkerror
+cd $QUADSTOR_ROOT/target-mode/iscsi/usr && $GMAKE $clean
+checkerror
+if [ "$clean" = "install" ]; then
+	cd $QUADSTOR_ROOT/mapps/html && $GMAKE localinstall
+else
+	cd $QUADSTOR_ROOT/mapps/html && $GMAKE $clean
+fi
+
+checkerror
+cd $QUADSTOR_ROOT/masterd && $GMAKE $clean
+checkerror
+cd $QUADSTOR_ROOT/scctl && $GMAKE $clean
+checkerror
+
+if [ "$QUADSTOR_ROOT" = "/quadstor/quadstor" ]; then
+	cd $QUADSTOR_ROOT/etc && $GMAKE $clean
+	checkerror
+fi
+
+if [ "$clean" = "clean" ]; then
+	rm -rf $QUADSTOR_ROOT/bin
+	rm -rf $QUADSTOR_ROOT/sbin
+	rm -rf $QUADSTOR_ROOT/httpd
+	rm -rf $QUADSTOR_ROOT/lib
+fi

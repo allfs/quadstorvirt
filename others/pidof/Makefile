@@ -10,6 +10,6 @@ clean:
 
 install:
 	@set -e; \
-	mkdir -p /quadstor/bin; \
-	echo "cp -f pidof /quadstor/bin"; \
-	install -m 755 pidof /quadstor/bin/pidof;
+	mkdir -p $(QUADSTOR_ROOT)/bin; \
+	echo "cp -f pidof $(QUADSTOR_ROOT)/bin"; \
+	install -m 755 pidof $(QUADSTOR_ROOT)/bin/pidof;

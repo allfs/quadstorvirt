@@ -55,3 +55,6 @@ bus_if.h
 device_if.h
 pci_if.h
 target-mode/fc/isp9.0/isp9.0
+bin
+httpd
+sbin

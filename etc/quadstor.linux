@@ -130,7 +130,7 @@ start() {
 	/sbin/insmod /quadstor/lib/modules/$kvers/ldev.ko > /dev/null 2>&1 
 	check_error "Failed to insert ldev module"
 
-	if [ -f /quadstor/etc/initd.iscsi ]; then
+	if [ -f /quadstor/sbin/ietd ]; then
 		/sbin/insmod /quadstor/lib/modules/$kvers/iscsit.ko > /dev/null 2>&1
 		check_error "Failed to insert iscsi target module"
 		$DAEMON_CMD /quadstor/sbin/ietd

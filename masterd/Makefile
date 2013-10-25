@@ -32,6 +32,6 @@ clobber: clean
 
 install:
 	@set -e; \
-	mkdir -p /quadstor/sbin; \
-	echo "cp -f mdaemon /quadstor/sbin"; \
-	cp -f mdaemon /quadstor/sbin;
+	mkdir -p $(QUADSTOR_ROOT)/sbin; \
+	echo "cp -f mdaemon $(QUADSTOR_ROOT)/sbin"; \
+	cp -f mdaemon $(QUADSTOR_ROOT)/sbin;

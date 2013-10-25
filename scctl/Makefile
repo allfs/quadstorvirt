@@ -19,22 +19,24 @@ cam: cam.c
 
 install:
 	@set -e; \
-	mkdir -p /quadstor/bin; \
-	echo "cp -f scctl /quadstor/bin"; \
-	cp -f scctl /quadstor/bin;
-	cp -f dbrecover /quadstor/bin;
-	cp -f vdconfig /quadstor/bin;
-	cp -f spconfig /quadstor/bin;
-	cp -f bdconfig /quadstor/bin;
-	cp -f ndconfig /quadstor/bin;
-	cp -f qclone /quadstor/bin;
-	cp -f qmirror /quadstor/bin;
-	cp -f qsync /quadstor/bin;
-	cp -f qmirrorcheck /quadstor/bin;
-	cp -f fcconfig /quadstor/bin;
-	cp -f qmapping /quadstor/bin;
-	cp -f rundiag /quadstor/bin;
-	cp -f cam /quadstor/bin;
+	mkdir -p $(QUADSTOR_ROOT)/bin; \
+	echo "cp -f scctl $(QUADSTOR_ROOT)/bin"; \
+	cp -f scctl $(QUADSTOR_ROOT)/bin; \
+	cp -f dbrecover $(QUADSTOR_ROOT)/bin; \
+	cp -f vdconfig $(QUADSTOR_ROOT)/bin; \
+	cp -f spconfig $(QUADSTOR_ROOT)/bin; \
+	cp -f bdconfig $(QUADSTOR_ROOT)/bin; \
+	cp -f ndconfig $(QUADSTOR_ROOT)/bin; \
+	cp -f qclone $(QUADSTOR_ROOT)/bin; \
+	cp -f qmirror $(QUADSTOR_ROOT)/bin; \
+	cp -f qsync $(QUADSTOR_ROOT)/bin; \
+	cp -f qmirrorcheck $(QUADSTOR_ROOT)/bin; \
+	cp -f fcconfig $(QUADSTOR_ROOT)/bin; \
+	cp -f qmapping $(QUADSTOR_ROOT)/bin; \
+	cp -f rundiag $(QUADSTOR_ROOT)/bin; \
+	if [ -f cam ]; then \
+		cp -f cam $(QUADSTOR_ROOT)/bin; \
+	fi
 
 clean:
 	rm -f *.o scctl cam dbrecover vdconfig spconfig bdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping qsync rundiag

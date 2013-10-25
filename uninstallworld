@@ -1,0 +1,72 @@
+#!/bin/sh
+# Uninstalls QUADStor modules and userland programs on an end user system
+# Copyright (C) QUADStor Systems
+set -x
+
+buildroot=`pwd`
+QUADSTOR_ROOT="$buildroot"
+os=`uname`
+if [ "$os" = "FreeBSD" ]; then
+	sudo rm -f /boot/kernel/ispmod.ko
+	rm -f /etc/rc.d/quadstor
+else
+	if [ -d /etc/rc.d/init.d ]; then
+		rcdir="/etc/rc.d/init.d"
+	elif [ -d /etc/rc.d ]; then
+		rcdir="/etc/rc.d"
+	else
+		rcdir="/etc/init.d"
+	fi
+	cmod=`/sbin/lsmod | grep vtlcore`
+	if [ "$cmod" != "" -a -f /etc/init.d/quadstorvtl ]; then
+		$rcdir/quadstorvtl stop
+	fi
+
+	cmod=`/sbin/lsmod | grep vtlcore`
+	if [ "$cmod" != "" ]; then
+		echo "Unable to shutdown QUADStor VTL service cleanly. Please restart the system and try again"
+		exit 1
+	fi
+
+	cmod=`lsmod | grep coredev`
+	if [ "$cmod" != "" ]; then
+		$rcdir/quadstor stop
+	fi
+
+	cmod=`lsmod | grep coredev`
+	if [ "$cmod" != "" ]; then
+		echo "Unable to shutdown QUADStor service cleanly. Please restart the system and try again"
+		exit 1
+	fi
+
+	$QUADSTOR_ROOT/scripts/qlauninst
+	if [ -d /etc/rc.d/init.d ]; then
+		/sbin/chkconfig --del quadstor
+		sudo rm -f /etc/rc.d/init.d/quadstor
+	elif [ -d /etc/rc.d ]; then
+		/sbin/chkconfig --del quadstor
+		sudo rm -f /etc/rc.d/quadstor
+	else
+		sudo rm -f /etc/rc0.d/*quadstor
+		sudo rm -f /etc/rc1.d/*quadstor
+		sudo rm -f /etc/rc2.d/*quadstor
+		sudo rm -f /etc/rc3.d/*quadstor
+		sudo rm -f /etc/rc4.d/*quadstor
+		sudo rm -f /etc/rc5.d/*quadstor
+		sudo rm -f /etc/rc6.d/*quadstor
+		sudo rm -f /etc/init.d/quadstor
+	fi
+fi
+sudo rm -rf /quadstor/lib/
+sudo rm -rf /quadstor/sbin/
+sudo rm -rf /quadstor/bin/
+sudo rm -rf /quadstor/bin/
+sudo rm -f /quadstor/etc/iet/*.sample
+sudo rmdir /quadstor/etc/iet > /dev/null 2>&1
+sudo rmdir /quadstor/etc > /dev/null 2>&1
+sudo rm -rf /quadstor/pgsql/etc
+sudo rm -rf /quadstor/pgsql/lib
+sudo rm -rf /quadstor/pgsql/scripts
+sudo rm -rf /quadstor/pgsql/share
+sudo rm -rf /quadstor/pgsql/bin
+sudo rm -f /quadstor/pgsql/*.log

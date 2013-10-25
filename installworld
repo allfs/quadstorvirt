@@ -1,0 +1,163 @@
+#!/bin/sh
+# Installs QUADStor modules and userland programs on an end user system
+# Copyright (C) QUADStor Systems
+set -x
+buildtype=$1
+installtype=$2
+
+checkerror() {
+	if [ "$?" != "0" ]; then
+		exit 1
+	fi
+}
+
+checkprog() {
+	found=`which $1`
+	if [ "$found" = "" ]; then
+		echo "ERROR: $1 needs to be installed"
+		exit 1
+	fi
+}
+
+os=`uname`
+GMAKE="make"
+if [ "$os" = "FreeBSD" ]; then
+	GMAKE="gmake"
+fi
+
+coreversion=""
+itfversion=""
+if [ "$os" = "FreeBSD" ]; then
+	coreversion=`pkg_info | grep quadstor-core`
+	itfversion=`pkg_info | grep quadstor-itf`
+else
+	dpkgexists=`which dpkg`
+	if [ "$dpkgexists" != "" ]; then
+		coreversion=`dpkg --get-selections | grep quadstor-core`
+		itfversion=`dpkg --get-selections | grep quadstor-itf`
+	else
+		coreversion=`rpm -qa | grep quadstor-core`
+		itfversion=`rpm -qa | grep quadstor-itf`
+	fi
+fi
+if [ "$coreversion" != "" ];
+	echo "quadstor-core package needs to be uninstalled first"
+	exit 1
+fi
+if [ "$itfversion" != "" ];
+	echo "quadstor-itf package needs to be uninstalled first"
+	exit 1
+fi
+
+checkprog $GMAKE
+checkprog make
+checkprog sudo
+checkprog install 
+
+buildroot=`pwd`
+QUADSTOR_ROOT="$buildroot"
+rm $QUADSTOR_ROOT/target-mode/fc/isp
+rm $QUADSTOR_ROOT/target-mode/fc/qla2xxx
+cd $QUADSTOR_ROOT/build && sh buildinit.sh $buildtype && cd $QUADSTOR_ROOT
+checkerror
+
+sh buildworld clean
+checkerror
+sh buildworld
+checkerror
+sh buildworld install
+checkerror
+
+cd $QUADSTOR_ROOT/pgsql && sudo $GMAKE install DESTDIR=/ && cd $QUADSTOR_ROOT
+sudo install -m 755 -d /quadstor/lib/modules
+sudo install -m 755 -d /quadstor/bin
+sudo install -m 755 -d /quadstor/sbin
+sudo install -m 755 -d /quadstor/lib
+sudo install -m 755 -d /quadstor/lib/modules
+sudo install -m 755 -d /quadstor/etc
+sudo install -m 755 -d /quadstor/etc/iet
+
+sudo install -m 644  $QUADSTOR_ROOT/library/client/libtlclnt.so /quadstor/lib/libtlclnt.so
+sudo install -m 644 $QUADSTOR_ROOT/library/server/libtlsrv.so /quadstor/lib/libtlsrv.so
+sudo install -m 644 $QUADSTOR_ROOT/library/common/libtlmsg.so /quadstor/lib/libtlmsg.so
+sudo install -m 755 $QUADSTOR_ROOT/sbin/mdaemon /quadstor/sbin/
+if [ "$installtype" = "" ]; then
+	sudo install -m 755 $QUADSTOR_ROOT/sbin/ietd /quadstor/sbin/
+fi
+sudo install -m 755 $QUADSTOR_ROOT/bin/* /quadstor/bin/
+
+if [ "$os" = "FreeBSD" ]; then
+	sudo mkdir -p /quadstor/lib/modules
+	sudo install -m 755 $QUADSTOR_ROOT/export/*.ko /quadstor/lib/modules/
+	sudo install -m 755 $QUADSTOR_ROOT/target-mode/fc/isp/ispmod.ko /boot/kernel/
+	if [ "$installtype" = "" ]; then
+		sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/kernel/iscsit.ko /quadstor/lib/modules/
+	fi
+	sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor /etc/rc.d/quadstor
+else
+	kvers=`uname -r`
+	sudo install -m 755 /quadstor/lib/modules/$kvers
+	mkdir -p
+	if [ "$installtype" = "" ]; then
+		sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/kernel/iscsit.ko /quadstor/lib/modules/$kvers/
+	fi
+	sudo install -m 755 $QUADSTOR_ROOT/export/*.ko /quadstor/lib/modules/$kvers/
+	sudo install -m 755 $QUADSTOR_ROOT/target-mode/fc/qla2xxx/qla2xxx.ko /quadstor/lib/modules/$kvers/
+	if [ -f $QUADSTOR_ROOT/target-mode/fc/srpt/ib_srpt.ko ]; then
+		sudo install -m 755 $QUADSTOR_ROOT/target-mode/fc/srpt/ib_srpt.ko /quadstor/lib/modules/$kvers/
+	fi
+	$QUADSTOR_ROOT/scripts/qlainst
+	if [ -d /etc/rc.d/init.d ]; then
+		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/rc.d/init.d/quadstor
+		/sbin/chkconfig --add quadstor
+	elif [ -d /etc/rc.d ]; then
+		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/rc.d/quadstor
+		/sbin/chkconfig --add quadstor
+	else
+		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/init.d/quadstor
+		update-rc.d quadstor defaults
+	fi
+fi
+
+datacontents=`ls /quadstor/pgsql/data`
+if [ "$datacontents" = "" ]; then
+	sudo /quadstor/pgsql/scripts/pgpost.sh
+fi
+sudo /quadstor/pgsql/scripts/pgpatch.sh
+
+sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/etc/targets.allow $RPM_BUILD_ROOT/quadstor/etc/iet/targets.allow.sample
+sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/etc/initiators.allow $RPM_BUILD_ROOT/quadstor/etc/iet/initiators.allow.sample
+sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/etc/ietd.conf $RPM_BUILD_ROOT/quadstor/etc/iet/ietd.conf.sample
+
+if [ -d /usr/local/www/apache22/ ]; then 
+	htdocs=/usr/local/www/apache22/data;
+	cgibin=/usr/local/www/apache22/cgi-bin;
+elif [ -d /usr/local/www/ ]; then
+	htdocs=/usr/local/www/data;
+	cgibin=//usr/local/www/cgi-bin;
+elif [ -f /etc/debian_version ]; then
+	htdocs="/var/www"
+	cgibin="/usr/lib/cgi-bin"
+elif [ -f /etc/SuSE-release ]; then
+	htdocs="/srv/www/htdocs"
+	cgibin="/srv/www/cgi-bin"
+elif [ -f /etc/redhat-release ]; then
+	htdocs=/var/www/html
+	cgibin=/var/www/cgi-bin
+else
+	htdocs="/var/www"
+	cgibin="/usr/lib/cgi-bin"
+fi
+
+sudo mkdir -p $htdocs/quadstor
+if [ ! -d $htdocs/quadstor/yui ]; then
+	sudo cp -r $QUADSTOR_ROOT/httpd/www/quadstor/yui $htdocs/quadstor/
+fi
+
+sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.js $htdocs/quadstor
+sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.css $htdocs/quadstor
+sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.png $htdocs/quadstor
+if [ -f $htdocs/index.html ]; then
+	sudo mv -f $htdocs/index.html $htdocs/index.html.qsave
+fi
+sudo cp -f $QUADSTOR_ROOT/httpd/www/index.html $htdocs/index.html
