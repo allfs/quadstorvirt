@@ -110,10 +110,10 @@ else
 	sudo $QUADSTOR_ROOT/scripts/qlainst
 	if [ -d /etc/rc.d/init.d ]; then
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/rc.d/init.d/quadstor
-		/sbin/chkconfig --add quadstor
+		sudo /sbin/chkconfig --add quadstor
 	elif [ -d /etc/rc.d ]; then
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/rc.d/quadstor
-		/sbin/chkconfig --add quadstor
+		sudo /sbin/chkconfig --add quadstor
 	else
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/init.d/quadstor
 		sudo update-rc.d quadstor defaults
