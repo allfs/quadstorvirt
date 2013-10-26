@@ -5,6 +5,9 @@ set -x
 buildtype=$1
 installtype=$2
 
+buildroot=`pwd`
+export QUADSTOR_ROOT="$buildroot"
+export PATH="/sbin:/usr/sbin:$PATH"
 checkerror() {
 	if [ "$?" != "0" ]; then
 		exit 1
@@ -33,18 +36,18 @@ if [ "$os" = "FreeBSD" ]; then
 else
 	dpkgexists=`which dpkg`
 	if [ "$dpkgexists" != "" ]; then
-		coreversion=`dpkg --get-selections | grep quadstor-core`
-		itfversion=`dpkg --get-selections | grep quadstor-itf`
+		coreversion=`dpkg --get-selections | grep quadstor-core | grep -v purge | grep -v deinstall`
+		itfversion=`dpkg --get-selections | grep quadstor-itf | grep -v purge | grep -v deinstall`
 	else
 		coreversion=`rpm -qa | grep quadstor-core`
 		itfversion=`rpm -qa | grep quadstor-itf`
 	fi
 fi
-if [ "$coreversion" != "" ];
+if [ "$coreversion" != "" ]; then
 	echo "quadstor-core package needs to be uninstalled first"
 	exit 1
 fi
-if [ "$itfversion" != "" ];
+if [ "$itfversion" != "" ]; then
 	echo "quadstor-itf package needs to be uninstalled first"
 	exit 1
 fi
@@ -54,8 +57,6 @@ checkprog make
 checkprog sudo
 checkprog install 
 
-buildroot=`pwd`
-QUADSTOR_ROOT="$buildroot"
 rm $QUADSTOR_ROOT/target-mode/fc/isp
 rm $QUADSTOR_ROOT/target-mode/fc/qla2xxx
 cd $QUADSTOR_ROOT/build && sh buildinit.sh $buildtype && cd $QUADSTOR_ROOT
@@ -96,8 +97,7 @@ if [ "$os" = "FreeBSD" ]; then
 	sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor /etc/rc.d/quadstor
 else
 	kvers=`uname -r`
-	sudo install -m 755 /quadstor/lib/modules/$kvers
-	mkdir -p
+	sudo install -m 755 -d /quadstor/lib/modules/$kvers
 	if [ "$installtype" = "" ]; then
 		sudo install -m 755 $QUADSTOR_ROOT/target-mode/iscsi/kernel/iscsit.ko /quadstor/lib/modules/$kvers/
 	fi
@@ -106,7 +106,8 @@ else
 	if [ -f $QUADSTOR_ROOT/target-mode/fc/srpt/ib_srpt.ko ]; then
 		sudo install -m 755 $QUADSTOR_ROOT/target-mode/fc/srpt/ib_srpt.ko /quadstor/lib/modules/$kvers/
 	fi
-	$QUADSTOR_ROOT/scripts/qlainst
+	chmod +x $QUADSTOR_ROOT/scripts/qlainst
+	sudo $QUADSTOR_ROOT/scripts/qlainst
 	if [ -d /etc/rc.d/init.d ]; then
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/rc.d/init.d/quadstor
 		/sbin/chkconfig --add quadstor
@@ -115,11 +116,11 @@ else
 		/sbin/chkconfig --add quadstor
 	else
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/init.d/quadstor
-		update-rc.d quadstor defaults
+		sudo update-rc.d quadstor defaults
 	fi
 fi
 
-datacontents=`ls /quadstor/pgsql/data`
+datacontents=`sudo ls /quadstor/pgsql/data`
 if [ "$datacontents" = "" ]; then
 	sudo /quadstor/pgsql/scripts/pgpost.sh
 fi

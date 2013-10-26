@@ -10,6 +10,8 @@ fi
 
 /quadstor/pgsql/scripts/pgpatch.sh > /dev/null 2>&1
 
+sed -e 's/# Default-Start:.*/# Default-Start:\t\t2 3 4 5/g' -i /etc/init.d/quadstor
+sed -e 's/# Default-Stop:.*/# Default-Stop:\t\t\t0 1 6/g' -i /etc/init.d/quadstor
 update-rc.d quadstor defaults
 
 /usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
