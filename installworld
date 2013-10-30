@@ -168,7 +168,7 @@ fi
 sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.js $htdocs/quadstor
 sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.css $htdocs/quadstor
 sudo cp -f $QUADSTOR_ROOT/httpd/www/quadstor/*.png $htdocs/quadstor
-if [ -f $htdocs/index.html ]; then
+if [ -f $htdocs/index.html -a ! -f $htdocs/index.html.qsave ]; then
 	sudo mv -f $htdocs/index.html $htdocs/index.html.qsave
 fi
 sudo cp -f $QUADSTOR_ROOT/httpd/www/index.html $htdocs/index.html
