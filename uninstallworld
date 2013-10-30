@@ -93,7 +93,6 @@ fi
 sudo rm -rf /quadstor/lib/
 sudo rm -rf /quadstor/sbin/
 sudo rm -rf /quadstor/bin/
-sudo rm -rf /quadstor/bin/
 sudo rm -f /quadstor/etc/iet/*.sample
 sudo rmdir /quadstor/etc/iet > /dev/null 2>&1
 sudo rmdir /quadstor/etc > /dev/null 2>&1
@@ -129,10 +128,10 @@ if [ -f $htdocs/index.html.qsave ]; then
 	sudo mv -f $htdocs/index.html.qsave $htdocs/index.html
 fi
 
-if [ -d $QUADSTOR_ROOT/httpd/cgi-bin ]; then
-	cgilist=`cd $QUADSTOR_ROOT/httpd/cgi-bin && ls -1 *.cgi`
+if [ -d /quadstor/httpd/cgi-bin ]; then
+	cgilist=`cd /quadstor/httpd/cgi-bin && ls -1 *.cgi`
 	for i in $cgilist; do
 		sudo rm -f $cgibin/$i
 	done
 fi
-
+sudo rm -rf /quadstor/httpd/
