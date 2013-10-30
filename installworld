@@ -123,8 +123,8 @@ else
 		sudo /sbin/chkconfig --add quadstor
 	else
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/init.d/quadstor
-		sudo sed -e 's/# Default-Start:.*/# Default-Start:\t\t2 3 4 5/g' -i /etc/init.d/quadstorvtl
-		sudo sed -e 's/# Default-Stop:.*/# Default-Stop:\t\t\t0 1 6/g' -i /etc/init.d/quadstorvtl
+		sudo sed -e 's/# Default-Start:.*/# Default-Start:\t\t2 3 4 5/g' -i /etc/init.d/quadstor
+		sudo sed -e 's/# Default-Stop:.*/# Default-Stop:\t\t\t0 1 6/g' -i /etc/init.d/quadstor
 		sudo update-rc.d quadstor defaults
 	fi
 	/usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
