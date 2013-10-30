@@ -34,6 +34,13 @@ if [ "$os" = "FreeBSD" ]; then
 	coreversion=`pkg_info | grep quadstor-core`
 	itfversion=`pkg_info | grep quadstor-itf`
 else
+	kbuilddir="/lib/modules/`uname -r`/build/"
+	if [ ! -f $kbuilddir/Makefile ]; then
+		echo "Kernel build dir $kbuilddir does not seem to be valid. Cannot continue."
+		echo "If you have done a kernel upgrade, rebooting might help."
+		exit 1
+	fi
+
 	dpkgexists=`which dpkg`
 	if [ "$dpkgexists" != "" ]; then
 		coreversion=`dpkg --get-selections | grep quadstor-core | grep -v purge | grep -v deinstall`
@@ -96,13 +103,6 @@ if [ "$os" = "FreeBSD" ]; then
 	fi
 	sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor /etc/rc.d/quadstor
 else
-	kbuilddir="/lib/modules/`uname -r`/build/"
-	if [ ! -f $kbuilddir/Makefile ]; then
-		echo "Kernel build dir $kbuilddir does not seem to be valid. Cannot continue."
-		echo "If you have done a kernel upgrade, rebooting might help."
-		exit 1
-	fi
-
 	kvers=`uname -r`
 	sudo install -m 755 -d /quadstor/lib/modules/$kvers
 	if [ "$installtype" = "" ]; then
