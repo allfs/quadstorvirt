@@ -68,6 +68,14 @@ install -m 755 /quadstor/quadstor/scripts/qlainst $RPM_BUILD_ROOT/quadstor/bin/q
 install -m 755 /quadstor/quadstor/scripts/qlauninst $RPM_BUILD_ROOT/quadstor/bin/qlauninst
 install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/etc/udev/rules.d/65-quadstor.rules
 
+%pre
+	kbuilddir="/lib/modules/`uname -r`/build/"
+	if [ ! -f $kbuilddir/Makefile ]; then
+		echo "Kernel build dir $kbuilddir does not seem to be valid. Cannot continue."
+		echo "If you have done a kernel upgrade, rebooting might help."
+		exit 1
+	fi
+
 %post
 	if [ ! -f /quadstor/etc/iet/targets.allow ]; then
 		cp /quadstor/etc/iet/targets.allow.sample /quadstor/etc/iet/targets.allow

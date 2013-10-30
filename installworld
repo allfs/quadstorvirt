@@ -96,6 +96,13 @@ if [ "$os" = "FreeBSD" ]; then
 	fi
 	sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor /etc/rc.d/quadstor
 else
+	kbuilddir="/lib/modules/`uname -r`/build/"
+	if [ ! -f $kbuilddir/Makefile ]; then
+		echo "Kernel build dir $kbuilddir does not seem to be valid. Cannot continue."
+		echo "If you have done a kernel upgrade, rebooting might help."
+		exit 1
+	fi
+
 	kvers=`uname -r`
 	sudo install -m 755 -d /quadstor/lib/modules/$kvers
 	if [ "$installtype" = "" ]; then
@@ -118,6 +125,7 @@ else
 		sudo install -m 755 $QUADSTOR_ROOT/etc/quadstor.linux /etc/init.d/quadstor
 		sudo update-rc.d quadstor defaults
 	fi
+	/usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
 fi
 
 datacontents=`sudo ls /quadstor/pgsql/data`
