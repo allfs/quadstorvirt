@@ -25,6 +25,7 @@ fi
 
 cp -f /quadstor/httpd/www/*.html $htdocs/
 rm -rf $htdocs/quadstor/
+mkdir -p $cgibin
 mkdir -p $htdocs/quadstor
 cp -fr /quadstor/httpd/www/quadstor/* $htdocs/quadstor/
 cp -f /quadstor/httpd/cgi-bin/* $cgibin/
