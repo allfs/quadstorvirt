@@ -1,6 +1,10 @@
 #!/bin/bash
 set -x
 
+if [ "$QUADSTOR_ROOT" = "" ]; then
+	QUADSTOR_ROOT=`cd .. && pwd`
+fi
+
 tarfile="pgsql$1.tgz"
 if [ "$1" = "sles11sp2" ]; then
 	tarfile="pgsqlsles11.tgz"
