@@ -54,5 +54,12 @@ checkerror
 cd /quadstor/quadstor/scctl && $GMAKE $clean
 checkerror
 
+if [ "$clean" = "" ]; then
+	mkdir -p /quadstor/bin
+	mkdir -p /quadstor/sbin
+	sudo cp -f /quadstor/quadstor/bin/* /quadstor/bin/
+	sudo cp -f /quadstor/quadstor/sbin/* /quadstor/sbin/
+fi
+
 cd /quadstor/quadstor/etc && $GMAKE $clean
 checkerror
