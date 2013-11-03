@@ -29,7 +29,7 @@ install -m 744 /quadstor/quadstor/scctl/qmapping $DEBIAN_ROOT/quadstor/bin/qmapp
 install -m 644  /quadstor/quadstor/library/client/libtlclnt.so $DEBIAN_ROOT/quadstor/lib/libtlclnt.so.$libvers
 install -m 644 /quadstor/quadstor/library/server/libtlsrv.so $DEBIAN_ROOT/quadstor/lib/libtlsrv.so.$libvers
 install -m 644 /quadstor/quadstor/library/common/libtlmsg.so $DEBIAN_ROOT/quadstor/lib/libtlmsg.so.$libvers
-install -m 644 /quadstor/lib/modules/corelib.o $DEBIAN_ROOT/quadstor/lib/modules/
+install -m 644 /quadstor/quadstor/lib/modules/corelib.o $DEBIAN_ROOT/quadstor/lib/modules/
 install -m 744 /quadstor/quadstor/etc/quadstor.linux.client $DEBIAN_ROOT/etc/init.d/quadstor
 sed -i -e "s/Default-Start.*/Default-Start:\t\t2 3 4 5/g" $DEBIAN_ROOT/etc/init.d/quadstor
 sed -i -e "s/Default-Stop.*/Default-Stop:\t\t\t0 1 6/g" $DEBIAN_ROOT/etc/init.d/quadstor

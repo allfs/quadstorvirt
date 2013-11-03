@@ -36,7 +36,7 @@ install -m 755 /quadstor/quadstor/scctl/qmapping $RPM_BUILD_ROOT/quadstor/bin/qm
 install -m 755  /quadstor/quadstor/library/client/libtlclnt.so $RPM_BUILD_ROOT/quadstor/lib/libtlclnt.so.%{libvers}
 install -m 755 /quadstor/quadstor/library/server/libtlsrv.so $RPM_BUILD_ROOT/quadstor/lib/libtlsrv.so.%{libvers}
 install -m 755 /quadstor/quadstor/library/common/libtlmsg.so $RPM_BUILD_ROOT/quadstor/lib/libtlmsg.so.%{libvers}
-install -m 644 /quadstor/lib/modules/corelib.o $RPM_BUILD_ROOT/quadstor/lib/modules/
+install -m 644 /quadstor/quadstor/lib/modules/corelib.o $RPM_BUILD_ROOT/quadstor/lib/modules/
 install -m 744 /quadstor/quadstor/etc/quadstor.linux.client $RPM_BUILD_ROOT/etc/rc.d/init.d/quadstor
 install -m 755 /quadstor/quadstor/scripts/diaghelper.linux $RPM_BUILD_ROOT/quadstor/bin/diaghelper
 install -m 444 /quadstor/quadstor/LICENSE $RPM_BUILD_ROOT/quadstor/

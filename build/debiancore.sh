@@ -37,7 +37,7 @@ install -m 755 /quadstor/quadstor/masterd/mdaemon $DEBIAN_ROOT/quadstor/sbin/mda
 install -m 644  /quadstor/quadstor/library/client/libtlclnt.so $DEBIAN_ROOT/quadstor/lib/libtlclnt.so.$libvers
 install -m 644 /quadstor/quadstor/library/server/libtlsrv.so $DEBIAN_ROOT/quadstor/lib/libtlsrv.so.$libvers
 install -m 644 /quadstor/quadstor/library/common/libtlmsg.so $DEBIAN_ROOT/quadstor/lib/libtlmsg.so.$libvers
-install -m 644 /quadstor/lib/modules/corelib.o $DEBIAN_ROOT/quadstor/lib/modules/
+install -m 644 /quadstor/quadstor/lib/modules/corelib.o $DEBIAN_ROOT/quadstor/lib/modules/
 install -m 644 /quadstor/quadstor/mapps/html/cgisrc/index.html $DEBIAN_ROOT/var/www/
 install -m 755 /quadstor/quadstor/mapps/html/cgisrc/*.cgi $DEBIAN_ROOT/usr/lib/cgi-bin/
 install -m 755 /quadstor/quadstor/mapps/html/cgisrc/*.css $DEBIAN_ROOT/var/www/quadstor/
