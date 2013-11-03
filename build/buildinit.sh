@@ -5,6 +5,10 @@ if [ "$QUADSTOR_ROOT" = "" ]; then
 	QUADSTOR_ROOT=`cd .. && pwd`
 fi
 
+if [ "$QUADSTOR_INSTALL_ROOT" = "" ]; then
+	QUADSTOR_INSTALL_ROOT="/quadstor"
+fi
+
 tarfile="pgsql$1.tgz"
 if [ "$1" = "sles11sp2" ]; then
 	tarfile="pgsqlsles11.tgz"
@@ -40,8 +44,8 @@ rm -f $QUADSTOR_ROOT/pgsql/share/pg_hba.conf.sample-e
 
 cd $QUADSTOR_ROOT/pgsql && gmake install
 
-mkdir -p /quadstor/sbin
-mkdir -p /quadstor/bin
+mkdir -p $QUADSTOR_INSTALL_ROOT/sbin
+mkdir -p $QUADSTOR_INSTALL_ROOT/bin
 
 rm -f $QUADSTOR_ROOT/target-mode/fc/qla2xxx
 

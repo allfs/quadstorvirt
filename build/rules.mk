@@ -1,6 +1,9 @@
 ifeq ($(QUADSTOR_ROOT),)
 	QUADSTOR_ROOT := /quadstor/quadstor
 endif
+ifeq ($(QUADSTOR_INSTALL_ROOT),)
+	QUADSTOR_INSTALL_ROOT := /quadstor
+endif
 ENABLE_STDERR := 0
 RELEASE_BUILD := 0
 

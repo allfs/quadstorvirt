@@ -7,6 +7,7 @@ installtype=$2
 
 buildroot=`pwd`
 export QUADSTOR_ROOT="$buildroot"
+export QUADSTOR_INSTALL_ROOT="$buildroot"
 export PATH="/sbin:/usr/sbin:$PATH"
 checkerror() {
 	if [ "$?" != "0" ]; then
