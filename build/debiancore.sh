@@ -1,7 +1,7 @@
 #/bin/sh
 set -x
 curdir=`pwd`
-libvers="3.0.49"
+libvers="3.0.50"
 
 cd /quadstor/quadstor/ && sh buildcluster.sh clean
 cd /quadstor/quadstor/ && sh buildcluster.sh

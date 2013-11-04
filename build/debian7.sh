@@ -1,6 +1,6 @@
 #!/bin/sh
 set -x
-version="3.0.49"
+version="3.0.50"
 sh buildinit.sh debian7
 sh debiancore.sh
 mv debian.deb quadstor-core-$version-debian7-x86_64.deb

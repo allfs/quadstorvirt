@@ -1,3 +1,17 @@
+Release 3.0.50
+	* Fixes for new install and build system
+	* Handle warnings when cloning VDisks which were resized
+	* Fix for iSCSI IncomingUser truncation on a restart
+	* Additional VDisk statistics
+	* On a restart wait for upto 12 minutes for ddtables to load
+	* On a VDisk rename, update IQN if its the default
+	* Avoid sending threshold alerts to fast. Pause for 5 seconds before
+	  sending next alert
+	* In SCSI Control Mode Page, indicate that task sets are maintained
+	  per I_T nexus
+	* Extended VDisk names, which increase the maximum length of VDisk
+	  names to 256
+
 Release 3.0.49
 	* Async load of deduplication tables. This was removed sometime back
 	  due to performance issues.

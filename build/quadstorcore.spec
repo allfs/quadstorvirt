@@ -1,7 +1,7 @@
-%define libvers 3.0.49
+%define libvers 3.0.50
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-core 
-Version: 3.0.49
+Version: 3.0.50
 Release: rhel5
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -104,7 +104,7 @@ cd $RPM_BUILD_ROOT/quadstor/lib && ln -fs libtlmsg.so.%{libvers} libtlmsg.so
 	/usr/sbin/setsebool -P httpd_enable_cgi 1 > /dev/null 2>&1
 
 	mkdir -p /quadstor/etc
-	echo "3.0.49 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-core-version
+	echo "3.0.50 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-core-version
 
 	exit 0
 
