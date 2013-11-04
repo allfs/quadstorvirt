@@ -44,7 +44,7 @@ install -m 755 /quadstor/quadstor/scripts/builditf.min.linux.sh $RPM_BUILD_ROOT/
 install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/etc/udev/rules.d/65-quadstor.rules
 
 %post
-	echo "Minimal 3.0.50 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-min-version
+	echo "Minimal 3.0.50 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-version
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf.min"
 	sleep 5
