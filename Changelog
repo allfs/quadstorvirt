@@ -1,3 +1,7 @@
+Release 3.0.51
+	* Fixes which allow for using VAAI full copy/XCopy during svmotion
+	  also.
+
 Release 3.0.50
 	* Fixes for new install and build system
 	* Handle warnings when cloning VDisks which were resized
