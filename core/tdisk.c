@@ -3794,6 +3794,7 @@ pgdata_in_read_list(struct tdisk *tdisk, struct pgdata *pgdata, struct pgdata_wl
 static void 
 __free_block_refs(struct tdisk *tdisk, struct index_info_list *ref_index_info_list)
 {
+	struct ddtable *ddtable = bdev_group_ddtable(tdisk->group); 
 	struct index_info *index_info;
 	struct index_sync_list index_sync_list;
 	struct index_info_list index_info_list;
@@ -3803,7 +3804,7 @@ __free_block_refs(struct tdisk *tdisk, struct index_info_list *ref_index_info_li
 
 	index_list_insert(&index_sync_list, ref_index_info_list);
 	TAILQ_FOREACH(index_info, ref_index_info_list, i_list) {
-		process_delete_block(bdev_group_ddtable(tdisk->group), index_info->block, &index_info_list, &index_sync_list, NULL, TYPE_DATA_BLOCK);
+		process_delete_block(ddtable, index_info->block, &index_info_list, &index_sync_list, NULL, TYPE_DATA_BLOCK);
 	}
 
 	index_sync_start_io(&index_sync_list, 1);
@@ -7151,7 +7152,7 @@ pglist_calc_hash(struct tdisk *tdisk, struct pgdata **pglist, int pglist_cnt, in
 }
 
 static int
-extended_copy_get_tdisks(struct tdisk *tdisk, struct extended_copy *ecopy, struct segment_descriptor_common *common, struct tdisk **ret_dest_tdisk, struct tdisk **ret_src_tdisk)
+extended_copy_get_tdisks(struct extended_copy *ecopy, struct segment_descriptor_common *common, struct tdisk **ret_dest_tdisk, struct tdisk **ret_src_tdisk)
 {
 	struct target_descriptor_common *target_desc;
 	struct tdisk *dest_tdisk, *src_tdisk;
@@ -7161,7 +7162,7 @@ extended_copy_get_tdisks(struct tdisk *tdisk, struct extended_copy *ecopy, struc
 		return -1;
 
 	src_tdisk = target_desc->tdisk;
-	if (!src_tdisk || src_tdisk != tdisk)
+	if (!src_tdisk)
 		return -1;
 
 	target_desc = target_descriptor_locate(ecopy, be16toh(common->dest_target_index));
@@ -7231,7 +7232,7 @@ extended_copy_mirror_check(struct tdisk *src_tdisk, struct qsio_scsiio *ctio, st
 }
 
 static int 
-extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended_copy *ecopy)
+extended_copy_run(struct qsio_scsiio *ctio, struct extended_copy *ecopy)
 {
 	struct segment_descriptor_common *common;
 	struct segment_descriptor_b2b *b2b;
@@ -7254,7 +7255,7 @@ extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended
 		if (common->type_code != 0x02)
 			continue;
 
-		retval = extended_copy_get_tdisks(tdisk, ecopy, common, &dest_tdisk, &src_tdisk);
+		retval = extended_copy_get_tdisks(ecopy, common, &dest_tdisk, &src_tdisk);
 		if (unlikely(retval != 0)) {
 			ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, UNREACHABLE_COPY_TARGET_ASC, UNREACHABLE_COPY_TARGET_ASCQ);
 			return 0;
@@ -7328,7 +7329,7 @@ extended_copy_run(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct extended
 		retval = __tdisk_cmd_write(dest_tdisk, ctio, dest_lba, num_blocks, 0, 0, &index_info_list, 0, 0, xchg_id);
 		TDISK_TICKS_END(dest_tdisk, xcopy_write_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
-			free_block_refs(tdisk, &index_info_list);
+			free_block_refs(src_tdisk, &index_info_list);
 			return -1;
 		}
 		debug_check(!TAILQ_EMPTY(&index_info_list));
@@ -7380,7 +7381,7 @@ tdisk_cmd_extended_copy_read(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 
 	ctio_free_data(ctio);
 	atomic_inc(&write_requests);
-	retval = extended_copy_run(tdisk, ctio, ecopy);
+	retval = extended_copy_run(ctio, ecopy);
 	atomic_dec(&write_requests);
 
 	tdisk_lock(tdisk);
