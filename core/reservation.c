@@ -62,7 +62,25 @@ in_persistent_ar_type(struct reservation *reservation)
 	else
 		return 0; 
 }
- 
+
+static void 
+persistent_reservation_update_key(struct reservation *reservation, struct qsio_scsiio *ctio, uint64_t key)
+{
+	if (reservation->type != RESERVATION_TYPE_PERSISTENT)
+		return;
+
+	switch (reservation->persistent_type) {
+		case RESERVATION_TYPE_WRITE_EXCLUSIVE_AR:
+		case RESERVATION_TYPE_EXCLUSIVE_ACCESS_AR:
+			return;
+	}
+
+	if (!iid_equal(reservation->i_prt, reservation->t_prt, reservation->init_int, ctio->i_prt, ctio->t_prt, ctio->init_int))
+		return;
+
+	reservation->persistent_key = key;
+}
+
 static int
 is_persistent_reservation_holder(struct reservation *reservation, uint64_t i_prt[], uint64_t t_prt[], uint8_t init_int)
 {
@@ -448,6 +466,7 @@ persistent_reservation_handle_register(struct tdisk *tdisk, struct qsio_scsiio *
 		else
 		{
 			tmp->key = service_action_key;
+			persistent_reservation_update_key(reservation, ctio, service_action_key);
 			node_registration_sync_send(tdisk, tmp, REGISTRATION_OP_MODIFY);
 		}
 		reservation->generation++;
@@ -534,6 +553,7 @@ persistent_reservation_handle_register_and_ignore(struct tdisk *tdisk, struct qs
 		else
 		{
 			tmp->key = service_action_key;
+			persistent_reservation_update_key(reservation, ctio, service_action_key);
 			node_registration_sync_send(tdisk, tmp, REGISTRATION_OP_MODIFY);
 		}
 		reservation->generation++;
@@ -594,7 +614,7 @@ persistent_reservation_handle_reserve(struct tdisk *tdisk, struct qsio_scsiio *c
 	debug_info("type %x key %llx\n", type, (unsigned long long)(key));
 
 	retval = initiator_has_registered(key, ctio->i_prt, ctio->t_prt, ctio->init_int, &reservation->registration_list, &registration);
-	if (!retval) {
+	if (!retval || registration->key != key) {
 		ctio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
 		return 0;
 	}
@@ -653,7 +673,7 @@ persistent_reservation_handle_release(struct tdisk *tdisk, struct qsio_scsiio *c
 	}
 
 	retval = initiator_has_registered(key, ctio->i_prt, ctio->t_prt, ctio->init_int, &reservation->registration_list, &registration);
-	if (!retval) {
+	if (!retval || registration->key != key) {
 		ctio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
 		return 0;
 	}
@@ -698,7 +718,7 @@ persistent_reservation_handle_clear(struct tdisk *tdisk, struct qsio_scsiio *cti
 	key = be64toh(param->key);
 
 	retval = initiator_has_registered(key, ctio->i_prt, ctio->t_prt, ctio->init_int, &reservation->registration_list, &registration);
-	if (!retval) {
+	if (!retval || registration->key != key) {
 		ctio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
 		return 0;
 	}
@@ -754,6 +774,7 @@ int
 persistent_reservation_handle_preempt(struct tdisk *tdisk, struct qsio_scsiio *ctio, int abort)
 {
 	struct reservation *reservation = &tdisk->reservation;
+	struct registration *registration;
 	uint8_t *cdb = ctio->cdb;
 	struct registration *tmp, *tvar, *prev = NULL;
 	struct reservation_parameter *param;
@@ -769,14 +790,8 @@ persistent_reservation_handle_preempt(struct tdisk *tdisk, struct qsio_scsiio *c
 	service_action_key = be64toh(param->service_action_key);
 	type = (cdb[2] & 0xF);
 
-	retval = initiator_has_registered(key, ctio->i_prt, ctio->t_prt, ctio->init_int, &reservation->registration_list, NULL);
-	if (!retval) {
-		ctio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
-		return 0;
-	}
-
-	if (reservation->is_reserved && reservation->persistent_key != key)
-	{
+	retval = initiator_has_registered(key, ctio->i_prt, ctio->t_prt, ctio->init_int, &reservation->registration_list, &registration);
+	if (!retval || registration->key != key) {
 		ctio->scsi_status = SCSI_STATUS_RESERV_CONFLICT;
 		return 0;
 	}
