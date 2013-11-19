@@ -82,6 +82,7 @@ node_msg_handle_clone(struct tl_comm *comm, struct tl_msg *msg)
 {
 	struct mirror_spec *mirror_spec;
 	char errmsg[256];
+	uint64_t job_id;
 	int retval;
 
 	if (msg->msg_len < sizeof(*mirror_spec)) {
@@ -91,7 +92,7 @@ node_msg_handle_clone(struct tl_comm *comm, struct tl_msg *msg)
 
 	mirror_spec = (struct mirror_spec *)(msg->msg_data);
 
-	retval = __tl_server_start_clone(mirror_spec->dest_tdisk, mirror_spec->clone_tdisk, mirror_spec->dest_group, errmsg);
+	retval = __tl_server_start_clone(mirror_spec->dest_tdisk, mirror_spec->clone_tdisk, mirror_spec->dest_group, errmsg, &job_id);
 	if (retval != 0) {
 		node_resp_error_msg(comm, msg, errmsg);
 		return;

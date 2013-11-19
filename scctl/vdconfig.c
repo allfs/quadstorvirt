@@ -66,7 +66,7 @@ tdisk_list_calc_format_length(struct tdisk_list *tdisk_list, int *ret_name_len, 
 }
 
 static int
-vdconfig_add_vdisk(char *name, char *pool, uint64_t size, int emulate)
+vdconfig_add_vdisk(char *name, char *pool, uint64_t size, int emulate, int dedupe, int compression, int verify, int threshold, char *iqn)
 {
 	int group_id;
 	int lba_shift;
@@ -99,7 +99,7 @@ vdconfig_add_vdisk(char *name, char *pool, uint64_t size, int emulate)
 	else
 		lba_shift = 12;
 
-	retval = tl_client_add_tdisk(name, size, lba_shift, group_id, reply);
+	retval = tl_client_add_tdisk(name, size, lba_shift, group_id, dedupe, compression, verify, threshold, iqn, reply);
 	if (retval != 0) {
 		fprintf(stderr, "Unable to add VDisk. Message from server is: %s\n", reply);
 		return -1;
@@ -264,6 +264,7 @@ int main(int argc, char *argv[])
 	char src[TDISK_MAX_NAME_LEN];
 	char pool[GROUP_MAX_NAME_LEN];
 	char serialnumber[50];
+	char iqn[256];
 	char reply[512];
 	int c, retval;
 	int force = 0;
@@ -280,9 +281,10 @@ int main(int argc, char *argv[])
 
 	memset(src, 0, sizeof(src));
 	memset(pool, 0, sizeof(pool));
+	memset(iqn, 0, sizeof(iqn));
 	memset(serialnumber, 0, sizeof(serialnumber));
 	force = 0;
-	while ((c = getopt(argc, argv, "v:s:g:t:n:flxaedcym")) != -1) {
+	while ((c = getopt(argc, argv, "v:s:g:t:n:i:flxaedcym")) != -1) {
 		switch (c) {
 		case 'v':
 			strncpy(src, optarg, TDISK_NAME_LEN);
@@ -292,6 +294,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'g':
 			strncpy(pool, optarg, GROUP_NAME_LEN);
+			break;
+		case 'i':
+			strncpy(iqn, optarg, 255);
 			break;
 		case 't':
 			threshold = atoi(optarg);
@@ -352,7 +357,7 @@ int main(int argc, char *argv[])
 		if (!size || !src[0])
 			print_usage();
 
-		return vdconfig_add_vdisk(src, pool, size, emulate);
+		return vdconfig_add_vdisk(src, pool, size, emulate, dedupe, compression, verify, threshold, iqn);
 	}
 	if (modify) {
 		if (!src[0])

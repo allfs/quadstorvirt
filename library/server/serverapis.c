@@ -1348,7 +1348,7 @@ source_clone_valid(char *src)
 }
 
 int
-__tl_server_start_clone(char *src, char *dest, char *dest_pool, char *errmsg)
+__tl_server_start_clone(char *src, char *dest, char *dest_pool, char *errmsg, uint64_t *job_id)
 {
 	struct tdisk_info *src_info, *dest_info;
 	int retval;
@@ -1419,17 +1419,18 @@ __tl_server_start_clone(char *src, char *dest, char *dest_pool, char *errmsg)
 	clone_config.dest_target_id = dest_info->target_id;
 	clone_config.job_id = clone_info->job_id;
 	DEBUG_INFO("start clone for %s to %s\n", src, dest);
+	strcpy(clone_info->dest, dest);
+	strcpy(clone_info->src, src);
+	clone_info->dest_target_id = clone_config.dest_target_id;
+	clone_info->src_target_id = clone_config.src_target_id;
+	clone_info->op = OP_CLONE;
+	*job_id = clone_info->job_id;
 	retval = tl_ioctl(TLTARGIOCCLONEVDISK, &clone_config);
 	if (retval != 0) { 
 		free(clone_info);
 		sprintf(errmsg, "Clone operation failed %s", dest);
 		return -1;
 	}
-	strcpy(clone_info->dest, dest);
-	strcpy(clone_info->src, src);
-	clone_info->dest_target_id = clone_config.dest_target_id;
-	clone_info->src_target_id = clone_config.src_target_id;
-	clone_info->op = OP_CLONE;
 	TAILQ_INSERT_TAIL(&clone_info_list, clone_info, c_list);
 	return 0;
 }
@@ -1809,9 +1810,10 @@ tl_server_vdisk_resize(struct tl_comm *comm, struct tl_msg *msg)
 static int
 tl_server_start_clone(struct tl_comm *comm, struct tl_msg *msg)
 {
-	char errmsg[256];
-	int retval;
 	struct clone_spec clone_spec;
+	char errmsg[256];
+	uint64_t job_id;
+	int retval;
 
 	if (msg->msg_len < sizeof(clone_spec)) {
 		snprintf(errmsg, sizeof(errmsg), "Invalid clone start message");
@@ -1821,13 +1823,15 @@ tl_server_start_clone(struct tl_comm *comm, struct tl_msg *msg)
 
 	memcpy(&clone_spec, msg->msg_data, sizeof(clone_spec));
 
-	retval = __tl_server_start_clone(clone_spec.src_tdisk, clone_spec.dest_tdisk, clone_spec.dest_group, errmsg);
+	retval = __tl_server_start_clone(clone_spec.src_tdisk, clone_spec.dest_tdisk, clone_spec.dest_group, errmsg, &job_id);
 	if (retval != 0) {
 		tl_server_msg_failure2(comm, msg, errmsg);
 		return -1;
 	}
 
-	tl_server_msg_success(comm, msg);
+	msg->msg_resp = MSG_RESP_OK;
+	sprintf(errmsg, "jobid: %llu\n", (unsigned long long)job_id);
+	tl_server_send_message(comm, msg, errmsg);
 	return 0;
 }
 
@@ -1878,6 +1882,61 @@ source_clone_cancel(char *src)
 
 	}
 	return retval;
+}
+
+static int
+tl_server_clone_status(struct tl_comm *comm, struct tl_msg *msg)
+{
+	uint64_t job_id;
+	struct clone_info *clone_info;
+	struct clone_config clone_config;
+	int retval = MSG_RESP_BUSY;
+
+	if (sscanf(msg->msg_data, "job_id: %"PRIu64"\n", &job_id) != 1) {
+		tl_server_msg_failure(comm, msg);
+		return -1;
+	}
+
+	TAILQ_FOREACH(clone_info, &clone_info_list, c_list) {
+		if (clone_info->op != OP_CLONE)
+			continue;
+		if (clone_info->job_id != job_id)
+			continue;
+		if (clone_info->status != CLONE_STATUS_SUCCESSFUL &&
+		    clone_info->status != CLONE_STATUS_ERROR) {
+			memset(&clone_config, 0, sizeof(clone_config));
+			clone_config.dest_target_id = clone_info->dest_target_id;
+			clone_config.src_target_id = clone_info->src_target_id;
+			retval = tl_ioctl(TLTARGIOCCLONESTATUS, &clone_config);
+			if (retval != 0)
+				break;
+
+			clone_info->status = clone_config.status;
+			clone_info->progress = clone_config.progress;
+			memcpy(&clone_info->stats, &clone_config.stats, sizeof(clone_config.stats));
+		}
+
+		if (clone_info->status != CLONE_STATUS_SUCCESSFUL &&
+		    clone_info->status != CLONE_STATUS_ERROR) {
+			retval = MSG_RESP_BUSY;
+			break;
+		}
+
+		if (clone_info->status == CLONE_STATUS_SUCCESSFUL)
+			retval = MSG_RESP_OK;
+		else
+			retval = MSG_RESP_ERROR;
+		TAILQ_REMOVE(&clone_info_list, clone_info, c_list);
+		free(clone_info);
+		break;
+	}
+	tl_msg_free_data(msg);
+	msg->msg_len = 0;
+	msg->msg_resp = retval;
+	tl_msg_send_message(comm, msg);
+	tl_msg_free_message(msg);
+	tl_msg_close_connection(comm);
+	return 0;
 }
 
 static int
@@ -2529,14 +2588,18 @@ static int
 tl_server_add_target(struct tl_comm *comm, struct tl_msg *msg)
 {
 	char targetname[TDISK_MAX_NAME_LEN];
+	char iqn[256];
 	char errmsg[256];
 	unsigned long long targetsize;
 	int lba_shift;
+	int dedupe, compression, verify, threshold;
 	uint32_t group_id;
 	struct tdisk_info *info;
 	struct group_info *group_info;
+	struct iscsiconf iscsiconf;
 
-	if (sscanf(msg->msg_data, "targetname: %s\ntargetsize: %llu\nlba_shift: %d\ngroup_id: %u\n", targetname, &targetsize, &lba_shift, &group_id) != 4) {
+	bzero(iqn, sizeof(iqn));
+	if (sscanf(msg->msg_data, "targetname: %s\ntargetsize: %llu\nlba_shift: %d\ngroup_id: %u\ndedupe: %d\ncompression: %d\nverify: %d\nthreshold: %d\niqn: %[^\n]", targetname, &targetsize, &lba_shift, &group_id, &dedupe, &compression, &verify, &threshold, iqn) < 8) {
 		snprintf(errmsg, sizeof(errmsg), "Invalid msg msg_data\n");
 		goto senderr;
 	}
@@ -2567,7 +2630,13 @@ tl_server_add_target(struct tl_comm *comm, struct tl_msg *msg)
 		goto senderr;
 	}
 
-	info = add_target(group_info, targetname, targetsize, lba_shift, 1, 0, 0, 0, NULL, errmsg, 1, NULL);
+	bzero(&iscsiconf, sizeof(iscsiconf));
+	if (iqn[0])
+		strcpy(iscsiconf.iqn, iqn);
+	else
+		snprintf(iscsiconf.iqn, sizeof(iscsiconf.iqn), "iqn.2006-06.com.quadstor.vdisk.%s", targetname);
+
+	info = add_target(group_info, targetname, targetsize, lba_shift, dedupe, compression, verify, 0, NULL, errmsg, 1, &iscsiconf);
 	if (!info)
 		goto senderr;
 
@@ -3980,6 +4049,11 @@ tl_server_handle_msg(struct tl_comm *comm, struct tl_msg *msg)
 		case MSG_ID_CANCEL_CLONE:
 			pthread_mutex_lock(&daemon_lock);
 			tl_server_cancel_clone(comm, msg);
+			pthread_mutex_unlock(&daemon_lock);
+			break;
+		case MSG_ID_CLONE_STATUS:
+			pthread_mutex_lock(&daemon_lock);
+			tl_server_clone_status(comm, msg);
 			pthread_mutex_unlock(&daemon_lock);
 			break;
 		case MSG_ID_START_CLONE:

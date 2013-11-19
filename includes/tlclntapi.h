@@ -39,12 +39,13 @@ int tl_client_set_vdiskconf(struct vdiskconf *vdiskconf, int msg_id, char *reply
 int tl_client_get_diskconf(uint32_t bid, struct physdisk *disk);
 int tl_client_set_diskconf(struct physdisk *physdisk, char *reply);
 int tl_client_get_mirrorconf(uint32_t target_id, struct mirror_state *mirror_state);
+int tl_client_clone_status(uint64_t job_id);
 int tl_client_list_clone(struct job_list *job_list, int msg_id);
 int tl_client_list_groups(struct group_list *group_list, int msg_id);
 int tl_client_list_disks(struct d_list *d_list, int msg_id);
 int tl_client_list_vdisks(struct tdisk_list *tdisk_list, int msg_id);
 int tl_client_add_group(char *groupname, int dedupemeta, int logdata, char *reply);
-int tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, char *reply);
+int tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, int dedupe, int compression, int verify, int threshold, char *iqn, char *reply);
 int tl_client_modify_tdisk(uint32_t target_id, int dedupe, int comp, int verify, int force_inline);
 int tl_client_rename_pool(uint32_t group_id, char *name, char *reply);
 int tl_client_delete_group(uint32_t group_id, char *reply);

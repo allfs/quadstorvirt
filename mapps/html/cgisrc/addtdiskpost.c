@@ -60,7 +60,7 @@ int main()
 	if (targetsize > MAX_TARGET_SIZE)
 		cgi_print_header_error_page("VDisk size exceeds maximum\n");
 
-	retval = tl_client_add_tdisk(targetname, targetsize, lba_shift, group_id, reply);
+	retval = tl_client_add_tdisk(targetname, targetsize, lba_shift, group_id, 1, 0, 0, 0, "", reply);
 	if (retval != 0) {
 		char errmsg[1024];
 

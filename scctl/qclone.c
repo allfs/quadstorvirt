@@ -56,11 +56,12 @@ cancel_qclone(char *src)
 }
 
 static void
-start_qclone(char *dest, char *src, char *pool)
+start_qclone(char *dest, char *src, char *pool, int wait)
 {
-	int retval;
-	char reply[512];
 	struct clone_spec clone_spec;
+	char reply[512];
+	uint64_t job_id;
+	int retval;
 
 	memset(&clone_spec, 0, sizeof(clone_spec));
 	strcpy(clone_spec.src_tdisk, src);
@@ -74,7 +75,29 @@ start_qclone(char *dest, char *src, char *pool)
 		exit(1);
 	}
 	fprintf(stdout, "Clone of %s to %s successfully started\n", src, dest);
-	exit(0);
+	if (!wait)
+		exit(0);
+	retval = sscanf(reply, "jobid: %"PRIu64"\n", &job_id);
+	if (retval != 1) {
+		fprintf(stderr, "Invalid format for job id received. Software upgrade needed\n");
+		exit(1);
+	}
+
+	while (1) {
+		retval = tl_client_clone_status(job_id);
+		switch (retval) {
+		case MSG_RESP_OK:
+			fprintf(stdout, "Clone of %s to %s completed\n", src, dest);
+			exit(0);
+		case MSG_RESP_BUSY:
+			break;
+		case MSG_RESP_ERROR:
+		default:
+			fprintf(stdout, "Clone of %s to %s failed\n", src, dest);
+			exit(1);
+		}
+		sleep(5);
+	}
 }
 
 static void
@@ -162,6 +185,7 @@ int main(int argc, char *argv[])
 	int list = 0;
 	int prune = 0;
 	int extended = 0;
+	int wait = 0;
 
 	if (geteuid() != 0) {
 		fprintf(stderr, "This program can only be run as root\n");
@@ -172,10 +196,13 @@ int main(int argc, char *argv[])
 	memset(dest, 0, sizeof(dest));
 	memset(pool, 0, sizeof(pool));
 
-	while ((c = getopt(argc, argv, "s:d:g:lcpe")) != -1) {
+	while ((c = getopt(argc, argv, "s:d:g:lcpew")) != -1) {
 		switch (c) {
 		case 'c':
 			cancel = 1;
+			break;
+		case 'w':
+			wait = 1;
 			break;
 		case 'p':
 			prune = 1;
@@ -216,7 +243,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "VDisk name is limited to %d characters", TDISK_NAME_LEN);
 			exit(1);
 		}
-		start_qclone(dest, src, pool);
+		start_qclone(dest, src, pool, wait);
 	}
 	return 0;
 }

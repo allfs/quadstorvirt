@@ -316,7 +316,7 @@ tl_client_modify_tdisk(uint32_t target_id, int dedupe, int comp, int verify, int
 }
 
 int
-tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, char *reply)
+tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32_t group_id, int dedupe, int compression, int verify, int threshold, char *iqn, char *reply)
 {
 	struct tl_msg msg;
 
@@ -326,10 +326,27 @@ tl_client_add_tdisk(char *targetname, uint64_t targetsize, int lba_shift, uint32
 	if (!msg.msg_data)
 		return -1;
 
-	sprintf(msg.msg_data, "targetname: %s\ntargetsize: %llu\nlba_shift: %d\ngroup_id: %u\n", targetname, (unsigned long long)targetsize, lba_shift, group_id);
+	sprintf(msg.msg_data, "targetname: %s\ntargetsize: %llu\nlba_shift: %d\ngroup_id: %u\ndedupe: %d\ncompression: %d\nverify: %d\nthreshold: %d\niqn: %s\n", targetname, (unsigned long long)targetsize, lba_shift, group_id, dedupe, compression, verify, threshold, iqn);
 	msg.msg_len = strlen(msg.msg_data)+1;
 
 	return tl_client_send_msg(&msg, reply);
+}
+
+int
+tl_client_clone_status(uint64_t job_id)
+{
+	struct tl_msg msg;
+
+	msg.msg_id = MSG_ID_CLONE_STATUS;
+
+	msg.msg_data = malloc(64);
+	if (!msg.msg_data)
+		return -1;
+
+	sprintf(msg.msg_data, "job_id: %llu\n", (unsigned long long)job_id);
+	msg.msg_len = strlen(msg.msg_data)+1;
+
+	return tl_client_send_msg(&msg, NULL);
 }
 
 int

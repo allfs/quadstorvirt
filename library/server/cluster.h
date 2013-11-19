@@ -126,7 +126,7 @@ void tl_server_msg_success(struct tl_comm *comm, struct tl_msg *msg);
 struct tdisk_info * find_tdisk_by_name(char *name);
 struct tdisk_info * find_tdisk(uint32_t target_id);
 struct tdisk_info *add_target(struct group_info *group_info, char *targetname, uint64_t targetsize, int lba_shift, int enable_deduplication, int enable_compression, int enable_verify, int force_inline, char *serialnumber, char *err, int attach, struct iscsiconf *srcconf);
-int __tl_server_start_clone(char *src, char *dest, char *pool, char *errmsg);
+int __tl_server_start_clone(char *src, char *dest, char *pool, char *errmsg, uint64_t *job_id);
 int attach_tdisk(struct tdisk_info *info);
 void group_conf_fill(struct group_conf *group_conf, struct group_info *group_info);
 
