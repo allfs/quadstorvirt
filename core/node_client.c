@@ -2153,7 +2153,7 @@ node_client_handle_resp(struct node_sock *sock, struct raw_node_msg *raw)
 			goto err;
 	}
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->msg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->msg_id, NULL, NULL);
 	if (unlikely(!msg)) {
 		debug_warn("Received response for unknown id %llx cmd %d \n", (unsigned long long)(raw->msg_id), raw->msg_cmd);
 		node_msg_free(resp);

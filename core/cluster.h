@@ -555,7 +555,7 @@ int node_sock_write_page(struct node_sock *sock, pagestruct_t *page, int dxfer_l
 uint16_t pgdata_csum(struct pgdata *pgdata, int len);
 int node_sock_write_data(struct node_sock *sock, uint8_t *buffer, int dxfer_len);
 void node_sock_mark_close(struct node_sock *sock);
-struct node_msg * node_cmd_lookup(struct node_msg_list *node_hash, uint64_t id);
+struct node_msg * node_cmd_lookup(struct node_msg_list *node_hash, uint64_t id, struct queue_list *queue_list, mtx_t *queue_lock);
 struct node_msg * node_ha_lookup(uint64_t id);
 struct node_msg * node_ha_meta_lookup(uint64_t id);
 void page_list_free(pagestruct_t **pages, int pg_count);
@@ -567,19 +567,19 @@ void node_sock_read_error(struct node_sock *sock);
 struct node_comm * node_comm_locate(struct node_msg_list *node_hash, uint32_t ipaddr, struct node_comm *root);
 
 void node_master_write_cmd(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock, int in_sync, int remote_locked);
-void node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_write_comp_done(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_write_done(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_write_post_pre(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_write_data(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_write_data_unaligned(struct node_sock *sock, struct raw_node_msg *raw);
+void node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_write_comp_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_write_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_write_post_pre(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_write_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_write_data_unaligned(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
 void node_master_cmd_generic(struct node_sock *sock, struct raw_node_msg *raw, int in_sync);
 void node_master_cmd_persistent_reserve_out(struct node_sock *sock, struct raw_node_msg *raw, int in_sync);
 void node_master_read_cmd(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock, int in_sync);
-void node_master_read_data(struct node_sock *sock, struct raw_node_msg *raw);
-void node_master_read_done(struct node_sock *sock, struct raw_node_msg *raw);
+void node_master_read_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
+void node_master_read_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
 void node_master_xcopy_read(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
-void node_master_xcopy_write(struct node_sock *sock, struct raw_node_msg *raw);
+void node_master_xcopy_write(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
 
 int node_write_setup(struct node_comm *comm, struct node_sock *sock, struct node_msg *msg, struct qsio_scsiio *ctio, uint64_t lba, uint32_t transfer_length, uint64_t amap_write_id, int unaligned, int timeout, int cmd);
 int node_verify_setup(struct node_comm *comm, struct node_sock *sock, struct node_msg *msg, struct qsio_scsiio *ctio, int timeout, int async);
@@ -634,8 +634,6 @@ uint32_t amap_bitmap_group_offset(uint32_t amap_id);
 
 void node_msg_compute_csum(struct raw_node_msg *raw);
 int node_msg_csum_valid(struct raw_node_msg *raw);
-void node_msg_queue_remove(struct node_msg *msg);
-void node_msg_queue_insert(struct node_msg *msg);
 void node_check_timedout_msgs(struct node_msg_list *node_hash, struct queue_list *queue_list, mtx_t *queue_lock, uint32_t timeout_secs);
 void master_queue_wait_for_empty(void);
 void node_clear_comm_msgs(struct node_msg_list *node_hash, struct queue_list *queue_list, mtx_t *queue_lock, struct node_comm *comm, struct sock_list *sock_list);

@@ -397,7 +397,6 @@ node_mirror_send_page(struct tdisk *tdisk, struct node_msg *msg, pagestruct_t *p
 	if (unlikely(retval != 0)) {
 		if (!noresp)
 			node_cmd_hash_remove(comm->node_hash, msg, raw->msg_id);
-
 		node_sock_finish(sock);
 		debug_warn("Communicating with remote failed cmd %d\n", raw->msg_cmd);
 		rep_comm_put(comm, 0);
@@ -550,6 +549,8 @@ write_error:
 		debug_warn("peer takeover, retrying command\n");
 		return 0;
 	}
+	if (ctio->pglist_cnt)
+		pgdata_free_amaps((struct pgdata **)(ctio->data_ptr), ctio->pglist_cnt);
 	ctio_free_data(ctio);
 	if (!ctio->scsi_status) {
 		debug_warn("Failed to receive ctio response, sending hardware error\n");
@@ -2990,7 +2991,7 @@ node_mirror_resync_done(struct node_sock *sock, struct raw_node_msg *raw)
 }
 
 void
-node_mirror_write_error(struct node_sock *sock, struct raw_node_msg *raw)
+node_mirror_write_error(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -2998,7 +2999,7 @@ node_mirror_write_error(struct node_sock *sock, struct raw_node_msg *raw)
 	struct tdisk *tdisk;
 	struct tcache *tcache;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %x\n", raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);

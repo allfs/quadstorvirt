@@ -49,7 +49,7 @@ void node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 void node_mirror_set_role(struct node_sock *sock, struct raw_node_msg *raw);
 void node_mirror_setup(struct node_sock *sock, struct raw_node_msg *raw);
 void node_mirror_remove(struct node_sock *sock, struct raw_node_msg *raw);
-void node_mirror_write_error(struct node_sock *sock, struct raw_node_msg *raw);
+void node_mirror_write_error(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock);
 void node_mirror_update_vdisk_properties(struct node_sock *sock, struct raw_node_msg *raw);
 void node_mirror_vdisk_resize(struct node_sock *sock, struct raw_node_msg *raw);
 void node_mirror_load_done(struct node_sock *sock, struct raw_node_msg *raw);

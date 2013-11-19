@@ -1556,8 +1556,10 @@ static int tdisk_load_thread(void *data)
 		if (!amap_table)
 			continue;
 
-		if (atomic_test_bit_short(ATABLE_META_DATA_INVALID, &amap_table->flags))
+		if (atomic_test_bit_short(ATABLE_META_DATA_INVALID, &amap_table->flags)) {
+			amap_table_put(amap_table);
 			continue;
+		}
 
 		wait_on_chan_check(amap_table->amap_table_wait, !atomic_test_bit_short(ATABLE_META_DATA_READ_DIRTY, &amap_table->flags));
 		amap_table_lock(amap_table);
@@ -4537,7 +4539,8 @@ pgdata_cancel(struct tdisk *tdisk, struct pgdata **pglist, int pglist_cnt, struc
 				continue;
 
 			debug_info("old block %llu new block %llu\n", (unsigned long long)BLOCK_BLOCKNR(pgdata->old_amap_block), (unsigned long long)BLOCK_BLOCKNR(pgdata->amap_block));
-			process_delete_block(bdev_group_ddtable(tdisk->group), pgdata->amap_block, index_info_list, index_sync_list, NULL, TYPE_DATA_BLOCK);
+			if (atomic_test_bit(DDBLOCK_ENTRY_DONE_ALLOC, &pgdata->flags))
+				process_delete_block(bdev_group_ddtable(tdisk->group), pgdata->amap_block, index_info_list, index_sync_list, NULL, TYPE_DATA_BLOCK);
 			continue;
 		}
 		amap = pgdata->amap;
@@ -4556,7 +4559,8 @@ pgdata_cancel(struct tdisk *tdisk, struct pgdata **pglist, int pglist_cnt, struc
 			amap_check_sync_list(amap, amap_sync_list, NULL, WRITE_ID_MAX);
 		}
 		amap_unlock(amap);
-		process_delete_block(bdev_group_ddtable(tdisk->group), pgdata->amap_block, index_info_list, index_sync_list, NULL, TYPE_DATA_BLOCK);
+		if (atomic_test_bit(DDBLOCK_ENTRY_DONE_ALLOC, &pgdata->flags))
+			process_delete_block(bdev_group_ddtable(tdisk->group), pgdata->amap_block, index_info_list, index_sync_list, NULL, TYPE_DATA_BLOCK);
 	}
 }
 
@@ -4587,15 +4591,7 @@ amap_sync_list_free_error(struct amap_sync_list *lhead)
 		uma_zfree(amap_sync_cache, amap_sync);
 	}
 
-	while ((amap_sync = SLIST_FIRST(&tmp_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&tmp_list, s_list);
-		amap = amap_sync->amap;
-		debug_check(!iowaiter_done_io(&amap_sync->iowaiter));
-		iowaiter_end_wait(&amap_sync->iowaiter);
-		amap_put(amap);
-		free_iowaiter(&amap_sync->iowaiter);
-		uma_zfree(amap_sync_cache, amap_sync);
-	}
+	handle_amap_sync_wait(&tmp_list);
 }
 
 void
@@ -6079,9 +6075,12 @@ tdisk_write_error(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_li
 
 	pgdata_cancel(tdisk, (struct pgdata **)(ctio->data_ptr), ctio->pglist_cnt, &amap_sync_list, &index_sync_list, &index_info_list);
 
-	amap_sync_list_free_error(&wlist->amap_sync_list);
-	amap_sync_list_free_error(&wlist->nowrites_amap_sync_list);
 	handle_amap_sync(&amap_sync_list);
+	amap_sync_list_free_error(&wlist->nowrites_amap_sync_list);
+	if (!atomic_test_bit(WLIST_DONE_AMAP_SYNC, &wlist->flags))
+		amap_sync_list_free_error(&wlist->amap_sync_list);
+	else
+		handle_amap_sync_wait(&wlist->amap_sync_list);
 	handle_amap_sync_wait(&amap_sync_list);
 	index_sync_start_io(&index_sync_list, 1);
 

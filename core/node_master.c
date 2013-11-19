@@ -1183,7 +1183,7 @@ node_master_write_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 }
 
 void
-node_master_xcopy_write(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_xcopy_write(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct tdisk *tdisk;
 	struct qsio_scsiio *ctio;
@@ -1193,7 +1193,7 @@ node_master_xcopy_write(struct node_sock *sock, struct raw_node_msg *raw)
 	int exec;
 
 	debug_info("xchg id %x\n", raw->xchg_id);
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1321,7 +1321,7 @@ node_master_write_cmd(struct node_sock *sock, struct raw_node_msg *raw, struct q
 }
 
 static void
-node_master_read_io_done(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_read_io_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -1329,7 +1329,7 @@ node_master_read_io_done(struct node_sock *sock, struct raw_node_msg *raw)
 	struct write_list *wlist;
 	int retval;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1361,14 +1361,14 @@ err:
 }
 
 void
-node_master_read_done(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_read_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
 	struct tdisk *tdisk;
 	struct write_list *wlist;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1393,7 +1393,7 @@ node_master_read_done(struct node_sock *sock, struct raw_node_msg *raw)
 }
 
 void
-node_master_read_data(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_read_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -1408,7 +1408,7 @@ node_master_read_data(struct node_sock *sock, struct raw_node_msg *raw)
 	int retval, i, pg_count = 0;
 	uint16_t csum;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1633,7 +1633,7 @@ node_master_write_unaligned(struct tdisk *tdisk, struct qsio_scsiio *ctio, struc
 }
 
 void
-node_master_write_data_unaligned(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_write_data_unaligned(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -1641,7 +1641,7 @@ node_master_write_data_unaligned(struct node_sock *sock, struct raw_node_msg *ra
 	struct write_list *wlist;
 	int retval;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1685,7 +1685,7 @@ err2:
 }
 
 void
-node_master_write_data(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_write_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -1699,7 +1699,7 @@ node_master_write_data(struct node_sock *sock, struct raw_node_msg *raw)
 	int flags = 0;
 	uint16_t csum;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1830,7 +1830,7 @@ err2:
 }
 
 void
-node_master_write_post_pre(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_write_post_pre(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct qsio_scsiio *ctio;
 	struct write_list *wlist;
@@ -1840,7 +1840,7 @@ node_master_write_post_pre(struct node_sock *sock, struct raw_node_msg *raw)
 
 	struct node_msg *msg;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1896,7 +1896,7 @@ err2:
 }
 
 void
-node_master_write_done(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_write_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct qsio_scsiio *ctio;
 	struct write_list *wlist;
@@ -1905,7 +1905,7 @@ node_master_write_done(struct node_sock *sock, struct raw_node_msg *raw)
 	int retval;
 	struct node_msg *msg;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -1947,7 +1947,7 @@ err:
 }
 
 void
-node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -1965,7 +1965,7 @@ node_master_verify_data(struct node_sock *sock, struct raw_node_msg *raw)
 	uint8_t asc = INTERNAL_TARGET_FAILURE_ASC;
 	uint8_t ascq = INTERNAL_TARGET_FAILURE_ASCQ;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -2115,7 +2115,7 @@ err2:
 }
 
 void
-node_master_write_comp_done(struct node_sock *sock, struct raw_node_msg *raw)
+node_master_write_comp_done(struct node_sock *sock, struct raw_node_msg *raw, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	struct node_msg *msg;
 	struct qsio_scsiio *ctio;
@@ -2131,7 +2131,7 @@ node_master_write_comp_done(struct node_sock *sock, struct raw_node_msg *raw)
 	uint8_t asc = INTERNAL_TARGET_FAILURE_ASC;
 	uint8_t ascq = INTERNAL_TARGET_FAILURE_ASCQ;
 
-	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id);
+	msg = node_cmd_lookup(sock->comm->node_hash, raw->xchg_id, queue_list, queue_lock);
 	if (unlikely(!msg)) {
 		debug_warn("Missing exchange cmd %llx\n", (unsigned long long)raw->xchg_id);
 		node_error_resp_msg(sock, raw, NODE_STATUS_INVALID_MSG);
@@ -2443,12 +2443,12 @@ node_recv_cmd(struct node_sock *sock, struct raw_node_msg *raw)
 		break;
 	case NODE_MSG_VERIFY_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_verify_data(sock, raw);
+		node_master_verify_data(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_verify_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_COMP_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_write_comp_done(sock, raw);
+		node_master_write_comp_done(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_comp_done_ticks, start_ticks);
 		break;
 #if 0
@@ -2460,27 +2460,27 @@ node_recv_cmd(struct node_sock *sock, struct raw_node_msg *raw)
 #endif
 	case NODE_MSG_WRITE_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_write_done(sock, raw);
+		node_master_write_done(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_write_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_write_data(sock, raw);
+		node_master_write_data(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_write_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_READ_IO_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_read_io_done(sock, raw);
+		node_master_read_io_done(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_read_io_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_READ_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_read_data(sock, raw);
+		node_master_read_data(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_read_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_READ_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_read_done(sock, raw);
+		node_master_read_done(sock, raw, &master_queue_list, master_queue_lock);
 		GLOB_TEND(master_read_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_GENERIC_CMD:
@@ -3028,9 +3028,9 @@ node_root_comm_free(struct node_comm *root_comm, struct queue_list *queue_list, 
 	node_comm_lock(root_comm);
 	while ((comm = SLIST_FIRST(&root_comm->comm_list)) != NULL) {
 		SLIST_REMOVE_HEAD(&root_comm->comm_list, c_list);
-		debug_check(atomic_read(&comm->refs) > 1);
 		if (queue_list)
 			node_clear_comm_msgs(comm->node_hash, queue_list, queue_lock, comm, NULL);
+		debug_check(atomic_read(&comm->refs) > 1);
 		node_comm_put(comm);
 	}
 	node_comm_unlock(root_comm);

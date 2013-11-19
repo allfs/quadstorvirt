@@ -153,12 +153,12 @@ node_recv_cmd(struct node_sock *sock, struct raw_node_msg *raw)
 		break;
 	case NODE_MSG_READ_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_read_data(sock, raw);
+		node_master_read_data(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_read_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_READ_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_read_done(sock, raw);
+		node_master_read_done(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_read_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_CMD:
@@ -178,40 +178,40 @@ node_recv_cmd(struct node_sock *sock, struct raw_node_msg *raw)
 		break;
 	case NODE_MSG_XCOPY_WRITE:
 		GLOB_TSTART(start_ticks);
-		node_master_xcopy_write(sock, raw);
+		node_master_xcopy_write(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_xcopy_write_ticks, start_ticks);
 		break;
 	case NODE_MSG_MIRROR_WRITE_ERROR:
-		node_mirror_write_error(sock, raw);
+		node_mirror_write_error(sock, raw, &recv_queue_list, recv_queue_lock);
 		break;
 	case NODE_MSG_VERIFY_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_verify_data(sock, raw);
+		node_master_verify_data(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_verify_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_COMP_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_write_comp_done(sock, raw);
+		node_master_write_comp_done(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_write_comp_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_DONE:
 		GLOB_TSTART(start_ticks);
-		node_master_write_done(sock, raw);
+		node_master_write_done(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_write_done_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_POST_PRE:
 		GLOB_TSTART(start_ticks);
-		node_master_write_post_pre(sock, raw);
+		node_master_write_post_pre(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_write_post_pre_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_DATA_UNALIGNED:
 		GLOB_TSTART(start_ticks);
-		node_master_write_data_unaligned(sock, raw);
+		node_master_write_data_unaligned(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_write_data_unaligned_ticks, start_ticks);
 		break;
 	case NODE_MSG_WRITE_DATA:
 		GLOB_TSTART(start_ticks);
-		node_master_write_data(sock, raw);
+		node_master_write_data(sock, raw, &recv_queue_list, recv_queue_lock);
 		GLOB_TEND(node_master_write_data_ticks, start_ticks);
 		break;
 	case NODE_MSG_MIRROR_SETUP:
@@ -309,6 +309,7 @@ node_recv_accept(struct node_sock *recv_sock)
 	struct node_comm *comm;
 	uint32_t ipaddr;
 	int error = 0, retval;
+	int i = 0;
 
 	while (1) {
 		sock = __node_sock_alloc(NULL, node_recv_recv); 
@@ -324,7 +325,8 @@ node_recv_accept(struct node_sock *recv_sock)
 		comm = node_comm_locate(node_rep_recv_hash, ipaddr, recv_root);
 		sock->comm = comm;
 		node_comm_lock(comm);
-		retval = kernel_thread_create(node_sock_recv_thr, sock, sock->task, "ndrsock");
+		retval = kernel_thread_create(node_sock_recv_thr, sock, sock->task, "ndrsock_%d", i);
+		i++;
 		if (unlikely(retval != 0)) {
 			node_sock_free(sock, 1);
 			node_comm_unlock(comm);

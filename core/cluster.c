@@ -886,15 +886,27 @@ node_ha_hash_cancel(void)
 	}
 }
 
-void
+static void
+node_msg_queue_lock(mtx_t *queue_lock)
+{
+	if (queue_lock)
+		mtx_lock(queue_lock);
+}
+
+static void
+node_msg_queue_unlock(mtx_t *queue_lock)
+{
+	if (queue_lock)
+		mtx_unlock(queue_lock);
+}
+
+static void
 node_msg_queue_remove(struct node_msg *msg)
 {
-	if (!msg->queue_lock)
+	if (!msg->queue_list)
 		return;
 
-	mtx_lock(msg->queue_lock);
 	TAILQ_REMOVE_INIT(msg->queue_list, msg, q_list);
-	mtx_unlock(msg->queue_lock);
 }
 
 static void
@@ -1017,15 +1029,13 @@ node_check_timedout_msgs(struct node_msg_list *node_hash, struct queue_list *que
 	}
 }
 
-void
+static void
 node_msg_queue_insert(struct node_msg *msg)
 {
-	if (!msg->queue_lock)
+	if (!msg->queue_list)
 		return;
 
-	mtx_lock(msg->queue_lock);
 	TAILQ_INSERT_TAIL(msg->queue_list, msg, q_list);
-	mtx_unlock(msg->queue_lock);
 }
 
 void
@@ -1040,7 +1050,7 @@ node_ha_meta_hash_insert(struct node_msg *msg, uint32_t id)
 	mtx_lock(msg_list->list_lock);
 	LIST_INSERT_HEAD(&msg_list->msgs, msg, c_list); 
 	mtx_unlock(msg_list->list_lock);
-	node_msg_queue_insert(msg);
+	debug_check(msg->queue_list || msg->queue_lock);
 }
 
 void
@@ -1055,7 +1065,7 @@ node_ha_hash_insert(struct node_msg *msg, uint32_t id)
 	mtx_lock(msg_list->list_lock);
 	LIST_INSERT_HEAD(&msg_list->msgs, msg, c_list); 
 	mtx_unlock(msg_list->list_lock);
-	node_msg_queue_insert(msg);
+	debug_check(msg->queue_list || msg->queue_lock);
 }
 
 int
@@ -1063,18 +1073,21 @@ node_cmd_hash_remove(struct node_msg_list *node_hash, struct node_msg *msg, uint
 {
 	int removed;
 
+	node_msg_queue_lock(msg->queue_lock);
 	removed = __node_cmd_hash_remove(node_hash, msg, id);
 	node_msg_queue_remove(msg);
+	node_msg_queue_unlock(msg->queue_lock);
 	return removed;
 }
 
 struct node_msg *
-node_cmd_lookup(struct node_msg_list *node_hash, uint64_t id)
+node_cmd_lookup(struct node_msg_list *node_hash, uint64_t id, struct queue_list *queue_list, mtx_t *queue_lock)
 {
 	int idx = (id & NODE_RECV_HASH_MASK);
 	struct node_msg_list *msg_list;
 	struct node_msg *ret = NULL, *iter;
 
+	node_msg_queue_lock(queue_lock);
 	msg_list = &node_hash[idx];
 	mtx_lock(msg_list->list_lock);
 	LIST_FOREACH(iter, &msg_list->msgs, c_list) {
@@ -1088,6 +1101,7 @@ node_cmd_lookup(struct node_msg_list *node_hash, uint64_t id)
 
 	if (ret)
 		node_msg_queue_remove(ret);
+	node_msg_queue_unlock(queue_lock);
 
 	return ret;
 }
@@ -1105,13 +1119,11 @@ node_ha_meta_lookup(uint64_t id)
 		if (iter->id == id) {
 			LIST_REMOVE_INIT(iter, c_list);
 			ret = iter;
+			debug_check(ret->queue_list || ret->queue_lock);
 			break;
 		}
 	}
 	mtx_unlock(msg_list->list_lock);
-
-	if (ret)
-		node_msg_queue_remove(ret);
 
 	return ret;
 }
@@ -1129,14 +1141,11 @@ node_ha_lookup(uint64_t id)
 		if (iter->id == id) {
 			LIST_REMOVE_INIT(iter, c_list);
 			ret = iter;
+			debug_check(ret->queue_list || ret->queue_lock);
 			break;
 		}
 	}
 	mtx_unlock(msg_list->list_lock);
-
-	if (ret)
-		node_msg_queue_remove(ret);
-
 	return ret;
 }
 
@@ -1146,14 +1155,15 @@ node_cmd_hash_insert(struct node_msg_list *node_hash, struct node_msg *msg, uint
 	int idx = (id & NODE_RECV_HASH_MASK);
 	struct node_msg_list *msg_list;
 
+	node_msg_queue_lock(msg->queue_lock);
 	msg->id = id;
 	msg->timestamp = ticks;
 	msg_list = &node_hash[idx];
 	mtx_lock(msg_list->list_lock);
 	LIST_INSERT_HEAD(&msg_list->msgs, msg, c_list); 
 	mtx_unlock(msg_list->list_lock);
-
 	node_msg_queue_insert(msg);
+	node_msg_queue_unlock(msg->queue_lock);
 }
 
 static void
