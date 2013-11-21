@@ -615,6 +615,9 @@ iqn_name_valid(char *name)
 	int i;
 	int len = strlen(name);
 
+	if (len > 255)
+		return 0;
+
 	for (i = 0; i < len; i++) {
 		if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-' && name[i] != '.')
 			return 0;
@@ -2614,8 +2617,8 @@ tl_server_add_target(struct tl_comm *comm, struct tl_msg *msg)
 		goto senderr;
 	}
 
-	if (strlen(targetname) >  TDISK_NAME_LEN) {
-		snprintf(errmsg, sizeof(errmsg), "VDisk name can be upto a maximum of %d characters", TDISK_NAME_LEN);
+	if (strlen(targetname) >=  TDISK_MAX_NAME_LEN) {
+		snprintf(errmsg, sizeof(errmsg), "VDisk name can be upto a maximum of %d characters", TDISK_MAX_NAME_LEN - 1);
 		goto senderr;
 	}
 

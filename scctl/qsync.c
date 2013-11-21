@@ -179,10 +179,10 @@ int main(int argc, char *argv[])
 			strncpy(pool, optarg, GROUP_NAME_LEN);
 			break;
 		case 's':
-			strncpy(src, optarg, TDISK_NAME_LEN);
+			strncpy(src, optarg, TDISK_MAX_NAME_LEN - 1);
 			break;
 		case 'd':
-			strncpy(dest, optarg, TDISK_NAME_LEN); 
+			strncpy(dest, optarg, TDISK_MAX_NAME_LEN - 1); 
 			break;
 		case 'r':
 			strncpy(dest_host, optarg, 20); 

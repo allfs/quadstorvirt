@@ -94,6 +94,11 @@ vdconfig_add_vdisk(char *name, char *pool, uint64_t size, int emulate, int dedup
 		return -1;
 	}
 
+	if (strlen(iqn) > 255) {
+		fprintf(stderr, "Invalid iqn specified\n");
+		return -1;
+	}
+
 	if (emulate)
 		lba_shift = 9;
 	else
@@ -287,7 +292,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "v:s:g:t:n:i:flxaedcym")) != -1) {
 		switch (c) {
 		case 'v':
-			strncpy(src, optarg, TDISK_NAME_LEN);
+			strncpy(src, optarg, TDISK_MAX_NAME_LEN - 1);
 			break;
 		case 's':
 			size = strtoull(optarg, NULL, 10);

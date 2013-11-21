@@ -214,10 +214,10 @@ int main(int argc, char *argv[])
 			list = 1;
 			break;
 		case 's':
-			strncpy(src, optarg, TDISK_NAME_LEN);
+			strncpy(src, optarg, TDISK_MAX_NAME_LEN - 1);
 			break;
 		case 'd':
-			strncpy(dest, optarg, TDISK_NAME_LEN); 
+			strncpy(dest, optarg, TDISK_MAX_NAME_LEN - 1);
 			break;
 		case 'g':
 			strncpy(pool, optarg, GROUP_NAME_LEN);
@@ -239,8 +239,8 @@ int main(int argc, char *argv[])
 	else {
 		if (!dest[0] || !src[0])
 			print_usage();
-		if (strlen(dest) > TDISK_NAME_LEN) {
-			fprintf(stderr, "VDisk name is limited to %d characters", TDISK_NAME_LEN);
+		if (strlen(dest) >= TDISK_MAX_NAME_LEN) {
+			fprintf(stderr, "VDisk name is limited to %d characters", TDISK_MAX_NAME_LEN - 1);
 			exit(1);
 		}
 		start_qclone(dest, src, pool, wait);
