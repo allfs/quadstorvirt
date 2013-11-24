@@ -1,3 +1,7 @@
+Release 3.0.52
+	* Synchronous mirroring error handling fixes
+	* OpenStack cinder volume driver and related changes
+
 Release 3.0.51
 	* Fixes which allow for using VAAI full copy/XCopy during svmotion
 	  also.

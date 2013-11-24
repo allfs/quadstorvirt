@@ -2,7 +2,7 @@
 
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-itf-minimal
-Version: 3.0.51
+Version: 3.0.52
 Release: rhel5
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -44,7 +44,7 @@ install -m 755 /quadstor/quadstor/scripts/builditf.min.linux.sh $RPM_BUILD_ROOT/
 install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/etc/udev/rules.d/65-quadstor.rules
 
 %post
-	echo "Minimal 3.0.51 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-version
+	echo "Minimal 3.0.52 for RHEL/CentOS 5.x" > /quadstor/etc/quadstor-itf-version
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf.min"
 	sleep 5
