@@ -969,14 +969,14 @@ rod_token_process_descriptor(struct tdisk *tdisk, struct qsio_scsiio *ctio, stru
 	struct tdisk *src_tdisk = token->src_tdisk;
 	struct rod_entry *entry;
 	uint64_t dest_lba, src_lba;
-	uint32_t dest_num_blocks, src_num_blocks, num_blocks, from_blocks, to_blocks;
+	uint32_t dest_num_blocks, src_num_blocks, from_blocks, to_blocks;
 	uint64_t offset_into_rod = *ret_offset_into_rod;
 	uint32_t span, offset_blocks, start_block;
 	uint32_t src_size, src_end_size, dest_size, min_size, rod_idx, rod_pglist_cnt;
 	int retval;
 
 	dest_lba = be64toh(descriptor->lba);
-	num_blocks = dest_num_blocks = be32toh(descriptor->num_blocks);
+	dest_num_blocks = be32toh(descriptor->num_blocks);
 
 	span = offset_into_rod << tdisk->lba_shift;
 	offset_blocks = span >> src_tdisk->lba_shift;
