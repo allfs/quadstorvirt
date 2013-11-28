@@ -1,3 +1,7 @@
+Release 3.0.53
+	* Merge lz4 r108 compression code
+	* Integrate offloaded data transfers (ODX) support
+
 Release 3.0.52
 	* Synchronous mirroring error handling fixes
 	* OpenStack cinder volume driver and related changes
