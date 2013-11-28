@@ -38,6 +38,12 @@ struct disconnect_reconnect_page {
 	uint16_t first_burst_size;
 } __attribute__ ((__packed__));
 
+struct third_party_vpd_page {
+	uint8_t device_type;
+	uint8_t page_code;
+	uint16_t page_length;
+} __attribute__ ((__packed__));
+
 struct logical_block_provisioning_page {
 	uint8_t device_type;
 	uint8_t page_code;

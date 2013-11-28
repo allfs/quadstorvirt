@@ -35,6 +35,7 @@
 #include "node_ha.h"
 #include "bdevgroup.h"
 #include "node_mirror.h"
+#include "copymgr.h"
 
 #ifdef ENABLE_STATS
 #define PRINT_STAT(x,y)	printf(x" %llu \n", (unsigned long long)tdisk->y); pause("psg", 10);
@@ -54,6 +55,23 @@ struct tdisk *tdisk_lookup[TL_MAX_DEVICES];
 static void tdisk_added(void);
 static void tdisk_removed(void);
 
+void
+tdisk_invalid_field_in_cdb_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio)
+{
+	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, INVALID_FIELD_IN_CDB_ASC, INVALID_FIELD_IN_CDB_ASCQ);
+}
+
+void
+tdisk_invalid_field_in_parameter_list_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio)
+{
+	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, INVALID_FIELD_IN_PARAMETER_LIST_ASC, INVALID_FIELD_IN_PARAMETER_LIST_ASCQ);
+}
+
+void
+tdisk_parameter_list_length_error_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio)
+{
+	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, PARAMETER_LIST_LENGTH_ERROR_ASC, PARAMETER_LIST_LENGTH_ERROR_ASCQ);
+}
 void
 tdisk_remove(int tl_id, int target_id)
 {
@@ -478,7 +496,7 @@ tdisk_init_inquiry_data(struct inquiry_data *inquiry)
 {
 	bzero(inquiry, sizeof(*inquiry));
 	inquiry->device_type = T_DIRECT;
-	inquiry->version = ANSI_VERSION_SCSI3_SPC3; /* Current supported version. Need to do it a better way */
+	inquiry->version = ANSI_VERSION_SCSI3_SPC4; /* Current supported version. Need to do it a better way */
 	inquiry->response_data = RESPONSE_DATA | HISUP_MASK; 
 	inquiry->additional_length = STANDARD_INQUIRY_LEN - 5; /* n - 4 */
 	inquiry->protect = 0x8; /* 3PC */
@@ -488,11 +506,9 @@ tdisk_init_inquiry_data(struct inquiry_data *inquiry)
 	sys_memset(&inquiry->product_id, ' ', 16);
 	memcpy(&inquiry->product_id, PRODUCT_ID_QUADSTOR_SAN, strlen(PRODUCT_ID_QUADSTOR_SAN));
 	memcpy(&inquiry->revision_level, PRODUCT_REVISION_QUADSTOR, strlen(PRODUCT_REVISION_QUADSTOR));
-#if 0
-	inquiry->vd1 = htobe16(0x0320); /* SBC 2 No version claimed */
-	inquiry->vd2 = htobe16(0x0300); /* SPC 3 No version claimed */
-	inquiry->vd3 = htobe16(0x0060); /* SAM 3 No version claimed */
-#endif
+	inquiry->vd1 = htobe16(0x0060); /* SAM 3 No version claimed */
+	inquiry->vd2 = htobe16(0x0460); /* SPC 4 No version claimed */
+	inquiry->vd1 = htobe16(0x04C0); /* SBC 3 No version claimed */
 }
 
 void
@@ -2895,14 +2911,15 @@ tdisk_copy_block_limits_vpd_page(struct tdisk *tdisk, uint8_t *buffer, int alloc
 }
 
 struct evpd_page_info evpd_info  = {
-	.num_pages = 0x07,
+	.num_pages = 0x08,
 	.page_code[0] = VITAL_PRODUCT_DATA_PAGE,
 	.page_code[1] = UNIT_SERIAL_NUMBER_PAGE,
 	.page_code[2] = DEVICE_IDENTIFICATION_PAGE,
 	.page_code[3] = EXTENDED_INQUIRY_VPD_PAGE,
-	.page_code[4] = BLOCK_LIMITS_VPD_PAGE,
-	.page_code[5] = BLOCK_DEVICE_CHARACTERISTICS_VPD_PAGE,
-	.page_code[6] = LOGICAL_BLOCK_PROVISIONING_VPD_PAGE,
+	.page_code[4] = THIRD_PARTY_COPY_VPD_PAGE,
+	.page_code[5] = BLOCK_LIMITS_VPD_PAGE,
+	.page_code[6] = BLOCK_DEVICE_CHARACTERISTICS_VPD_PAGE,
+	.page_code[7] = LOGICAL_BLOCK_PROVISIONING_VPD_PAGE,
 };
 
 static int 
@@ -2929,7 +2946,7 @@ tdisk_evpd_inquiry_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint8_t p
 	int retval;
 	int max_allocation_length;
 
-	max_allocation_length = max_t(int, 128, allocation_length);
+	max_allocation_length = max_t(int, 1024, allocation_length);
 	ctio_allocate_buffer(ctio, max_allocation_length, Q_NOWAIT);
 	if (unlikely(!ctio->data_ptr))
 		return -1;
@@ -2958,6 +2975,9 @@ tdisk_evpd_inquiry_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint8_t p
 		break;
 	case EXTENDED_INQUIRY_VPD_PAGE:
 		retval = tdisk_copy_extended_inquiry_vpd_page(ctio->data_ptr, allocation_length);
+		break;
+	case THIRD_PARTY_COPY_VPD_PAGE:
+		retval = tdisk_copy_third_party_copy_vpd_page(tdisk, ctio->data_ptr, allocation_length);
 		break;
 	default:
 		debug_info("Invalid page code %x\n", page_code);
@@ -4002,7 +4022,6 @@ __tdisk_cmd_ref_int(struct tdisk *tdisk, struct tdisk *dest_tdisk, struct qsio_s
 	lba = tdisk_get_lba_real(tdisk, lba);
 
 	pglist_cnt = transfer_length_to_pglist_cnt(tdisk->lba_shift, transfer_length);
-
 	tcache = tcache_alloc(pglist_cnt);
 
 	pglist = pgdata_allocate_nopage(pglist_cnt, Q_NOWAIT); 
@@ -6117,7 +6136,7 @@ tdisk_write_error(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_li
 	index_info_wait(&index_info_list);
 }
 
-static int
+int
 __tdisk_cmd_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t lba, uint32_t transfer_length, int sendstatus, int cw, struct index_info_list *prev_index_info_list, int unmap, int sync_wait, uint32_t xchg_id)
 {
 	struct pgdata *pgtmp, **pglist, *pgwrite;
@@ -7039,7 +7058,7 @@ extended_copy_free(struct extended_copy *ecopy)
 	free(ecopy, M_ECOPY);
 }
 
-static int 
+int 
 remap_pglist_for_write(struct pgdata ***ret_pglist,  int *ret_pglist_cnt, uint32_t size)
 {
 	struct pgdata **pglist = *ret_pglist;
@@ -7180,7 +7199,7 @@ extended_copy_get_tdisks(struct extended_copy *ecopy, struct segment_descriptor_
 	return 0;
 }
 
-static int
+int
 is_unaligned_extended_copy(struct tdisk *src_tdisk, uint64_t src_lba, uint64_t dest_lba, uint64_t size)
 {
 	uint64_t lba_diff;
@@ -7203,7 +7222,7 @@ is_unaligned_extended_copy(struct tdisk *src_tdisk, uint64_t src_lba, uint64_t d
 	return unaligned;
 }
 
-static void 
+void 
 extended_copy_mirror_check(struct tdisk *src_tdisk, struct qsio_scsiio *ctio, struct tdisk *dest_tdisk, uint64_t src_lba, uint64_t dest_lba, uint32_t num_blocks, int *mirror_enabled, int *use_refs, uint32_t *xchg_id)
 {
 	int retval;
@@ -7393,6 +7412,38 @@ send:
 		device_send_ccb(ctio);
 }
 
+static void
+tdisk_cmd_extended_copy(struct tdisk *tdisk, struct qsio_scsiio *ctio)
+{
+	uint8_t *cdb = ctio->cdb;
+	uint8_t service_action;
+	uint32_t start_ticks;
+
+	service_action = cdb[1] & 0x1F;
+
+	switch (service_action) {
+	case SERVICE_ACTION_EXTENDED_COPY_LID1:
+		tdisk_cmd_extended_copy_read(tdisk, ctio);
+		break;
+	case SERVICE_ACTION_POPULATE_TOKEN:
+		TDISK_TICKS_START(start_ticks);
+		tdisk_cmd_populate_token(tdisk, ctio);
+		TDISK_TICKS_END(tdisk, populate_token_ticks, start_ticks);
+		TDISK_STATS_ADD(tdisk, populate_token_cmds, 1);
+		break;
+	case SERVICE_ACTION_WRITE_USING_TOKEN:
+		TDISK_TICKS_START(start_ticks);
+		tdisk_cmd_write_using_token(tdisk, ctio);
+		TDISK_TICKS_END(tdisk, write_using_token_ticks, start_ticks);
+		TDISK_STATS_ADD(tdisk, write_using_token_cmds, 1);
+		break;
+	default:
+		ctio_free_data(ctio);
+		tdisk_invalid_field_in_cdb_sense(tdisk, ctio);
+		device_send_ccb(ctio);
+	}
+}
+
 static int
 copy_results_operating_parameters(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint32_t allocation_length)
 {
@@ -7491,6 +7542,29 @@ tdisk_cmd_receive_copy_results(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 		default:
 			retval = 0;
 			break;
+	}
+	return retval;
+}
+
+static int
+tdisk_cmd_receive_copy_data(struct tdisk *tdisk, struct qsio_scsiio *ctio)
+{
+	uint8_t *cdb = ctio->cdb;
+	uint8_t service_action;
+	int retval;
+
+	service_action = cdb[1] & 0x1F;
+	switch (service_action) {
+	case SERVICE_ACTION_RECEIVE_COPY_STATUS_LID1:
+		retval = tdisk_cmd_receive_copy_results(tdisk, ctio);
+		break;
+	case SERVICE_ACTION_RECEIVE_ROD_TOKEN_INFORMATION:
+		retval = tdisk_cmd_receive_rod_token_information(tdisk, ctio);
+		break;
+	default:
+		tdisk_invalid_field_in_cdb_sense(tdisk, ctio);
+		retval = 0;
+		break;
 	}
 	return retval;
 }
@@ -8125,12 +8199,12 @@ tdisk_proc_cmd(void *disk, void *iop)
 			goto skip_send;
 			break;
 		case EXTENDED_COPY:
-			tdisk_cmd_extended_copy_read(tdisk, ctio);
+			tdisk_cmd_extended_copy(tdisk, ctio);
 			TDISK_STATS_ADD(tdisk, xcopy_cmds, 1);
 			goto skip_send;
 			break;
 		case RECEIVE_COPY_RESULTS:
-			retval = tdisk_cmd_receive_copy_results(tdisk, ctio);
+			retval = tdisk_cmd_receive_copy_data(tdisk, ctio);
 			break;
 		case COMPARE_AND_WRITE:
 			TDISK_TSTART(start_ticks);

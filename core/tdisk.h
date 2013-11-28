@@ -1387,5 +1387,12 @@ struct amap_table * amap_table_locate_by_block(uint64_t block, struct amap_sync_
 
 void wlist_release_log_reserved(struct tdisk *tdisk, struct write_list *wlist);
 void pglist_check_free(struct pgdata **pglist, int pglist_cnt, int norefs);
+void tdisk_parameter_list_length_error_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio);
+void tdisk_invalid_field_in_parameter_list_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio);
+void tdisk_invalid_field_in_cdb_sense(struct tdisk *tdisk, struct qsio_scsiio *ctio);
+int is_unaligned_extended_copy(struct tdisk *src_tdisk, uint64_t src_lba, uint64_t dest_lba, uint64_t size);
+void extended_copy_mirror_check(struct tdisk *src_tdisk, struct qsio_scsiio *ctio, struct tdisk *dest_tdisk, uint64_t src_lba, uint64_t dest_lba, uint32_t num_blocks, int *mirror_enabled, int *use_refs, uint32_t *xchg_id);
+int remap_pglist_for_write(struct pgdata ***ret_pglist,  int *ret_pglist_cnt, uint32_t size);
+int __tdisk_cmd_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t lba, uint32_t transfer_length, int sendstatus, int cw, struct index_info_list *prev_index_info_list, int unmap, int sync_wait, uint32_t xchg_id);
 
 #endif

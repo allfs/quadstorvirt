@@ -34,6 +34,7 @@
 #include "node_mirror.h"
 #include "tdisk.h"
 #include "lz4.h"
+#include "copymgr.h"
 
 struct qs_kern_cbs kcbs;
 uint64_t qs_availmem;
@@ -193,6 +194,7 @@ sx_t *gchain_lock;
 sx_t *clone_info_lock;
 sx_t *rep_comm_lock;
 sx_t *sync_lock;
+sx_t *rod_lock;
 mtx_t *glob_stats_lock;
 mtx_t *tdisk_lookup_lock;
 mtx_t *glbl_lock;
@@ -681,6 +683,7 @@ exit_globals(void)
 	sx_free(clone_info_lock);
 	sx_free(rep_comm_lock);
 	sx_free(sync_lock);
+	sx_free(rod_lock);
 	mtx_free(glob_stats_lock);
 	mtx_free(tdisk_lookup_lock);
 	mtx_free(ddtable_global.global_lock);
@@ -749,6 +752,9 @@ __kern_exit(void)
 		cbs_disable_device(tdisk);
 		tdisk_mirror_exit(tdisk);
 	}
+
+	debug_print("copy manager exit\n");
+	copy_manager_exit();
 
 	debug_print("node cleanups wait\n");
 	node_cleanups_wait();
@@ -973,6 +979,7 @@ init_globals(void)
 	clone_info_lock = sx_alloc("qs clone info lock");
 	rep_comm_lock = sx_alloc("qs rep comm lock");
 	sync_lock = sx_alloc("node sync lock");
+	rod_lock = sx_alloc("rod lock");
 	glob_stats_lock = mtx_alloc("glob stats lock");
 	tdisk_lookup_lock = mtx_alloc("tdisk lookup lock");
 	glbl_lock = mtx_alloc("glbl lock");
@@ -1136,6 +1143,18 @@ kern_interface_init(struct qs_kern_cbs *kern_cbs)
 
 	retval = init_ddthreads();
 	if (unlikely(retval != 0)) {
+		node_sync_exit_threads();
+		exit_gdevq_threads();
+		rcache_exit();
+		pgzero_exit();
+		exit_globals();
+		exit_caches();
+		return -1;
+	}
+
+	retval = copy_manager_init();
+	if (unlikely(retval != 0)) {
+		exit_ddthreads();
 		node_sync_exit_threads();
 		exit_gdevq_threads();
 		rcache_exit();

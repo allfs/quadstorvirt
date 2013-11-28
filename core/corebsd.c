@@ -22,6 +22,8 @@
 #include "node_sock.h"
 
 MALLOC_DEFINE(M_QUADSTOR, "quads", "QUADStor allocations");
+MALLOC_DEFINE(M_ROD_TOKEN, "quad rod token", "QUADStor allocations");
+MALLOC_DEFINE(M_ROD_TOKEN_ENTRY, "quad rod token entry", "QUADStor allocations");
 MALLOC_DEFINE(M_QSOCK, "quad sock", "QUADStor allocations");
 MALLOC_DEFINE(M_CBS, "quad cbs", "QUADStor allocations");
 MALLOC_DEFINE(M_SYNC_THR, "quad sync thr", "QUADStor allocations");

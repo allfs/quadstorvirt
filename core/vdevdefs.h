@@ -40,6 +40,7 @@
 #define ANSI_VERSION_SCSI3	0x03 /* SPC */
 #define ANSI_VERSION_SCSI3_SPC2	0x04 /* SPC2 */
 #define ANSI_VERSION_SCSI3_SPC3	0x05 /* SPC3 */
+#define ANSI_VERSION_SCSI3_SPC4	0x06 /* SPC4 */
 #define RESPONSE_DATA		0x02 /* SPC-3  and SPC2-3*/
 
 #define READ_WRITE_ERROR_RECOVERY_PAGE			0x01 
@@ -55,6 +56,7 @@
 #define UNIT_SERIAL_NUMBER_PAGE				0x80
 #define DEVICE_IDENTIFICATION_PAGE			0x83
 #define EXTENDED_INQUIRY_VPD_PAGE			0x86
+#define THIRD_PARTY_COPY_VPD_PAGE			0x8F
 #define BLOCK_LIMITS_VPD_PAGE				0xB0
 #define BLOCK_DEVICE_CHARACTERISTICS_VPD_PAGE		0xB1
 #define LOGICAL_BLOCK_PROVISIONING_VPD_PAGE		0xB2
@@ -480,6 +482,33 @@ ctio_set_sense_info_valid(struct qsio_scsiio *ctio)
 	sense->error_code |= 0x80;
 }
 
+static inline void
+print_buffer(char *buf, int len)
+{
+	int i;
+	unsigned char c;
+	for (i = 0; i < len; i++) {
+		if (i && (i % 16) == 0)
+			printf("\n");
+		if (!i || (i % 16) == 0)
+			printf("%02d: ", i);
+		printf("%02x ", buf[i] & 0xFF);
+	}
+	printf("\n");
+
+	for (i = 0; i < len; i++) {
+		if (i && (i % 16) == 0)
+			printf("\n");
+		if (!i || (i % 16) == 0)
+			printf("%02d: ", i);
+		c = buf[i];
+		if (c > 0x20 && c < 0x7B)
+			printf("%c ", c);
+		else
+			printf(". ");
+	}
+	printf("\n");
+}
 static inline void
 print_cdb(uint8_t *cdb)
 {

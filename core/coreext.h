@@ -117,6 +117,8 @@ typedef void bio_t;
 
 #define M_DEVBUF		0
 #define M_QUADSTOR		0
+#define M_ROD_TOKEN		0
+#define M_ROD_TOKEN_ENTRY	0
 #define M_CBS			0
 #define M_QSOCK			0
 #define M_SYNC_THR		0
