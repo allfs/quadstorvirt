@@ -7556,6 +7556,7 @@ tdisk_cmd_receive_copy_data(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 	service_action = cdb[1] & 0x1F;
 	switch (service_action) {
 	case SERVICE_ACTION_RECEIVE_COPY_STATUS_LID1:
+	case SERVICE_ACTION_RECEIVE_COPY_OPERATING_PARAMETERS:
 		retval = tdisk_cmd_receive_copy_results(tdisk, ctio);
 		break;
 	case SERVICE_ACTION_RECEIVE_ROD_TOKEN_INFORMATION:

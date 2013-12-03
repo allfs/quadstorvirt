@@ -9,6 +9,7 @@ struct tdisk;
 #define SERVICE_ACTION_WRITE_USING_TOKEN	0x11
 
 #define SERVICE_ACTION_RECEIVE_COPY_STATUS_LID1		0x00
+#define SERVICE_ACTION_RECEIVE_COPY_OPERATING_PARAMETERS	0x03
 #define SERVICE_ACTION_RECEIVE_ROD_TOKEN_INFORMATION	0x07
 
 void tdisk_cmd_populate_token(struct tdisk *tdisk, struct qsio_scsiio *ctio);
