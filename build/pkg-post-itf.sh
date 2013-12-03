@@ -11,5 +11,5 @@ if [ ! -f /quadstor/etc/iet/ietd.conf ]; then
 	cp /quadstor/etc/iet/ietd.conf.sample /quadstor/etc/iet/ietd.conf
 fi
 
-echo "3.0.53 for FreeBSD 8.2" > /quadstor/etc/quadstor-itf-version
+echo "3.0.54 for FreeBSD 8.2" > /quadstor/etc/quadstor-itf-version
 exit 0
