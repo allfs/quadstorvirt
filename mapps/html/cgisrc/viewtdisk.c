@@ -31,7 +31,9 @@ int main()
 	char databuf[64];
 	double ratio;
 	uint64_t used_size;
+#if 0
 	uint64_t transfer_rate;
+#endif
 	char *cols[] = {"name", "value", NULL};
 
 	read_cgi_input(&entries);
@@ -95,6 +97,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.write_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Write Transfer Rate:");
 	cgi_print_comma();
@@ -105,6 +108,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 
 	cgi_print_row_start();
@@ -120,6 +124,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.read_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Read Transfer Rate:");
 	cgi_print_comma();
@@ -130,6 +135,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_row_start();
 	cgi_print_column("name", "Unaligned Size:");
@@ -190,6 +196,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.unmap_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Unmap Transfer Rate:");
 	cgi_print_comma();
@@ -200,6 +207,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_row_start();
 	cgi_print_column("name", "Blocks Zeroed:");
@@ -285,6 +293,7 @@ int main()
 	cgi_print_column("value", databuf);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "XCopy Write Transfer Rate:");
 	cgi_print_comma();
@@ -313,6 +322,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_row_start();
 	cgi_print_column("name", "XCopy Ops:");
@@ -333,6 +343,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.wsame_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Write Same Transfer Rate:");
 	cgi_print_comma();
@@ -343,6 +354,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_row_start();
 	cgi_print_column("name", "Populate Token Size:");
@@ -357,6 +369,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.populate_token_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Populate Token Transfer Rate:");
 	cgi_print_comma();
@@ -367,6 +380,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_row_start();
 	cgi_print_column("name", "Write Token Size:");
@@ -381,6 +395,7 @@ int main()
 	cgi_print_column_format("value", "%llu", (unsigned long long)stats.write_using_token_cmds);
 	cgi_print_row_end();
 
+#if 0
 	cgi_print_row_start();
 	cgi_print_column("name", "Write Token Transfer Rate:");
 	cgi_print_comma();
@@ -391,6 +406,7 @@ int main()
 	get_data_str(transfer_rate, databuf);
 	cgi_print_column_format("value", "%s/s", databuf);
 	cgi_print_row_end();
+#endif
 
 	cgi_print_table_end("vstats-table");
 
