@@ -1334,7 +1334,8 @@ int tdisk_free_thread(void *data);
 
 void tdisk_write_error(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist, int ignore_mirror);
 void tdisk_write_error_post(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist);
-int check_unaligned_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, int cw, int *cw_status, uint32_t *cw_offset, struct write_list *wlist);
+int check_unaligned_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, struct write_list *wlist);
+int check_cw_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, int *cw_status, uint32_t *cw_offset, struct write_list *wlist);
 int tdisk_lba_write_setup(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist, uint64_t lba, uint32_t transfer_length, int cw, int sync_wait, uint32_t xchg_id);
 
 static inline uint32_t

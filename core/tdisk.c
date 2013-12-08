@@ -5893,7 +5893,137 @@ atomic_t gpglist_cnt;
 atomic_t gpglist_need_wait;
 
 int
-check_unaligned_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, int cw, int *cw_status, uint32_t *cw_offset, struct write_list *wlist)
+check_unaligned_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, struct write_list *wlist)
+{
+	uint32_t size, offset, new_size;
+	struct pgdata **dest_pglist = NULL, **src_pglist, *pgdest, *pgsrc;
+	struct pgdata **first_pglist = NULL, **last_pglist = NULL;
+	int dest_pglist_cnt = 0, first_pglist_cnt = 0, last_pglist_cnt;
+	int i, dest_idx, retval, dest_offset, min_len, src_offset;
+	uint64_t lba_diff;
+	int todo;
+	uint64_t lba = *ret_lba;
+
+	if (tdisk->lba_shift == LBA_SHIFT)
+		return 0;
+
+	size = transfer_length << tdisk->lba_shift;
+
+	lba_diff = tdisk_get_lba_diff(tdisk, lba);
+
+	if (!lba_diff && !(size & LBA_MASK)) {
+		lba >>= 3;
+		*ret_lba = lba;
+		return 0;
+	}
+
+	debug_info("lba %llu transfer length %u lba diff %llu\n", (unsigned long long)lba, transfer_length, (unsigned long long)lba_diff);
+	atomic_set_bit(WLIST_UNALIGNED_WRITE, &wlist->flags);
+
+	lba -= lba_diff;
+	transfer_length += lba_diff;
+
+	if (lba_diff) {
+		debug_info("read first 8 from %llu\n", (unsigned long long)lba);
+		retval = __tdisk_cmd_read_int(tdisk, ctio, &first_pglist, &first_pglist_cnt, lba, 8, 0, wlist->lba_write);
+		if (unlikely(retval != 0))
+			return -1;
+		debug_check(first_pglist_cnt != 1);
+	}
+
+	new_size = transfer_length << tdisk->lba_shift;
+	offset = new_size & ~LBA_MASK;
+	if ((new_size > LBA_SIZE || !lba_diff) && (new_size & LBA_MASK)) {
+		debug_info("read last  8 from %llu\n", (unsigned long long)(lba + (offset >> tdisk->lba_shift)));
+		retval = __tdisk_cmd_read_int(tdisk, ctio, &last_pglist, &last_pglist_cnt, lba + (offset >> tdisk->lba_shift), 8, 0, wlist->lba_write);
+		if (unlikely(retval != 0))
+			goto err;
+		debug_check(last_pglist_cnt != 1);
+	}
+
+	dest_pglist_cnt = transfer_length_to_pglist_cnt(tdisk->lba_shift, transfer_length);
+	debug_info("dest pglist cnt %d\n", dest_pglist_cnt);
+	dest_pglist = pgdata_allocate(dest_pglist_cnt, Q_NOWAIT);
+	if (unlikely(!dest_pglist))
+		goto err;
+
+	if (first_pglist) {
+		pgdest = dest_pglist[0];
+		pgsrc = first_pglist[0];
+		memcpy(((uint8_t *)pgdata_page_address(pgdest)), (((uint8_t *)pgdata_page_address(pgsrc))), LBA_SIZE);
+		TDISK_STATS_ADD(tdisk, unaligned_size, (lba_diff << tdisk->lba_shift));
+	}
+
+	if (last_pglist) {
+		pgdest = dest_pglist[dest_pglist_cnt - 1];
+		pgsrc = last_pglist[0];
+		memcpy(((uint8_t *)pgdata_page_address(pgdest)), (((uint8_t *)pgdata_page_address(pgsrc))), LBA_SIZE);
+		TDISK_STATS_ADD(tdisk, unaligned_size, (new_size - offset));
+	}
+
+	dest_idx = 0;
+	dest_offset = (lba_diff << tdisk->lba_shift);
+	src_pglist = (struct pgdata **)(ctio->data_ptr);
+	todo = size;
+	src_offset = 0;
+	i = 0;
+
+	while (todo) {
+		pgdest = dest_pglist[dest_idx];
+		pgsrc = src_pglist[i];
+		wait_for_done(pgsrc->completion);
+
+		min_len = min_t(int, pgdest->pg_len - dest_offset, pgsrc->pg_len - src_offset);
+
+		if (min_len > todo)
+			min_len = todo;
+
+		memcpy(((uint8_t *)pgdata_page_address(pgdest)) + dest_offset, (((uint8_t *)pgdata_page_address(pgsrc)) + src_offset), min_len);
+
+		todo -= min_len;
+		dest_offset += min_len;
+		if (dest_offset == pgdest->pg_len) {
+			dest_offset = 0;
+			dest_idx++;
+		}
+
+		src_offset += min_len;
+		if (src_offset == pgsrc->pg_len) {
+			src_offset = 0;
+			i++;
+		}
+	}
+
+	if (!ctio_norefs(ctio)) {
+		pglist_free(src_pglist, ctio->pglist_cnt);
+	}
+	else {
+		pglist_free_norefs(src_pglist, ctio->pglist_cnt);
+		ctio_clear_norefs(ctio);
+	}
+
+	if (first_pglist)
+		pglist_free(first_pglist, first_pglist_cnt);
+	if (last_pglist)
+		pglist_free(last_pglist, last_pglist_cnt);
+
+	ctio->data_ptr = (void *)dest_pglist;
+	ctio->pglist_cnt = dest_pglist_cnt;
+	ctio->dxfer_len = size;
+	gdevq_write_insert(tdisk, ctio);
+	lba >>= 3;
+	*ret_lba = lba;
+	return 0;
+err:
+	if (first_pglist)
+		pglist_free(first_pglist, first_pglist_cnt);
+	if (last_pglist)
+		pglist_free(last_pglist, last_pglist_cnt);
+	return -1;
+}
+
+int
+check_cw_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *ret_lba, uint32_t transfer_length, int *cw_status, uint32_t *cw_offset, struct write_list *wlist)
 {
 	uint32_t size;
 	struct pgdata **dest_pglist = NULL, **src_pglist, *pgdest, *pgsrc, *pgcmp;
@@ -5908,23 +6038,14 @@ check_unaligned_data(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t *re
 	size = transfer_length << tdisk->lba_shift;
 
 	if (tdisk->lba_shift == LBA_SHIFT) {
-		if (!cw)
-			return 0;
 		lba_diff = 0;
 		goto skip;
 	}
 
 	lba_diff = tdisk_get_lba_diff(tdisk, lba);
 
-	if (!lba_diff && !(size & LBA_MASK) && !cw) {
-		lba >>= 3;
-		*ret_lba = lba;
-		return 0;
-	}
-
-	if (lba_diff || (size & LBA_MASK)) {
+	if (lba_diff || (size & LBA_MASK))
 		atomic_set_bit(WLIST_UNALIGNED_WRITE, &wlist->flags);
-	}
 
 	TDISK_STATS_ADD(tdisk, unaligned_size, transfer_length << tdisk->lba_shift);
 	lba -= lba_diff;
@@ -5939,13 +6060,7 @@ skip:
 	dest_offset = (lba_diff << tdisk->lba_shift);
 	src_pglist = (struct pgdata **)(ctio->data_ptr);
 	todo = size;
-	if (!cw) {
-		src_offset = 0;
-		i = 0;
-	}
-	else {
-		ctio_idx_offset(size, &i, &src_offset);
-	}
+	ctio_idx_offset(size, &i, &src_offset);
 
 	cmp_idx = 0;
 	cmp_offset = 0;
@@ -5963,12 +6078,10 @@ skip:
 		if (min_len > todo)
 			min_len = todo;
 
-		if (cw) {
-			retval = memcmp(((uint8_t *)pgdata_page_address(pgdest)) + dest_offset, (((uint8_t *)pgdata_page_address(pgcmp)) + cmp_offset), min_len);
-			if (retval && !cw_failed_set) {
-				cw_failed = (size - todo);
-				cw_failed_set = 1;
-			}
+		retval = memcmp(((uint8_t *)pgdata_page_address(pgdest)) + dest_offset, (((uint8_t *)pgdata_page_address(pgcmp)) + cmp_offset), min_len);
+		if (retval && !cw_failed_set) {
+			cw_failed = (size - todo);
+			cw_failed_set = 1;
 		}
 
 		if (tdisk->lba_shift != LBA_SHIFT)
@@ -6203,7 +6316,10 @@ __tdisk_cmd_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t lba, u
 	if (tdisk->lba_shift != LBA_SHIFT || cw) {
 		cw_status = 0;
 		cw_offset = 0;
-		retval = check_unaligned_data(tdisk, ctio, &lba, transfer_length, cw, &cw_status, &cw_offset, &wlist);
+		if (cw)
+			retval = check_cw_data(tdisk, ctio, &lba, transfer_length, &cw_status, &cw_offset, &wlist);
+		else
+			retval = check_unaligned_data(tdisk, ctio, &lba, transfer_length, &wlist);
 		if (unlikely(retval != 0)) {
 			wlist_release_log_reserved(tdisk, &wlist);
 			wait_for_pgdata((struct pgdata **)ctio->data_ptr, ctio->pglist_cnt);

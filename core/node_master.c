@@ -1037,7 +1037,10 @@ __node_master_write_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio, int cw)
 	if (tdisk->lba_shift != LBA_SHIFT || cw) {
 		cw_status = 0;
 		cw_offset = 0;
-		retval = check_unaligned_data(tdisk, ctio, &lba, transfer_length, cw, &cw_status, &cw_offset, wlist);
+		if (cw)
+			retval = check_cw_data(tdisk, ctio, &lba, transfer_length, &cw_status, &cw_offset, wlist);
+		else
+			retval = check_unaligned_data(tdisk, ctio, &lba, transfer_length, wlist);
 		if (unlikely(retval != 0)) {
 			tdisk_remove_lba_write(tdisk, &wlist->lba_write);
 			ctio_free_data(ctio);
