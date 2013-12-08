@@ -1626,10 +1626,15 @@ node_master_write_unaligned(struct tdisk *tdisk, struct qsio_scsiio *ctio, struc
 		}
 	}
 
-	debug_check(!atomic_read(&tcache->bio_remain));
-	tcache_entry_rw(tcache, QS_IO_WRITE);
+	if (atomic_read(&tcache->bio_remain)) {
+		tcache_entry_rw(tcache, QS_IO_WRITE);
+		msg->tcache = tcache;
+	}
+	else {
+		tcache_put(tcache);
+		msg->tcache = NULL;
+	}
 
-	msg->tcache = tcache;
 	msg->raw->cmd_status = NODE_CMD_DONE;
 	msg->raw->dxfer_len = 0;
 	return 0;
@@ -3264,7 +3269,7 @@ static int node_master_thr(void *data)
 	chan_wakeup(master_wait);
 
 	while(!kernel_thread_check(&master_flags, MASTER_EXIT)) {
-		wait_on_chan_timeout(master_wait, kernel_thread_check(&master_flags, MASTER_EXIT), 5000);
+		wait_on_chan_timeout(master_wait, kernel_thread_check(&master_flags, MASTER_EXIT) || atomic_test_bit(MASTER_CLEANUP, &master_flags), 5000);
 		if (unlikely(kernel_thread_check(&master_flags, MASTER_EXIT)))
 			break;
 		if (atomic_test_bit(MASTER_CLEANUP, &master_flags)) {

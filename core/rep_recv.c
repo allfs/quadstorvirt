@@ -415,7 +415,7 @@ static int node_recv_thr(void *data)
 	atomic_set_bit(MASTER_INITED, &recv_flags);
 	chan_wakeup(recv_wait);
 	while (!kernel_thread_check(&recv_flags, MASTER_EXIT)) {
-		wait_on_chan_timeout(recv_wait, kernel_thread_check(&recv_flags, MASTER_EXIT), 10000);
+		wait_on_chan_timeout(recv_wait, kernel_thread_check(&recv_flags, MASTER_EXIT) || atomic_test_bit(MASTER_CLEANUP, &recv_flags), 10000);
 		if (unlikely(kernel_thread_check(&recv_flags, MASTER_EXIT)))
 			break;
 		if (atomic_test_bit(MASTER_CLEANUP, &recv_flags)) {

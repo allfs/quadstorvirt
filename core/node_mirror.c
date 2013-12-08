@@ -2001,7 +2001,7 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 	mirror_state->mirror_src_ipaddr = recv_config.recv_ipaddr;
 
 	debug_info("mirror state flags %d\n", mirror_state->mirror_flags);
-	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, &peer_state, sizeof(peer_state));
+	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_send_timeout, 0, &peer_state, sizeof(peer_state));
 	if (unlikely(retval != 0)) {
 		debug_warn("mirror state send page failed\n");
 		tdisk_mirroring_disable(tdisk);
