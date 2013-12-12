@@ -1,4 +1,9 @@
-Release 3.0.51
+Release 3.0.56
+	* Wait for VDisk mirroring connects to peer before enabling iSCSI listen
+	  port. This ensures that ESXi reconnects on dead paths when the are
+	  available
+
+Release 3.0.55
 	* Reduce the number of reads when writing unaligned data
 	* Fiber channel driver merge with upstream linux 3.12.3
 	* Removed 'Transfer Rate' statistics, they were incorrect

@@ -1,5 +1,5 @@
 Package: quadstor-client
-Version: 3.0.55 
+Version: 3.0.56 
 Section: base
 Priority: optional
 Architecture: amd64 
