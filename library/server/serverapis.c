@@ -522,6 +522,37 @@ wait_for_ddtables(void)
 	}
 }
 
+static void 
+wait_for_attach(void)
+{
+	struct tdisk_info *info;
+	int tries = 0, done, i;
+
+again:
+	done = 1;
+	pthread_mutex_lock(&daemon_lock);
+	for (i = 1; i < TL_MAX_TDISKS; i++) {
+		info = tdisk_list[i];
+		if (!info)
+			continue;
+
+		if (info->disabled)
+			continue;
+
+		if (!info->online) {
+			done = 0;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&daemon_lock);
+	if (!done) {
+		sleep(10);
+		tries++;
+		if (tries < 10)
+			goto again;
+	}
+}
+
 static int
 attach_tdisks(void)
 {
@@ -3873,6 +3904,7 @@ tl_server_load_conf(struct tl_comm *comm, struct tl_msg *msg)
 	if (retval != 0)
 		exit(EXIT_FAILURE); 
 
+	wait_for_attach();
 	ietadm_qload_done();
 	tl_server_msg_success(comm, msg);
 }
