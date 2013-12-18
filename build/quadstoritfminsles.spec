@@ -2,7 +2,7 @@
 
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-itf-minimal
-Version: 3.0.56
+Version: 3.0.57
 Release: sles11sp1
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -43,7 +43,7 @@ install -m 755 /quadstor/quadstor/scripts/builditf.min.linux.sh $RPM_BUILD_ROOT/
 install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/etc/udev/rules.d/65-quadstor.rules
 
 %post
-	echo "Minimal 3.0.56 for SLES 11 SP1" > /quadstor/etc/quadstor-itf-version
+	echo "Minimal 3.0.57 for SLES 11 SP1" > /quadstor/etc/quadstor-itf-version
 
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf.min"

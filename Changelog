@@ -1,3 +1,8 @@
+Release 3.0.57
+	* Merge lz4 r109 compression code
+	* Merge srpt code to upstream
+	* srpt abort command fixes
+
 Release 3.0.56
 	* Wait for VDisk mirroring connects to peer before enabling iSCSI listen
 	  port. This ensures that ESXi reconnects on dead paths when the are
