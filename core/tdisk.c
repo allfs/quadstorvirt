@@ -3071,8 +3071,35 @@ amap_table_insert(struct amap_table_group *group, struct amap_table *amap_table)
 	}
 }
 
+static void
+amap_table_index_info_insert(struct amap_table *amap_table_new, struct index_info_list *meta_index_info_list, struct index_info *index_info, struct amap_sync_list *amap_sync_list)
+{
+	struct index_info *prev = NULL, *iter;
+	struct amap_table *amap_table;
+
+	if (!amap_sync_list) {
+		TAILQ_INSERT_HEAD(meta_index_info_list, index_info, i_list);
+		return;
+	}
+
+	TAILQ_FOREACH(iter, meta_index_info_list, i_list) {
+		if (iter->meta_type != INDEX_INFO_TYPE_AMAP_TABLE)
+			break;
+		amap_table = amap_table_locate_by_block(iter->block, amap_sync_list);
+		debug_check(!amap_table);
+		debug_check(amap_table->amap_table_id == amap_table_new->amap_table_id);
+		if (amap_table->amap_table_id > amap_table_new->amap_table_id)
+			break;
+		prev = iter;
+	}
+	if (prev)
+		TAILQ_INSERT_AFTER(meta_index_info_list, prev, index_info, i_list);
+	else
+		TAILQ_INSERT_HEAD(meta_index_info_list, index_info, i_list);
+}
+
 int
-amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, struct index_info_list *meta_index_info_list)
+amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, struct index_info_list *meta_index_info_list, struct amap_sync_list *amap_sync_list)
 {
 	uint64_t b_start;
 	struct bdevint *bint;
@@ -3113,7 +3140,7 @@ amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_
 	atomic_set_bit_short(ATABLE_CSUM_CHECK_DONE, &amap_table->flags);
 	index_info->block = amap_table->amap_table_block;
 	index_info->meta_type = INDEX_INFO_TYPE_AMAP_TABLE;
-	TAILQ_INSERT_HEAD(meta_index_info_list, index_info, i_list);
+	amap_table_index_info_insert(amap_table, meta_index_info_list, index_info, amap_sync_list);
 
 	atomic_set_bit_short(ATABLE_META_IO_PENDING, &amap_table->flags);
 	atomic_set_bit_short(ATABLE_META_DATA_NEW, &amap_table->flags);
@@ -3429,7 +3456,7 @@ amap_locate(struct amap_table *amap_table, uint64_t lba, int *error)
 }
 
 static int
-amap_table_get_amap(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct amap **ret_amap, int rw, struct index_info_list *meta_index_info_list, int unmap)
+amap_table_get_amap(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct amap **ret_amap, int rw, struct index_info_list *meta_index_info_list, struct amap_sync_list *amap_sync_list, int unmap)
 {
 	struct amap *amap;
 	uint64_t block;
@@ -3451,7 +3478,7 @@ amap_table_get_amap(struct amap_table *amap_table, uint32_t amap_id, uint32_t am
 			}
 
 			TDISK_TSTART(start_ticks);
-			amap = amap_new(amap_table, amap_id, amap_idx, meta_index_info_list, &error);
+			amap = amap_new(amap_table, amap_id, amap_idx, meta_index_info_list, amap_sync_list, &error);
 			TDISK_TEND(amap_table->tdisk, amap_new_ticks, start_ticks);
 			if (unlikely(!amap)) {
 				debug_warn("address map create failed\n");
@@ -3504,7 +3531,7 @@ pgdata_check_table_list(struct amap_table_list *table_list, struct index_info_li
 			return -1;
 		}
 
-		retval = amap_table_get_amap(amap_table, amap_id, amap_idx, &amap, rw, meta_index_info_list, 0);
+		retval = amap_table_get_amap(amap_table, amap_id, amap_idx, &amap, rw, meta_index_info_list, amap_sync_list, 0);
 		amap_table_unlock(amap_table);
 		if (unlikely(retval < 0)) {
 			debug_warn("Failed to get amap at %u\n", amap_id);
@@ -3567,7 +3594,7 @@ lba_unmapped_write(struct tdisk *tdisk, uint64_t lba, struct pgdata *pgdata, str
 				return 0;
 			}
 			TDISK_TSTART(tmp_ticks);
-			retval = amap_table_init(tdisk, group, atable_id, &wlist->meta_index_info_list);
+			retval = amap_table_init(tdisk, group, atable_id, &wlist->meta_index_info_list, amap_sync_list);
 			TDISK_TEND(tdisk, amap_table_init_ticks, tmp_ticks);
 			if (unlikely(retval != 0)) {
 				amap_table_group_unlock(group);
@@ -3628,7 +3655,7 @@ skip_atable_locate:
 		return -1;
 	}
 
-	retval = amap_table_get_amap(amap_table, amap_id, amap_idx, &amap, QS_IO_WRITE, &wlist->meta_index_info_list, atomic_test_bit(DDBLOCK_ZERO_BLOCK, &pgdata->flags));
+	retval = amap_table_get_amap(amap_table, amap_id, amap_idx, &amap, QS_IO_WRITE, &wlist->meta_index_info_list, amap_sync_list, atomic_test_bit(DDBLOCK_ZERO_BLOCK, &pgdata->flags));
 	amap_table_unlock(amap_table);
 
 	TDISK_TEND(tdisk, amap_table_get_amap_ticks, tmp_ticks);

@@ -375,8 +375,37 @@ amap_load(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, ui
 	return amap;
 }
 
+static void
+amap_index_info_insert(struct amap *amap_new, struct index_info_list *meta_index_info_list, struct index_info *index_info, struct amap_sync_list *amap_sync_list)
+{
+	struct index_info *prev = NULL, *iter;
+	struct amap *amap;
+
+	if (!amap_sync_list) {
+		TAILQ_INSERT_TAIL(meta_index_info_list, index_info, i_list);
+		return;
+	}
+
+	TAILQ_FOREACH(iter, meta_index_info_list, i_list) {
+		if (iter->meta_type != INDEX_INFO_TYPE_AMAP) {
+			prev = iter;
+			continue;
+		}
+		amap = amap_locate_by_block(iter->block, amap_sync_list);
+		debug_check(!amap);
+		debug_check(amap->amap_id == amap_new->amap_id);
+		if (amap->amap_id > amap_new->amap_id)
+			break;
+		prev = iter;
+	}
+	if (prev)
+		TAILQ_INSERT_AFTER(meta_index_info_list, prev, index_info, i_list);
+	else
+		TAILQ_INSERT_TAIL(meta_index_info_list, index_info, i_list);
+}
+
 struct amap *
-amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct index_info_list *index_info_list, int *error)
+amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct index_info_list *meta_index_info_list, struct amap_sync_list *amap_sync_list, int *error)
 {
 	struct amap *amap;
 	uint64_t b_start;
@@ -425,7 +454,7 @@ amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, str
 
 	index_info->block = amap->amap_block;
 	index_info->meta_type = INDEX_INFO_TYPE_AMAP;
-	TAILQ_INSERT_TAIL(index_info_list, index_info, i_list);
+	amap_index_info_insert(amap, meta_index_info_list, index_info, amap_sync_list);
 
 	amap_insert(amap_table, amap, amap_idx);
 	return amap;

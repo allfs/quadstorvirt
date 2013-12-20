@@ -1201,7 +1201,7 @@ struct lba_write * tdisk_add_alloc_lba_write(uint64_t lba_start, wait_chan_t *ch
 void tdisk_update_alloc_lba_write(struct lba_write *lba_alloc, wait_chan_t *chan, int flag);
 int tdisk_add_block_ref(struct bdevgroup *group, uint64_t block, struct index_info_list *index_info_list);
 struct amap_table * amap_table_load_async(struct tdisk *tdisk, uint64_t block, struct amap_table_group *group, uint32_t group_id, int atable_id);
-int amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, struct index_info_list *meta_index_info_list);
+int amap_table_init(struct tdisk *tdisk, struct amap_table_group *group, int atable_id, struct index_info_list *meta_index_info_list, struct amap_sync_list *amap_sync_list);
 struct amap * amap_load_async(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, uint64_t block);
 void amap_clone_check(struct tdisk *src_tdisk, struct amap *src_amap, int isnew);
 void amap_table_clone_check(struct tdisk *src_tdisk, struct amap_table *amap_table);

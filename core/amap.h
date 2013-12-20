@@ -314,7 +314,8 @@ do {								\
 int amap_table_io(struct amap_table *amap_table, int rw);
 int amap_io(struct amap *amap, uint64_t write_id, int rw);
 struct amap * amap_load(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, uint64_t block, struct tpriv *priv);
-struct amap * amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct index_info_list *index_info_list, int *error);
+struct amap_sync_list;
+struct amap * amap_new(struct amap_table *amap_table, uint32_t amap_id, uint32_t amap_idx, struct index_info_list *meta_index_info_list, struct amap_sync_list *amap_sync_list, int *error);
 void amap_table_free(struct amap_table *amap_table);
 void amap_table_free_amaps(struct amap_table *amap_table);
 void amap_free(struct amap *amap);
