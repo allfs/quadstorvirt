@@ -1,3 +1,9 @@
+Release 3.0.58
+	* Reduce network reads when reading from a slave vdisk during resync
+	* Fix false write errors reported to a host when writing to a slave
+	  during resync
+	* Fix possible deadlock scenarios during mirror error recovery
+
 Release 3.0.57
 	* Merge lz4 r109 compression code
 	* Merge srpt code to upstream
