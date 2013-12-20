@@ -167,6 +167,7 @@ mirror_state_master(struct mirror_state *mirror_state)
 }
 
 int tdisk_lba_needs_mirror_sync(struct tdisk *tdisk, uint64_t lba);
+int tdisk_lba_read_needs_mirror_read(struct tdisk *tdisk, uint64_t lba, uint32_t transfer_length);
 void tdisk_mirror_checks(struct tdisk *tdisk);
 
 #endif

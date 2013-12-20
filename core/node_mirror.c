@@ -321,8 +321,10 @@ node_resp_status(struct node_msg *msg, struct node_sock *sock, struct qsio_scsii
 		return 0;
 	}
 
-	if (!ctio)
+	if (!ctio) {
+		debug_warn("For cmd %x got msg status %d\n", raw->msg_cmd, raw->msg_status);
 		return raw->msg_status;
+	}
 
 	need_sense = 0;
 	error_code = SSD_CURRENT_ERROR;
@@ -361,7 +363,7 @@ node_resp_status(struct node_msg *msg, struct node_sock *sock, struct qsio_scsii
 		ascq = sense_spec->ascq; 
 		info = sense_spec->info;
 		error_code = sense_spec->error_code;
-		debug_info("cmd sense sense key %x asc %x ascq %x error_code %x info %u\n", sense_key, asc, ascq, error_code, info);
+		debug_warn("cmd sense sense key %x asc %x ascq %x error_code %x info %u\n", sense_key, asc, ascq, error_code, info);
 		break;
 	}
 
@@ -370,6 +372,7 @@ node_resp_status(struct node_msg *msg, struct node_sock *sock, struct qsio_scsii
 			node_sock_read_error(sock);
 		ctio_construct_sense(ctio, error_code, sense_key, info, asc, ascq);
 	}
+	debug_warn("For cdb %x cmd %x got msg status %d\n", ctio->cdb[0], raw->msg_cmd, raw->msg_status);
 	debug_info("msg status %x\n", raw->msg_status);
 	return raw->msg_status;
 }
@@ -434,6 +437,38 @@ node_mirror_send_page(struct tdisk *tdisk, struct node_msg *msg, pagestruct_t *p
 }
 
 int
+tdisk_lba_read_needs_mirror_read(struct tdisk *tdisk, uint64_t lba, uint32_t transfer_length)
+{
+	uint32_t amap_id, amap_id_end, clone_amap_id;
+	uint64_t lba_end;
+
+	if (!tdisk_mirroring_need_resync(tdisk))
+		return 0;
+
+	if (!tdisk_in_mirroring(tdisk))
+		return 0;
+
+	lba_end = lba + transfer_length - 1;
+	lba = tdisk_get_lba_real(tdisk, lba);
+	lba_end = tdisk_get_lba_real(tdisk, lba_end);
+
+	amap_id = amap_get_id(lba);
+	amap_id_end = amap_get_id(lba_end);
+	clone_amap_id = tdisk_get_clone_amap_id(tdisk);
+
+	if (!tdisk_in_sync(tdisk))
+		return 0;
+
+	if (clone_amap_id < amap_id_end)
+		return 1;
+
+	if (amap_id <= clone_amap_id && amap_id_end <= clone_amap_id)
+		return 0;
+	else
+		return 1;
+}
+
+int
 tdisk_lba_needs_mirror_sync(struct tdisk *tdisk, uint64_t lba)
 {
 	uint32_t amap_id;
@@ -441,7 +476,7 @@ tdisk_lba_needs_mirror_sync(struct tdisk *tdisk, uint64_t lba)
 	if (!tdisk_mirroring_need_resync(tdisk))
 		return 1;
 
-	if (!tdisk_in_mirroring(tdisk))
+	if (!tdisk_in_sync(tdisk))
 		return 0;
 
 	lba = tdisk_get_lba_real(tdisk, lba);
@@ -1305,6 +1340,7 @@ __tdisk_mirror_read(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdata
 	raw->target_id = tdisk->mirror_state.mirror_target_id;
 	raw->dxfer_len = dxfer_len;
 	raw->msg_id = node_transaction_id();
+	raw->mirror_status = NODE_STATUS_DO_LOCAL_READ;
 
 	TDISK_TSTART(start_ticks);
 	retval = node_read_setup(tdisk, comm, sock, ctio, msg, lba, pglist, pglist_cnt, orig_transfer_length, mirror_sync_send_timeout);
@@ -1313,6 +1349,14 @@ __tdisk_mirror_read(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdata
 	if (unlikely(retval != 0)) {
 		debug_warn("node read setup failed\n");
 		goto err;
+	}
+
+	if (msg->raw->mirror_status == NODE_STATUS_DO_LOCAL_READ) {
+		node_sock_finish(sock);
+		rep_comm_put(comm, 0);
+		pglist_free(pglist, pglist_cnt);
+		node_msg_free(msg);
+		return 0;
 	}
 
 	if (node_cmd_status(msg) == NODE_CMD_NEED_IO) {
@@ -1543,6 +1587,7 @@ tdisk_mirror_write_setup(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct w
 	node_cmd_hash_insert(comm->node_hash, msg, raw->msg_id);
 	retval = node_sock_write(sock, raw);
 	if (unlikely(retval != 0)) {
+		debug_warn("node sock write failure for len %d\n", raw->dxfer_len);
 		node_cmd_hash_remove(comm->node_hash, msg, raw->msg_id);
 		goto write_error;
 	}
@@ -1552,6 +1597,7 @@ tdisk_mirror_write_setup(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct w
 			pgdata = pglist[i];
 			retval = node_sock_write_page(sock, pgdata->page, pgdata->pg_len);
 			if (unlikely(retval != 0)) {
+				debug_warn("node sock write page failure for len %d\n", pgdata->pg_len);
 				node_cmd_hash_remove(comm->node_hash, msg, raw->msg_id);
 				goto write_error;
 			}
@@ -2146,9 +2192,12 @@ tdisk_mirror_exit(struct tdisk *tdisk)
 	if (tdisk_mirroring_disabled(tdisk))
 		goto out;
 
+	if (tdisk_mirror_master(tdisk) && tdisk_in_sync(tdisk))
+		tdisk_set_mirror_error(tdisk);
+
 	msg = node_sync_msg_alloc(sizeof(*mirror_state), NODE_MSG_PEER_SHUTDOWN);
 	memcpy(msg->raw->data, mirror_state, sizeof(*mirror_state));
-	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
+	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_send_timeout, 0, NULL, 0);
 	if (unlikely(retval != 0)) {
 		debug_warn("Cannot send peer shutdown message\n");
 		goto out;
@@ -2660,7 +2709,10 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		return;
 	}
 
+	mirror_state = (struct mirror_state *)(raw->data);
 	if (tdisk_mirror_master(tdisk)) {
+		if (tdisk_in_sync(tdisk))
+			tdisk_set_mirror_error(tdisk);
 		tdisk_mirroring_disable(tdisk);
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
@@ -2671,7 +2723,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 	}
 
 	debug_info("peer shutdown setting role to master\n");
-	if (!tdisk_mirroring_need_resync(tdisk)) {
+	if (!tdisk_mirroring_need_resync(tdisk) && !atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags)) {
 		tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);

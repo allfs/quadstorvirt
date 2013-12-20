@@ -4248,8 +4248,12 @@ __tdisk_cmd_read_int(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct pgdat
 		retval = __tdisk_mirror_read(tdisk, ctio, ret_pglist, ret_pglist_cnt, lba, transfer_length);
 		if (retval < 0)
 			return retval;
-		else
+		else if (retval)
 			return 0;
+
+		if (!lba_write)
+			read_lba_write = tdisk_add_lba_write(tdisk, lba, transfer_length, 0, QS_IO_READ, 0);
+		pglist = NULL;
 	}
 
 	TDISK_INC(tdisk, lba_read_count, transfer_length);
@@ -6173,7 +6177,9 @@ tdisk_lba_write_setup(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct writ
 	if (retval != 0) {
 		if (master)
 			tdisk_remove_lba_write(tdisk, &wlist->lba_write);
-		return -1;
+		if (retval < 0)
+			debug_warn("tdisk mirror write setup failed for lba %llu transfer length %u cw %d xchg_id %llx cmd %x\n", (unsigned long long)lba, transfer_length, cw, (unsigned long long)xchg_id, ctio->cdb[0]);
+		return retval;
 	}
 
 	if (!master) {
@@ -6298,7 +6304,9 @@ __tdisk_cmd_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint64_t lba, u
 
 	retval = tdisk_lba_write_setup(tdisk, ctio, &wlist, lba, transfer_length, cw, sync_wait, xchg_id);
 	if (unlikely(retval != 0)) {
-		debug_warn("lba write setup failed for lba %llu transfer length %u cw %d xchg_id %llx cmd %x\n", (unsigned long long)lba, transfer_length, cw, (unsigned long long)xchg_id, ctio->cdb[0]);
+		if (retval < 0)
+			debug_warn("lba write setup failed for lba %llu transfer length %u cw %d xchg_id %llx cmd %x\n", (unsigned long long)lba, transfer_length, cw, (unsigned long long)xchg_id, ctio->cdb[0]);
+
 		wlist_release_log_reserved(tdisk, &wlist);
 		wait_for_pgdata((struct pgdata **)ctio->data_ptr, ctio->pglist_cnt);
 		ctio_check_free_data(ctio);

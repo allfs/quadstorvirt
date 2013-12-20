@@ -832,10 +832,11 @@ exit:
 	debug_info("mirror_write_io_ticks: %u\n", tdisk->mirror_write_io_ticks);
 	debug_info("mirror_ticks: %u\n", tdisk->mirror_ticks);
 	status = tdisk_mirror_error(tdisk) ? 1 : 0;
+	if (tdisk_in_sync(tdisk))
+		tdisk_mirror_end(tdisk);
 	tdisk_clone_lock(tdisk);
 	tdisk_clone_cleanup(tdisk, NULL);
 	tdisk_clone_unlock(tdisk);
-	tdisk_mirror_end(tdisk);
 	tdisk_start_resize_thread(tdisk);
 	tdisk_put(tdisk);
 

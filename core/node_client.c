@@ -1058,6 +1058,9 @@ node_read_setup(struct tdisk *tdisk, struct node_comm *comm, struct node_sock *s
 
 	node_msg_copy_resp(msg);
 	raw = msg->raw;
+	if (raw->mirror_status == NODE_STATUS_DO_LOCAL_READ)
+		return 0;
+
 	need_io = (node_cmd_status(msg) == NODE_CMD_NEED_IO);
 
 	STAILQ_INIT(&read_list);

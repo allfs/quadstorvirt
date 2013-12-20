@@ -691,7 +691,7 @@ node_master_read_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 	int retval, i;
 	int pglist_cnt;
 	int need_io = 0;
-	int have_rcache = 0;
+	int have_rcache = 0, need_mirror_read;
 	struct node_msg *msg = ctio_get_node_msg(ctio);
 	struct raw_node_msg *raw;
 	struct pgdata_read_spec *source_spec;
@@ -712,6 +712,18 @@ node_master_read_pre(struct tdisk *tdisk, struct qsio_scsiio *ctio)
 
 	wlist = zalloc(sizeof(*wlist), M_WLIST, Q_WAITOK);
 	wlist->lba_write = tdisk_add_lba_write(tdisk, lba, transfer_length, 0, QS_IO_READ, 0);
+	if (ctio_in_sync(ctio) && msg->raw->mirror_status == NODE_STATUS_DO_LOCAL_READ) {
+		need_mirror_read = tdisk_lba_read_needs_mirror_read(tdisk, lba, transfer_length);
+		if (!need_mirror_read) {
+			msg->raw->cmd_status = NODE_CMD_DONE;
+			tdisk_remove_lba_write(tdisk, &wlist->lba_write);
+			write_list_free(wlist);
+			device_send_ccb(ctio);
+			return;
+		}
+		msg->raw->mirror_status = 0;
+	}
+
 	node_master_pending_writes_incr();
 
 	if (tdisk->lba_shift != LBA_SHIFT) {
@@ -3036,6 +3048,8 @@ node_root_comm_free(struct node_comm *root_comm, struct queue_list *queue_list, 
 	node_comm_lock(root_comm);
 	while ((comm = SLIST_FIRST(&root_comm->comm_list)) != NULL) {
 		SLIST_REMOVE_HEAD(&root_comm->comm_list, c_list);
+		if (atomic_read(&comm->refs))
+			pause("psg", 12000);
 		if (queue_list)
 			node_clear_comm_msgs(comm->node_hash, queue_list, queue_lock, comm, NULL);
 		debug_check(atomic_read(&comm->refs) > 1);
