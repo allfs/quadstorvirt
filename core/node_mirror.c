@@ -126,6 +126,8 @@ tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual)
 	debug_info("is master %d need resync %d in resync %d\n", is_master, tdisk_mirroring_need_resync(tdisk), tdisk_mirroring_in_resync(tdisk));
 	if (!is_master && (tdisk_mirroring_need_resync(tdisk) || tdisk_mirroring_in_resync(tdisk))) {
 		atomic_set_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags);
+		atomic_clear_bit(MIRROR_FLAGS_NEED_RESYNC, &tdisk->mirror_state.mirror_flags);
+		atomic_clear_bit(MIRROR_FLAGS_IN_RESYNC, &tdisk->mirror_state.mirror_flags);
 		__tdisk_mirror_comm_free(tdisk);
 		tdisk_mirror_unlock(tdisk);
 		return -1;
@@ -1648,7 +1650,9 @@ write_error:
 static int
 mirror_state_validate(struct tdisk *tdisk, struct mirror_state *mirror_state, struct mirror_state *peer_state, int load)
 {
-	debug_info("mirror state master %d\n", mirror_state_master(mirror_state));
+	int prev_role = mirror_state->prev_role;
+	int peer_prev_role = peer_state->prev_role;
+
 	debug_info("peer mirror state master %d\n", mirror_state_master(peer_state));
 	debug_info("next role %d peer next role %d\n", mirror_state->next_role, peer_state->next_role);
 	if (mirror_state_master(peer_state) && mirror_state_master(mirror_state)) {
@@ -1671,16 +1675,30 @@ mirror_state_validate(struct tdisk *tdisk, struct mirror_state *mirror_state, st
 	}
 
 	if (!mirror_state_master(peer_state) && !mirror_state_master(mirror_state)) {
+
 		if (atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags) && atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &peer_state->mirror_flags)) {
-			debug_warn("Conflict in owner ship of tdisk %s, Both node claim to be masters but needing resync\n", tdisk_name(tdisk));
-			return -1;
+			if (prev_role == MIRROR_ROLE_MASTER && peer_prev_role == MIRROR_ROLE_MASTER) {
+				debug_warn("Conflict in owner ship of tdisk %s, Both node claim to be masters but needing resync\n", tdisk_name(tdisk));
+				return -1;
+			}
+			if (prev_role != MIRROR_ROLE_MASTER && peer_prev_role != MIRROR_ROLE_MASTER) {
+				debug_warn("Conflict in owner ship of tdisk %s, Both node in slave roles, needing resync but none of them claim to be master previously\n", tdisk_name(tdisk));
+				return -1;
+			}
+
+			if (prev_role == MIRROR_ROLE_MASTER) {
+				debug_print("Both nodes not in master state. Switching this node to master as resyncing pending from this node and prev role is master\n");
+				tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
+				mirror_state->prev_role = MIRROR_ROLE_MASTER; /* So that we do not lose the previous state */
+			}
+			return 0;
 		}
 
 		if (atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags)) {
 			debug_print("Both nodes not in master state. Switching this node to master as resyncing pending from this node\n");
 			tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 		}
-		else if (!atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &peer_state->mirror_flags)) {
+		else if (!atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &peer_state->mirror_flags) && (prev_role == MIRROR_ROLE_MASTER || peer_prev_role != MIRROR_ROLE_MASTER)) {
 			debug_print("Both nodes not in master state. Switching this node to master as no resync pending\n");
 			tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 		}

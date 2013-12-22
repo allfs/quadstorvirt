@@ -106,7 +106,7 @@ struct mirror_state {
 	uint8_t mirror_type;
 	uint8_t mirror_role;
 	uint8_t next_role;
-	uint8_t pad1;
+	uint8_t prev_role;
 	uint16_t mirror_target_id;
 	uint16_t pad2;
 	int mirror_flags;
