@@ -4,7 +4,7 @@ sed -e 's/# Default-Start:.*/# Default-Start:\t\t2 3 4 5/g' -i /etc/init.d/quads
 sed -e 's/# Default-Stop:.*/# Default-Stop:\t\t\t0 1 6/g' -i /etc/init.d/quadstor
 update-rc.d quadstor defaults
 
-echo "Minimal 3.0.58 for Debian" > /quadstor/etc/quadstor-itf-version
+echo "Minimal 3.0.59 for Debian" > /quadstor/etc/quadstor-itf-version
 
 echo "Building required kernel modules"
 echo "Running /quadstor/bin/builditf.min"

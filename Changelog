@@ -1,3 +1,8 @@
+Release 3.0.59
+	* Add checks for a VDisk's previous mirroring role to resolve conflicts
+	  where both VDisks drop to slave role. The previous role helps
+	  determine which VDisk is elevated to master role
+
 Release 3.0.58
 	* Reduce network reads when reading from a slave vdisk during resync
 	* Fix false write errors reported to a host when writing to a slave
