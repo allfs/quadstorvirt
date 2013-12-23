@@ -2,7 +2,7 @@ include ../build/rules.mk
 
 CFLAGS += -Wall -I$(QUADSTOR_ROOT)/includes -I$(QUADSTOR_ROOT)/common -I$(QUADSTOR_ROOT)/core -Wl,-rpath=$(QUADSTOR_ROOT)/library/common -Wl,-rpath=$(QUADSTOR_ROOT)/library/client -Wl,-rpath=/quadstor/lib -Wl,-rpath=$(QUADSTOR_ROOT)/library/server
 
-LDFLAGS += -L../library/common/ -L../library/client -L../library/server -ltlclnt -ltlmsg
+LDLIBS += -L../library/common/ -L../library/client -L../library/server -ltlmsg -ltlclnt
 
 ifeq ($(UNAME), FreeBSD)
 LIBCAM = -lcam
@@ -12,10 +12,10 @@ endif
 all: scctl $(CAM) dbrecover vdconfig spconfig bdconfig ndconfig qclone qmirror qmirrorcheck fcconfig qmapping rundiag qsync 
 
 dbrecover: dbrecover.c
-	$(CC) $(CFLAGS) -D_GNU_SOURCE -I../io/ -I../pgsql/include -I../library/server -o dbrecover dbrecover.c $(LDFLAGS) $(LIBGEOM) -ltlmsg -ltlsrv
+	$(CC) $(CFLAGS) -D_GNU_SOURCE -I../io/ -I../pgsql/include -I../library/server -o dbrecover dbrecover.c $(LDLIBS) $(LIBGEOM) -ltlmsg -ltlsrv
 
 cam: cam.c
-	$(CC) $(CFLAGS) -o cam cam.c $(LDFLAGS) -lcam
+	$(CC) $(CFLAGS) -o cam cam.c $(LDLIBS) -lcam
 
 install:
 	@set -e; \

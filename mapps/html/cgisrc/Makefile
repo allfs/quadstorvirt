@@ -8,7 +8,7 @@ all: $(CGILIST) strip install
 HTDOCS = /var/www/html/
 CGIBIN = /var/www/cgi-bin/
 
-CFLAGS += -Wall -O2 -I../cgihtml/ -I$(QUADSTOR_ROOT)/includes -DCGIBIN=\"$(CGIBIN)\" -I $(QUADSTOR_ROOT)/common
+CFLAGS += -Wall -O2 -I../cgihtml/ -I$(QUADSTOR_ROOT)/includes -DCGIBIN=\"$(CGIBIN)\" -I $(QUADSTOR_ROOT)/common -Wno-unused-result
 
 LDFLAGS += -Wl,-rpath=$(QUADSTOR_ROOT)/library/common -Wl,-rpath=/quadstor/lib:$(QUADSTOR_ROOT)/library/client -L../../../library/common/ -L../../../library/client  -I$(QUADSTOR_ROOT)/common -ltlclnt -ltlmsg
 
