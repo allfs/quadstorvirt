@@ -123,7 +123,11 @@ node_usr_send_vdisk_deleted(uint32_t target_id, int status)
 	if (node_type_client() || node_type_master())
 		return 0;
 
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -155,7 +159,11 @@ node_usr_send_job_completed(struct usr_job *job_info, int status)
 	if (node_type_client() || node_type_master())
 		return 0;
 
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -182,7 +190,11 @@ node_usr_send_bid_valid(int bid)
 	struct node_sock *sock;
 	int retval;
 
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -217,7 +229,11 @@ node_usr_notify_msg(int notify_type, uint32_t target_id, struct usr_notify *noti
 	struct usr_msg *msg;
 	struct node_sock *sock;
 
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -239,7 +255,11 @@ node_usr_send_vdisk_attached(struct tdisk *tdisk)
 	struct node_sock *sock;
 	int retval;
 
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -269,7 +289,11 @@ node_usr_fence_node(void)
 	int retval;
 
 	debug_info("fencing peer node\n");
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
@@ -308,7 +332,11 @@ node_usr_send_mirror_check(uint32_t mirror_ipaddr)
 		return USR_RSP_ERR;
 
 	debug_info("send check for %u\n", mirror_ipaddr);
-	debug_check(!usr_comm);
+	if (!usr_comm) {
+		debug_warn("Not connected to mdaemon\n");
+		return USR_RSP_ERR;
+	}
+
 	sock = node_comm_get_sock(usr_comm, NODE_GET_SOCK_TIMEOUT);
 	if (!sock) {
 		debug_warn("Cannot get a free sock\n");
