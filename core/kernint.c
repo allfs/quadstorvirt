@@ -1098,6 +1098,8 @@ kern_interface_init(struct qs_kern_cbs *kern_cbs)
 	kern_cbs->sock_state_change = node_sock_state_change;
 	kern_cbs->sock_read_avail = node_sock_read_avail;
 	kern_cbs->sock_write_avail = node_sock_write_avail;
+	if (!kern_cbs->hash_compute)
+		kern_cbs->hash_compute = ddblock_hash_compute_fallback; 
 
 	memcpy(&kcbs, kern_cbs, sizeof(kcbs));
 

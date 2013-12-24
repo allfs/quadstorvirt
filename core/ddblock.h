@@ -108,10 +108,29 @@ zero_memcmp(uint64_t *pgdata_addr)
 }
 
 static inline void
+__ddblock_hash_compute_def(uint8_t *pgdata_addr, uint8_t *hash)
+{
+	SHA256X_CTX ctx;
+
+	shax_init(&ctx);
+	shax_update(&ctx, pgdata_addr, LBA_SIZE);
+	shax_final(hash, &ctx);
+}
+
+static inline void
+ddblock_hash_compute_fallback(void (*hash_compute_def)(uint8_t *, uint8_t *), uint8_t *pgdata_addr, uint8_t *hash)
+{
+	__ddblock_hash_compute_def(pgdata_addr, hash);
+}
+
+#ifdef FREEBSD
+#define ddblock_hash_compute_def	ddblock_hash_compute_fallback
+#endif
+
+static inline void
 ddblock_hash_compute(struct pgdata *pgdata)
 {
 	uint8_t *pgdata_addr = (uint8_t *)pgdata_page_address(pgdata);
-	SHA256X_CTX ctx;
 	int retval;
 #ifdef ENABLE_STATS
 	uint32_t start_ticks;
@@ -129,12 +148,7 @@ ddblock_hash_compute(struct pgdata *pgdata)
 		return;
 	}
 
-	shax_init(&ctx);
-	shax_update(&ctx, pgdata_addr, LBA_SIZE);
-	shax_final(pgdata->hash, &ctx);
-#if 0
-	read_random(pgdata->hash, 32);
-#endif
+	ddblock_hash_compute_def(__ddblock_hash_compute_def, pgdata_addr, pgdata->hash);
 }
 
 static inline int

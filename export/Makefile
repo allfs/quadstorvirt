@@ -17,7 +17,7 @@ obj-m   += ldev.o coredev.o
 
 ldev-objs := ldev_linux.o devq.o
 
-coredev-objs := core_linux.o corelib.o
+coredev-objs := core_linux.o corelib.o sha256-ssse3-asm.o sha256_ssse3.o
 
 EXTRA_CFLAGS += -I. -DLINUX -DEXPORT_SYMTAB -I$(KDIR)/drivers/scsi -I$(QUADSTOR_ROOT)/common -I$(QUADSTOR_ROOT)/export
 

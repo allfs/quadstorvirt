@@ -661,4 +661,3 @@ bdev_sync(struct bdevint *bint)
 {
 	g_io_flush(bint->cp);
 }
-

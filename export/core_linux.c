@@ -1964,6 +1964,10 @@ static int coremod_init(void)
 		return -1;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32))
+	sha256_ssse3_setup(&kcbs);
+#endif
+
 	retval = kern_interface_init(&kcbs);
 	if (unlikely(retval != 0)) {
 		exit_caches();

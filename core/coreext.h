@@ -320,6 +320,7 @@ extern struct qs_kern_cbs kcbs;
 #define sock_has_read_data	(*kcbs.sock_has_read_data)
 #define sock_nopush	(*kcbs.sock_nopush)
 #define kern_panic	(*kcbs.kern_panic)
+#define ddblock_hash_compute_def (*kcbs.hash_compute)
 
 static inline unsigned long
 get_current_time(void)

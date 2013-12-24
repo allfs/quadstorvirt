@@ -183,6 +183,7 @@ struct qs_kern_cbs {
 	void (*ctio_map_bio)(struct qsio_scsiio *ctio);
 	void (*copy_in_request_buffer)(struct qsio_scsiio *ctio);
 	void (*copy_in_request_buffer2)(struct qsio_scsiio *ctio);
+	void (*hash_compute)(void(*hash_compute_def)(uint8_t *, uint8_t *), uint8_t *, uint8_t *);
 
 	/* set by core lib */
 	void (*mdaemon_set_info)(struct mdaemon_info *);
@@ -429,4 +430,5 @@ ctio_free_sense(struct qsio_scsiio *ctio)
 	ctio->sense_len = 0;
 }
 
+void sha256_ssse3_setup(struct qs_kern_cbs *kcbs);
 #endif
