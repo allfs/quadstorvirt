@@ -511,14 +511,16 @@ static void
 wait_for_ddtables(void)
 {
 	int max_wait = (12 * 60); /* Wait for 12 minutes */
+	int decr = 6;
 	int retval;
 
-	while (max_wait) {
+	sleep(3);
+	while (max_wait > 0) {
 		retval = tl_ioctl_void(TLTARGIOCDDTABLELOADSTATUS);
 		if (retval == 0)
 			break;
-		max_wait -= 15;
-		sleep(15);
+		max_wait -= decr;
+		sleep(decr);
 	}
 }
 
