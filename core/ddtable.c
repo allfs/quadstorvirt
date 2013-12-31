@@ -1026,6 +1026,7 @@ static int dd_load_thread(void *data)
 	struct ddtable *ddtable = data;
 	uint32_t start_ticks;
 
+	__sched_prio(curthread, QS_PRIO_INOD);
 	thread_start();
 	start_ticks = ticks;
 	ddtable_load_peers(ddtable);
