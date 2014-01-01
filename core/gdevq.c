@@ -32,11 +32,11 @@ struct pgdata_wlist pending_write_queue = STAILQ_HEAD_INITIALIZER(pending_write_
 struct pgdata_wlist pending_comp_queue = STAILQ_HEAD_INITIALIZER(pending_comp_queue);
 struct ddqueue_wlist pending_dedupe_queue = STAILQ_HEAD_INITIALIZER(pending_dedupe_queue);
 
-static SLIST_HEAD(, qs_gdevq) devq_list = SLIST_HEAD_INITIALIZER(devq_list);
-static SLIST_HEAD(, qs_gdevq) mdevq_list = SLIST_HEAD_INITIALIZER(mdevq_list);
-static SLIST_HEAD(, qs_sdevq) sdevq_list = SLIST_HEAD_INITIALIZER(sdevq_list);
-static SLIST_HEAD(, qs_sdevq) tdevq_list = SLIST_HEAD_INITIALIZER(tdevq_list);
-static SLIST_HEAD(, qs_sdevq) ddevq_list = SLIST_HEAD_INITIALIZER(ddevq_list);
+static struct gdevq_list devq_list = SLIST_HEAD_INITIALIZER(devq_list);
+static struct gdevq_list mdevq_list = SLIST_HEAD_INITIALIZER(mdevq_list);
+static struct gdevq_list sdevq_list = SLIST_HEAD_INITIALIZER(sdevq_list);
+static struct gdevq_list tdevq_list = SLIST_HEAD_INITIALIZER(tdevq_list);
+static struct gdevq_list ddevq_list = SLIST_HEAD_INITIALIZER(ddevq_list);
 static SLIST_HEAD(, qs_cdevq) cdevq_list = SLIST_HEAD_INITIALIZER(cdevq_list);
 
 wait_chan_t *devq_wait;
@@ -602,9 +602,9 @@ static void tdevq_thread(void *data)
 static int tdevq_thread(void *data)
 #endif
 {
-	struct qs_sdevq *devq;
+	struct qs_gdevq *devq;
 
-	devq = (struct qs_sdevq *)data;
+	devq = (struct qs_gdevq *)data;
 	__sched_prio(curthread, QS_PRIO_INOD);
 
 	thread_start();
@@ -633,9 +633,9 @@ static void sdevq_thread(void *data)
 static int sdevq_thread(void *data)
 #endif
 {
-	struct qs_sdevq *devq;
+	struct qs_gdevq *devq;
 
-	devq = (struct qs_sdevq *)data;
+	devq = (struct qs_gdevq *)data;
 	__sched_prio(curthread, QS_PRIO_INOD);
 
 	for (;;)
@@ -661,9 +661,9 @@ static void ddevq_thread(void *data)
 static int ddevq_thread(void *data)
 #endif
 {
-	struct qs_sdevq *devq;
+	struct qs_gdevq *devq;
 
-	devq = (struct qs_sdevq *)data;
+	devq = (struct qs_gdevq *)data;
 	__sched_prio(curthread, QS_PRIO_INOD);
 
 	thread_start();
@@ -737,28 +737,6 @@ init_devq(int id, void *thr_func, char *name)
 	return devq;
 }
 
-static struct qs_sdevq *
-init_sdevq(int id, void *thr_func, char *thr_fmt)
-{
-	struct qs_sdevq *devq;
-	int retval;
-
-	devq = zalloc(sizeof(struct qs_sdevq), M_SDEVQ, Q_NOWAIT);
-	if (unlikely(!devq)) {
-		debug_warn("Failed to allocate a new devq\n");
-		return NULL;
-	}
-	devq->id = id;
-
-	retval = kernel_thread_create(thr_func, devq, devq->task, thr_fmt, id);
-	if (unlikely(retval != 0)) {
-		debug_warn("Failed to run devq\n");
-		free(devq, M_SDEVQ);
-		return NULL;
-	}
-	return devq;
-}
-
 static struct qs_cdevq *
 init_cdevq(int id)
 {
@@ -786,7 +764,7 @@ init_gdevq_threads(void)
 {
 	int i;
 	struct qs_gdevq *devq;
-	struct qs_sdevq *sdevq;
+	struct qs_gdevq *sdevq;
 	struct qs_cdevq *cdevq;
 	int cpu_count = get_cpu_count();
 
@@ -798,30 +776,30 @@ init_gdevq_threads(void)
 	devq_dedupe_wait = wait_chan_alloc("gdevq dedupe wait");
 
 	for (i = 0; i < cpu_count; i++) {
-		sdevq = init_sdevq(i, sdevq_thread, "sdevq_%d");
+		sdevq = init_devq(i, sdevq_thread, "sdevq_%d");
 		if (unlikely(!sdevq)) {
 			debug_warn("Failed to init sdevq at i %d\n", i);
 			return -1;
 		}
-		SLIST_INSERT_HEAD(&sdevq_list, sdevq, s_list);
+		SLIST_INSERT_HEAD(&sdevq_list, sdevq, d_list);
 	}
 
 	for (i = 0; i < MAX_GDEVQ_THREADS; i++) {
-		sdevq = init_sdevq(i, ddevq_thread, "ddevq_%d");
+		sdevq = init_devq(i, ddevq_thread, "ddevq_%d");
 		if (unlikely(!sdevq)) {
 			debug_warn("Failed to init ddevq at i %d\n", i);
 			return -1;
 		}
-		SLIST_INSERT_HEAD(&ddevq_list, sdevq, s_list);
+		SLIST_INSERT_HEAD(&ddevq_list, sdevq, d_list);
 	}
 
 	for (i = 0; i < MAX_GDEVQ_THREADS; i++) {
-		sdevq = init_sdevq(i, tdevq_thread, "tdevq_%d");
+		sdevq = init_devq(i, tdevq_thread, "tdevq_%d");
 		if (unlikely(!sdevq)) {
 			debug_warn("Failed to init tdevq at i %d\n", i);
 			return -1;
 		}
-		SLIST_INSERT_HEAD(&tdevq_list, sdevq, s_list);
+		SLIST_INSERT_HEAD(&tdevq_list, sdevq, d_list);
 	}
 
 	for (i = 0; i < cpu_count; i++) {
@@ -853,64 +831,34 @@ init_gdevq_threads(void)
 	return 0;
 }
 
+static inline void
+exit_gdevq_list(struct gdevq_list *devq_list, wait_chan_t *devq_chan)
+{
+	struct qs_gdevq *devq;
+	int err;
+
+	while ((devq = SLIST_FIRST(devq_list)) != NULL) {
+		SLIST_REMOVE_HEAD(devq_list, d_list);
+		err = kernel_thread_stop(devq->task, &devq->exit_flags, devq_chan, GDEVQ_EXIT);
+		if (err) {
+			debug_warn("Shutting down qs devq failed\n");
+			continue;
+		}
+		uma_zfree(gdevq_cache, devq);
+	}
+}
+
 void
 exit_gdevq_threads(void)
 {
-	struct qs_gdevq *devq;
-	struct qs_sdevq *sdevq;
-	struct qs_sdevq *ddevq;
 	struct qs_cdevq *cdevq;
 	int err;
 
-	while ((devq = SLIST_FIRST(&devq_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&devq_list, d_list);
-		err = kernel_thread_stop(devq->task, &devq->exit_flags, devq_wait, GDEVQ_EXIT);
-		if (err) {
-			debug_warn("Shutting down qs devq failed\n");
-			continue;
-		}
-		uma_zfree(gdevq_cache, devq);
-	}
-
-	while ((devq = SLIST_FIRST(&mdevq_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&mdevq_list, d_list);
-		err = kernel_thread_stop(devq->task, &devq->exit_flags, mdevq_wait, GDEVQ_EXIT);
-		if (err) {
-			debug_warn("Shutting down qs devq failed\n");
-			continue;
-		}
-		uma_zfree(gdevq_cache, devq);
-	}
-
-	while ((ddevq = SLIST_FIRST(&ddevq_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&ddevq_list, s_list);
-		err = kernel_thread_stop(ddevq->task, &ddevq->exit_flags, devq_dedupe_wait, GDEVQ_EXIT);
-		if (err) {
-			debug_warn("Shutting down qs ddevq failed\n");
-			continue;
-		}
-		free(ddevq, M_SDEVQ);
-	}
-
-	while ((sdevq = SLIST_FIRST(&sdevq_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&sdevq_list, s_list);
-		err = kernel_thread_stop(sdevq->task, &sdevq->exit_flags, devq_write_wait, GDEVQ_EXIT);
-		if (err) {
-			debug_warn("Shutting down qs sdevq failed\n");
-			continue;
-		}
-		free(sdevq, M_SDEVQ);
-	}
-
-	while ((sdevq = SLIST_FIRST(&tdevq_list)) != NULL) {
-		SLIST_REMOVE_HEAD(&tdevq_list, s_list);
-		err = kernel_thread_stop(sdevq->task, &sdevq->exit_flags, tdevq_wait, GDEVQ_EXIT);
-		if (err) {
-			debug_warn("Shutting down qs sdevq failed\n");
-			continue;
-		}
-		free(sdevq, M_SDEVQ);
-	}
+	exit_gdevq_list(&devq_list, devq_wait);
+	exit_gdevq_list(&mdevq_list, mdevq_wait);
+	exit_gdevq_list(&ddevq_list, devq_dedupe_wait);
+	exit_gdevq_list(&sdevq_list, devq_write_wait);
+	exit_gdevq_list(&tdevq_list, tdevq_wait);
 
 	while ((cdevq = SLIST_FIRST(&cdevq_list)) != NULL) {
 		SLIST_REMOVE_HEAD(&cdevq_list, c_list);

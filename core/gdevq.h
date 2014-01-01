@@ -32,13 +32,7 @@ struct qs_gdevq {
 	int exit_flags;
 	int id;
 };
-
-struct qs_sdevq {
-	kproc_t *task;
-	SLIST_ENTRY(qs_sdevq) s_list;
-	int exit_flags;
-	int id;
-};
+SLIST_HEAD(gdevq_list, qs_gdevq);
 
 struct qs_cdevq {
 	uint8_t wrkmem[sizeof(LZF_STATE)];
