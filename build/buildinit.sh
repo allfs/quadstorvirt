@@ -69,6 +69,9 @@ elif [ "$1" = "bsd" ]; then
 elif [ "$1" = "rhel5" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.58 qla2xxx
 	sed -i -e "s/:= qla2xxx.*/:= qla2xxx/" $QUADSTOR_ROOT/target-mode/fc/Makefile
+	sed -i -e "s/coredev-objs :=.*/coredev-objs := core_linux.o corelib.o/" $QUADSTOR_ROOT/export/Makefile
+	sed -i -e "s/coredev-objs :=.*/coredev-objs := core_linux.o corelib.o/" $QUADSTOR_ROOT/export/Makefile.dist
+	sed -i -e "s/Wno-unused-result/Wall/" $QUADSTOR_ROOT/mapps/html/cgisrc/Makefile
 else
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.upstream qla2xxx
 fi

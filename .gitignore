@@ -3,7 +3,9 @@
 *.ko
 *.mod.c
 Module.symvers
+Module.markers
 *.o.cmd
+*.o.d
 *.cgi
 *.so
 *.ko.cmd
