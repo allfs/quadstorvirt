@@ -40,7 +40,6 @@ int sql_mark_tdisk_for_deletion(PGconn *conn, uint32_t target_id);
 int sql_query_groups(struct group_info *group_list[]);
 int sql_query_tdisks(struct tdisk_info *tdisk_list[]);
 int sql_update_tdisk_size(PGconn *conn, struct tdisk_info *info);
-int sql_update_tdisk_block(PGconn *conn, struct tdisk_info *tdisk_info);
 int sql_update_tdisk(struct tdisk_info *tdisk_info);
 int sql_query_mirror_checks(struct mirror_check_list *mirror_check_list);
 int sql_add_mirror_check(struct mirror_check_spec *mirror_check_spec);

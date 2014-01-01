@@ -1281,13 +1281,6 @@ add_target(struct group_info *group_info, char *targetname, uint64_t targetsize,
 		goto errrsp;
 	}
 
-	retval = sql_update_tdisk_block(conn, tdisk_info);
-	if (retval != 0)
-	{
-		sprintf(err, "Unable to update new target start block\n");
-		goto errrsp;
-	}
-
 	retval = ietadm_default_settings(conn, tdisk_info, srcconf);
 	if (retval != 0) {
 		sprintf(err, "Unable to set default iscsi settings\n");

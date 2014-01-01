@@ -127,7 +127,6 @@ enum {
 };
 
 struct tdisk_info {
-	uint64_t block;
 	uint64_t size;
 	char name[TDISK_MAX_NAME_LEN];
 	char group_name[GROUP_MAX_NAME_LEN];

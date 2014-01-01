@@ -136,7 +136,6 @@ scan_vdisks(void)
 			info.lba_shift = raw_data->lba_shift;
 			info.target_id = raw_data->target_id;
 			info.group_id = raw_data->group_id;
-			SET_BLOCK(info.block, 0, disk->bid);
 			info.enable_deduplication = 1;
 			conn = pgsql_begin();
 			if (!conn) {

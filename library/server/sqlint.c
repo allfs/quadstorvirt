@@ -446,7 +446,7 @@ sql_query_tdisks(struct tdisk_info *tdisk_list[])
 	int retval, error = 0;
 	struct tdisk_info *tdisk_info;
 
-	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT TDISKID,NAME,DSIZE,BLOCK,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID FROM TDISK ORDER BY TDISKID");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT TDISKID,NAME,DSIZE,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID FROM TDISK ORDER BY TDISKID");
 
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL)
@@ -472,14 +472,13 @@ sql_query_tdisks(struct tdisk_info *tdisk_list[])
 		tdisk_info->target_id = atoi(PQgetvalue(res, i, 0));
 		memcpy(tdisk_info->name, PQgetvalue(res, i, 1), PQgetlength(res, i, 1));
 		tdisk_info->size = strtoull(PQgetvalue(res, i, 2), NULL, 16);
-		tdisk_info->block = strtoull(PQgetvalue(res, i, 3), NULL, 16);
-		tdisk_info->disabled = atoi(PQgetvalue(res, i, 4));
-		tdisk_info->enable_deduplication = atoi(PQgetvalue(res, i, 5));
-		tdisk_info->enable_compression = atoi(PQgetvalue(res, i, 6));
-		tdisk_info->enable_verify = atoi(PQgetvalue(res, i, 7));
-		tdisk_info->force_inline = atoi(PQgetvalue(res, i, 8));
-		tdisk_info->lba_shift = atoi(PQgetvalue(res, i, 9));
-		tdisk_info->group_id = strtoull(PQgetvalue(res, i, 10), NULL, 10);
+		tdisk_info->disabled = atoi(PQgetvalue(res, i, 3));
+		tdisk_info->enable_deduplication = atoi(PQgetvalue(res, i, 4));
+		tdisk_info->enable_compression = atoi(PQgetvalue(res, i, 5));
+		tdisk_info->enable_verify = atoi(PQgetvalue(res, i, 6));
+		tdisk_info->force_inline = atoi(PQgetvalue(res, i, 7));
+		tdisk_info->lba_shift = atoi(PQgetvalue(res, i, 8));
+		tdisk_info->group_id = strtoull(PQgetvalue(res, i, 9), NULL, 10);
 		retval = sql_query_iscsiconf(tdisk_info->target_id, tdisk_info->name, &tdisk_info->iscsiconf);
 		if (retval != 0) {
 			free(tdisk_info);
@@ -678,22 +677,6 @@ sql_update_tdisk_size(PGconn *conn, struct tdisk_info *tdisk_info)
 }
 
 int
-sql_update_tdisk_block(PGconn *conn, struct tdisk_info *tdisk_info)
-{
-	char sqlcmd[128];
-	int error = -1;
-
-	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET BLOCK='%"PRIx64"' WHERE TDISKID='%u'", tdisk_info->block, tdisk_info->target_id);
-	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
-	if (error < 0)
-	{
-		DEBUG_ERR_SERVER("Error occurred in executing sqlcmd %s\n", sqlcmd);
-		return -1;
-	}
-	return 0;
-}
-
-int
 sql_update_tdisk(struct tdisk_info *tdisk_info)
 {
 	char sqlcmd[128];
@@ -835,11 +818,11 @@ sql_add_tdisk(PGconn *conn, struct tdisk_info *info)
 	int error = -1;
 
 	if (!info->target_id) {
-		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (NAME, DSIZE, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%s', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->name, info->size, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
 		info->target_id = pgsql_exec_query3(conn, sqlcmd, 1, &error, "TDISK", "TDISKID");
 	}
 	else {
-		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (TDISKID, NAME, DSIZE, BLOCK, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%u', '%s', '%"PRIx64"', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->target_id, info->name, info->size, info->block, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
+		snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO TDISK (TDISKID, NAME, DSIZE, DEDUPLICATION, COMPRESSION, VERIFY, INLINE, LBASHIFT, GROUPID) VALUES ('%u', '%s', '%"PRIx64"', '%d', '%d', '%d', '%d', '%d', '%u')", info->target_id, info->name, info->size, info->enable_deduplication, info->enable_compression, info->enable_verify, info->force_inline, info->lba_shift, info->group_id);
 		pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
 	}
 	if (info->target_id == 0 || error != 0)

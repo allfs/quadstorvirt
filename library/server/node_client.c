@@ -247,7 +247,6 @@ node_client_add_vdisk(struct vdisk_spec *vdisk_spec, int force, int attach)
 		return;
 	}
 
-	info->block = vdisk_spec->block;
 	info->size = vdisk_spec->size;
 	strcpy(info->name, vdisk_spec->name);
 	memcpy(info->serialnumber, vdisk_spec->serialnumber, sizeof(vdisk_spec->serialnumber));

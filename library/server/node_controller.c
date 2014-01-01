@@ -207,7 +207,6 @@ group_spec_fill(struct group_spec *group_spec, struct group_info *info)
 static void
 vdisk_spec_fill(struct vdisk_spec *vdisk_spec, struct tdisk_info *info)
 {
-	vdisk_spec->block = info->block;
 	vdisk_spec->size = info->size;
 	vdisk_spec->group_id = info->group->group_id;
 	strcpy(vdisk_spec->name, info->name);

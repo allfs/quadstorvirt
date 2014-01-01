@@ -29,7 +29,7 @@ struct group_spec {
 };
 
 struct vdisk_spec {
-	uint64_t block;
+	uint64_t rsvd1;
 	uint64_t size;
 	char name[TDISK_MAX_NAME_LEN];
 	char serialnumber[36];
