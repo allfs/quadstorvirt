@@ -1,3 +1,10 @@
+Release 3.0.60
+	* Instruct browser not to cache HTML responses
+	* Use SSSE3 optimized SHA-256 for Linux systems if the instruction set
+	  is available. Upto 10% speed up in hash computation is possible.
+	* Miscellaneous build fixes for Ubuntu, RHEL 5
+	* For iSCSI read data digest errors
+
 Release 3.0.59
 	* Add checks for a VDisk's previous mirroring role to resolve conflicts
 	  where both VDisks drop to slave role. The previous role helps
