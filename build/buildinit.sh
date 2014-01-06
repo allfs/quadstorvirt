@@ -54,14 +54,17 @@ if [ "$1" = "rhel6" ]; then
 elif [ "$1" = "sles11sp2" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.upstream qla2xxx
 	sed -i -e "s/:= qla2xxx.*/:= qla2xxx/" $QUADSTOR_ROOT/target-mode/fc/Makefile
+	sed -i -e "s/Wno-unused-result/Wall/" $QUADSTOR_ROOT/mapps/html/cgisrc/Makefile
 elif [ "$1" = "sles11" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.slessp1 qla2xxx
 	sed -i -e "s/:= qla2xxx.*/:= qla2xxx/" $QUADSTOR_ROOT/target-mode/fc/Makefile
+	sed -i -e "s/Wno-unused-result/Wall/" $QUADSTOR_ROOT/mapps/html/cgisrc/Makefile
 elif [ "$1" = "debian7" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.upstream qla2xxx
 elif [ "$1" = "debian6" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s qla2xxx.deb64 qla2xxx
 	sed -i -e "s/:= qla2xxx.*/:= qla2xxx/" $QUADSTOR_ROOT/target-mode/fc/Makefile
+	sed -i -e "s/Wno-unused-result/Wall/" $QUADSTOR_ROOT/mapps/html/cgisrc/Makefile
 elif [ "$1" = "bsd9" ]; then
 	cd $QUADSTOR_ROOT/target-mode/fc && ln -s isp9.0 isp
 elif [ "$1" = "bsd" ]; then
