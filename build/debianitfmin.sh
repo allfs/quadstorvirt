@@ -20,6 +20,7 @@ install -m 755 -d $DEBIAN_ROOT/quadstor/src
 install -m 755 -d $DEBIAN_ROOT/quadstor/src/export
 install -m 644 /quadstor/quadstor/export/devq.[ch] $DEBIAN_ROOT/quadstor/src/export/
 install -m 644 /quadstor/quadstor/export/ldev_linux.[ch] $DEBIAN_ROOT/quadstor/src/export/
+install -m 644 /quadstor/quadstor/export/sha256*.[cS] $DEBIAN_ROOT/quadstor/src/export/
 install -m 644 /quadstor/quadstor/export/linuxdefs.h $DEBIAN_ROOT/quadstor/src/export/
 install -m 644 /quadstor/quadstor/export/exportdefs.h $DEBIAN_ROOT/quadstor/src/export/
 install -m 644 /quadstor/quadstor/export/missingdefs.h $DEBIAN_ROOT/quadstor/src/export/

@@ -27,6 +27,7 @@ mkdir -p $RPM_BUILD_ROOT/quadstor/bin
 mkdir -p $RPM_BUILD_ROOT/quadstor/src/export
 cp /quadstor/quadstor/export/devq.[ch] $RPM_BUILD_ROOT/quadstor/src/export/
 cp /quadstor/quadstor/export/ldev_linux.[ch] $RPM_BUILD_ROOT/quadstor/src/export/
+cp /quadstor/quadstor/export/sha256*.[cS] $RPM_BUILD_ROOT/quadstor/src/export/
 cp /quadstor/quadstor/export/linuxdefs.h $RPM_BUILD_ROOT/quadstor/src/export/
 cp /quadstor/quadstor/export/exportdefs.h $RPM_BUILD_ROOT/quadstor/src/export/
 cp /quadstor/quadstor/export/missingdefs.h $RPM_BUILD_ROOT/quadstor/src/export/
