@@ -1,3 +1,7 @@
+Release 3.0.61
+	* Fix for ITF package install failures 
+	* Fix for resync failures when a VDisk has a SCSI reservation present.
+
 Release 3.0.60
 	* Instruct browser not to cache HTML responses
 	* Use SSSE3 optimized SHA-256 for Linux systems if the instruction set

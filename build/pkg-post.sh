@@ -33,6 +33,6 @@ mkdir -p $htdocs/quadstor
 cp -fr /quadstor/httpd/www/quadstor/* $htdocs/quadstor/
 cp -f /quadstor/httpd/cgi-bin/* $cgibin/
 mkdir -p /quadstor/etc
-echo "3.0.60 for FreeBSD 8.2" > /quadstor/etc/quadstor-core-version
+echo "3.0.61 for FreeBSD 8.2" > /quadstor/etc/quadstor-core-version
 
 exit 0
