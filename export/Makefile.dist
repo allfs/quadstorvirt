@@ -1,8 +1,6 @@
 #
 # linux 2.6 series Makefile
 
-EXTRA_CFLAGS += -Winit-self
-
 ifeq ($(KDIR),)
 	KDIR ?= /lib/modules/$(shell uname -r)/build
 endif

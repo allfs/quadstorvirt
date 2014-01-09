@@ -119,7 +119,7 @@ port_equal(uint64_t port1[], uint64_t port2[])
 static inline int
 device_reserved(struct qsio_scsiio *ctio, struct reservation *reservation)
 {
-	if (!reservation->is_reserved || (port_equal(reservation->i_prt, ctio->i_prt) && port_equal(reservation->t_prt, ctio->t_prt) && reservation->init_int == ctio->init_int))
+	if (!reservation->is_reserved || (port_equal(reservation->i_prt, ctio->i_prt) && port_equal(reservation->t_prt, ctio->t_prt) && reservation->init_int == ctio->init_int) || (ctio->init_int == TARGET_INT_MIRROR))
 		return 0;
 	else {
 		debug_info("reservation i_prt %llu:%llu ctio i_prt %llu:%llu reservation t_prt %llu ctio t_prt %llu reservation init_int %d ctio init_int %d\n", reservation->i_prt[0], reservation->i_prt[1], ctio->i_prt[0], ctio->i_prt[1], reservation->t_prt, ctio->t_prt, reservation->init_int, ctio->init_int);
