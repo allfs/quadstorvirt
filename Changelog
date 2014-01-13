@@ -1,3 +1,8 @@
+Release 3.0.62
+	* When multiple vdisks have active IO pending and if the peer fails,
+	  some vdisk in 'Slave' role fail to switch over to 'Master' when
+	  fencing was successful
+
 Release 3.0.61
 	* Fix for ITF package install failures 
 	* Fix for resync failures when a VDisk has a SCSI reservation present.
