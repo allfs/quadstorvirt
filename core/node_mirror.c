@@ -2763,7 +2763,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 	if (tdisk_mirror_master(tdisk)) {
 		if (tdisk_in_sync(tdisk))
 			tdisk_set_mirror_error(tdisk);
-		debug_print("disabling mirroring for tdisk %s on a peer shutdown and role\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
+		debug_print("disabling mirroring for tdisk %s on a peer shutdown and role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
