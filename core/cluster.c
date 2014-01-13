@@ -918,7 +918,7 @@ node_msg_timeout(struct node_msg *msg)
 	ctio = msg->ctio;
 	debug_check(!ctio);
 	cdb = ctio->cdb;
-	debug_warn("Timing out ctio for cmd %x msg timestamp %llu current %llu msg cmd %d msg id %llx xchg id %llx\n", cdb[0], (unsigned long long)msg->timestamp, (unsigned long long)ticks, msg->raw->msg_cmd, (unsigned long long)msg->raw->msg_id, (unsigned long long)msg->raw->xchg_id);
+	debug_warn("Timing out ctio for cmd %x tdisk %s msg timestamp %llu current %llu msg cmd %d msg id %llx xchg id %llx\n", cdb[0], tdisk_name(msg->tdisk), (unsigned long long)msg->timestamp, (unsigned long long)ticks, msg->raw->msg_cmd, (unsigned long long)msg->raw->msg_id, (unsigned long long)msg->raw->xchg_id);
 
 	if (cdb[0] == WRITE_16) {
 		node_master_write_error(msg->tdisk, msg->wlist, ctio);

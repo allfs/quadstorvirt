@@ -120,11 +120,13 @@ tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual)
 	int retval, is_master;
 
 	debug_info("start\n");
+	debug_print("tdisk %s role %s manual %d\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk), manual);
 	tdisk_mirror_lock(tdisk);
 	is_master = tdisk_mirror_master(tdisk);
 
-	debug_info("is master %d need resync %d in resync %d\n", is_master, tdisk_mirroring_need_resync(tdisk), tdisk_mirroring_in_resync(tdisk));
+	debug_print("tdisk %s is master %d need resync %d in resync %d\n", tdisk_name(tdisk), is_master, tdisk_mirroring_need_resync(tdisk), tdisk_mirroring_in_resync(tdisk));
 	if (!is_master && (tdisk_mirroring_need_resync(tdisk) || tdisk_mirroring_in_resync(tdisk))) {
+		debug_print("tdisk %s disabling mirroring\n", tdisk_name(tdisk));
 		atomic_set_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags);
 		atomic_clear_bit(MIRROR_FLAGS_NEED_RESYNC, &tdisk->mirror_state.mirror_flags);
 		atomic_clear_bit(MIRROR_FLAGS_IN_RESYNC, &tdisk->mirror_state.mirror_flags);
@@ -135,6 +137,7 @@ tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual)
  
 	debug_info("is_master %d\n", is_master);
 	if (atomic_test_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags)) {
+		debug_print("tdisk %s mirroring already disabled\n", tdisk_name(tdisk));
 		debug_info("mirror flags already disabled\n");
 		if (is_master)
 			tdisk_flag_write_after(tdisk);
@@ -145,14 +148,18 @@ tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual)
 		return retval;
 	}
 
+	if (tdisk->mirror_comm)
+		node_comm_lock(tdisk->mirror_comm);
 	if (tdisk->mirror_comm && atomic_test_bit(NODE_COMM_FENCED, &tdisk->mirror_comm->flags)) {
+		debug_print("tdisk %s peer already fenced\n", tdisk_name(tdisk));
 		debug_info("skipping checks as mirror already fenced\n");
+		tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 		is_master = 1;
 		goto skip_check;
 	}
 	
 	retval = node_usr_send_mirror_check(tdisk->mirror_state.mirror_ipaddr);
-	debug_info("mirror check retval %d\n", retval);
+	debug_print("tdisk %s mirror check retval %d\n", tdisk_name(tdisk), retval);
 	if (retval == USR_RSP_OK || (retval == USR_RSP_FENCE_SUCCESSFUL) || (retval == USR_RSP_FENCE_MANUAL && (manual || is_master))) {
 		debug_info("switching over from peer to master\n");
 		if (!is_master)
@@ -176,7 +183,9 @@ tdisk_mirror_peer_failure(struct tdisk *tdisk, int manual)
 	}
 
 skip_check:
-	debug_info("disabling mirroring\n");
+	debug_info("tdisk %s disabling mirroring\n", tdisk_name(tdisk));
+	if (tdisk->mirror_comm)
+		node_comm_unlock(tdisk->mirror_comm);
 	atomic_set_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags);
 	atomic_clear_bit(MIRROR_FLAGS_PEER_LOAD_DONE, &tdisk->mirror_state.mirror_flags);
 	if (is_master) {
@@ -216,12 +225,15 @@ tdisk_mirror_comm_get(struct tdisk *tdisk, int write_cmd, struct node_sock **ret
 	tdisk_mirror_lock(tdisk);
 	comm = tdisk->mirror_comm;
 	if (!comm) {
+		debug_info("for tdisk %s role %s comm not connected\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirror_unlock(tdisk);
 		return NULL;
 	}
 
+	node_comm_lock(comm);
 	if (!atomic_test_bit(NODE_COMM_FENCED, &comm->flags)) {
 		node_comm_get(comm);
+		node_comm_unlock(comm);
 		tdisk_mirror_unlock(tdisk);
 retry:
 		sock = node_comm_get_sock(comm, recv_config.mirror_connect_timeout);
@@ -235,17 +247,16 @@ retry:
 			return NULL;
 		}
 		tries = 1;
-		sx_xlock(rep_comm_lock);
 		node_comm_lock(comm);
-		debug_info("Out of free socks, reconnecting\n");
+		debug_info("tdisk %s out of free socks, reconnecting\n", tdisk_name(tdisk));
 		rep_client_sock_init(comm, 32);
 		node_comm_unlock(comm);
-		sx_xunlock(rep_comm_lock);
 		goto retry;
 	}
+	node_comm_unlock(comm);
 
 	is_master = tdisk_mirror_master(tdisk);
-	debug_info("Comm fenced need resync %d is master %d\n", is_master, tdisk_mirroring_need_resync(tdisk));
+	debug_print("tdisk %s role %s comm fenced need resync %d is master %d\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk), is_master, tdisk_mirroring_need_resync(tdisk));
 	if (!is_master && tdisk_mirroring_need_resync(tdisk)) {
 		atomic_set_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags);
 		__tdisk_mirror_comm_free(tdisk);
@@ -254,7 +265,7 @@ retry:
 	}
 
 	__tdisk_mirror_comm_free(tdisk);
-	debug_info("switching %s to master, write cmd %d\n", tdisk_name(tdisk), write_cmd);
+	debug_print("switching %s to master, write cmd %d\n", tdisk_name(tdisk), write_cmd);
 	tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 	tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 	atomic_set_bit(MIRROR_FLAGS_DISABLED, &tdisk->mirror_state.mirror_flags);
@@ -614,7 +625,7 @@ tdisk_mirror_skip_local_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, str
 		TDISK_TEND(tdisk, mirror_verify_setup_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			status = -1;
-			debug_warn("node verify setup failed\n");
+			debug_warn("node verify setup failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 			tdisk_mirroring_disable(tdisk);
 			goto out;
 		}
@@ -626,7 +637,7 @@ tdisk_mirror_skip_local_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, str
 		TDISK_TEND(tdisk, mirror_comp_setup_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			status = -1;
-			debug_warn("node comp setup failed\n");
+			debug_warn("node comp setup failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 			tdisk_mirroring_disable(tdisk);
 			goto out;
 		}
@@ -636,7 +647,7 @@ tdisk_mirror_skip_local_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, str
 		retval = tdisk_mirror_send_cmd(tdisk, ctio, msg, NULL, NODE_MSG_WRITE_DATA_UNALIGNED, 0);
 		if (unlikely(retval != 0)) {
 			status = -1;
-			debug_warn("node send write io failed\n");
+			debug_warn("node send write io failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 			tdisk_mirroring_disable(tdisk);
 			goto out;
 		}
@@ -647,7 +658,7 @@ tdisk_mirror_skip_local_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, str
 		TDISK_TEND(tdisk, mirror_write_io_ticks, start_ticks);
 		if (unlikely(retval != 0)) {
 			status = -1;
-			debug_warn("node send write io failed\n");
+			debug_warn("node send write io failed for tdisk %s rold %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 			tdisk_mirroring_disable(tdisk);
 			goto out;
 		}
@@ -972,6 +983,7 @@ tdisk_mirror_extended_copy_read(struct tdisk *tdisk, struct qsio_scsiio *ctio, s
 	msg = node_msg_alloc(sizeof(*xcopy_spec));
 	msg->mirror = 1;
 
+	tdisk_mirror_incr(tdisk);
 	comm = tdisk_mirror_comm_get(tdisk, 0, &sock);
 	if (unlikely(!comm)) {
 		debug_warn("Cannot get a node comm for tdisk %s\n", tdisk_name(tdisk));
@@ -1022,12 +1034,18 @@ tdisk_mirror_extended_copy_read(struct tdisk *tdisk, struct qsio_scsiio *ctio, s
 	node_msg_free(msg);
 	return retval;
 write_error:
-	tdisk_mirroring_disable(tdisk);
+	retval = tdisk_mirror_peer_failure(tdisk, 0);
+	tdisk_mirror_decr(tdisk);
 	if (sock)
 		node_sock_finish(sock);
 	if (comm)
 		rep_comm_put(comm, 0);
 	node_msg_free(msg);
+	if (!retval)
+		return 1;
+	ctio_free_data(ctio);
+	debug_warn("Failed to receive ctio response, sending hardware error\n");
+	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_HARDWARE_ERROR, 0, INTERNAL_TARGET_FAILURE_ASC, INTERNAL_TARGET_FAILURE_ASCQ);
 	return -1;
 }
 
@@ -1443,7 +1461,7 @@ pgdata_allocate_for_cw(struct tdisk *tdisk, struct qsio_scsiio *ctio, uint32_t t
 }
 
 static int
-tdisk_mirror_xcopy_write(struct tdisk *tdisk, struct write_list *wlist, int32_t xchg_id)
+tdisk_mirror_xcopy_write(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct write_list *wlist, int32_t xchg_id)
 {
 	struct node_sock *sock = NULL;
 	struct node_comm *comm = NULL;
@@ -1478,14 +1496,20 @@ tdisk_mirror_xcopy_write(struct tdisk *tdisk, struct write_list *wlist, int32_t 
 	wlist->msg = msg;
 	return 0;
 write_error:
-	debug_check(!tdisk_mirror_master(tdisk));
-	tdisk_mirroring_disable(tdisk);
+	retval = tdisk_mirror_peer_failure(tdisk, 0);
+	tdisk_mirror_decr(tdisk);
 	if (sock)
 		node_sock_finish(sock);
 	if (comm)
 		rep_comm_put(comm, 0);
 	node_msg_free(msg);
-	return 0;
+
+	if (!retval)
+		return 0;
+	debug_warn("Failed to receive ctio response, sending hardware error\n");
+	ctio_free_data(ctio);
+	ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_HARDWARE_ERROR, 0, INTERNAL_TARGET_FAILURE_ASC, INTERNAL_TARGET_FAILURE_ASCQ);
+	return -1;
 }
 
 int
@@ -1523,7 +1547,7 @@ tdisk_mirror_write_setup(struct tdisk *tdisk, struct qsio_scsiio *ctio, struct w
 
 	tdisk_mirror_incr(tdisk);
 	if (xchg_id)
-		return tdisk_mirror_xcopy_write(tdisk, wlist, xchg_id);
+		return tdisk_mirror_xcopy_write(tdisk, ctio, wlist, xchg_id);
 
 	if (cw) {
 		pglist = pgdata_allocate_for_cw(tdisk, ctio, transfer_length, &pglist_cnt);
@@ -1655,6 +1679,9 @@ mirror_state_validate(struct tdisk *tdisk, struct mirror_state *mirror_state, st
 
 	debug_info("peer mirror state master %d\n", mirror_state_master(peer_state));
 	debug_info("next role %d peer next role %d\n", mirror_state->next_role, peer_state->next_role);
+	debug_print("tdisk %s our role %s peer role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk), __tdisk_get_role_str(peer_state->mirror_role));
+	debug_print("tdisk %s our prev role %s peer prev role %s\n", tdisk_name(tdisk), __tdisk_get_role_str(prev_role), __tdisk_get_role_str(peer_prev_role));
+	debug_print("tdisk %s our next role %s peer next role %s\n", tdisk_name(tdisk), __tdisk_get_role_str(mirror_state->next_role), __tdisk_get_role_str(peer_state->next_role));
 	if (mirror_state_master(peer_state) && mirror_state_master(mirror_state)) {
 		if (atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags) && atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &peer_state->mirror_flags)) {
 			debug_warn("Conflict in owner ship of tdisk %s, Both node claim to be masters\n", tdisk_name(tdisk));
@@ -1822,8 +1849,8 @@ tdisk_mirror_resize(struct tdisk *tdisk, uint64_t new_size)
 
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	if (unlikely(retval != 0)) {
+		debug_warn("Failed to send updated vdisk properties for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
-		debug_warn("Failed to send updated vdisk properties\n");
 	}
 
 	node_msg_free(msg);
@@ -1849,8 +1876,8 @@ tdisk_mirror_update_properties(struct tdisk *tdisk, struct vdisk_update_spec *sp
 
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	if (unlikely(retval != 0)) {
+		debug_warn("Failed to send updated vdisk properties for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
-		debug_warn("Failed to send updated vdisk properties\n");
 	}
 
 	node_msg_free(msg);
@@ -1875,7 +1902,7 @@ tdisk_mirror_load_done(struct tdisk *tdisk, int msg_id, int recovery)
 	msg = node_sync_msg_alloc(0, msg_id);
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	if (unlikely(retval != 0)) {
-		debug_warn("Failed to send mirror load done message\n");
+		debug_warn("Failed to send mirror load done message for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		node_msg_free(msg);
 		return -1;
@@ -1945,6 +1972,7 @@ tdisk_mirror_registration_clear_send(struct tdisk *tdisk)
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	node_msg_free(msg);
 	if (unlikely(retval != 0)) {
+		debug_warn("Failed to send registration clear message for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		return retval;
 	}
@@ -1971,6 +1999,7 @@ tdisk_mirror_reservation_sync_send(struct tdisk *tdisk)
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	node_msg_free(msg);
 	if (unlikely(retval != 0)) {
+		debug_warn("Failed to send reservation sync message for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		return retval;
 	}
@@ -1997,6 +2026,7 @@ tdisk_mirror_registration_sync_send(struct tdisk *tdisk, struct registration *re
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	node_msg_free(msg);
 	if (unlikely(retval != 0)) {
+		debug_warn("Failed to send registration sync message for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		return retval;
 	}
@@ -2045,13 +2075,13 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 	struct node_msg *msg;
 	int retval;
 
-	debug_info("tdisk %s mirror flags %d\n", tdisk_name(tdisk), tdisk->mirror_state.mirror_flags);
+	debug_info("tdisk %s mirror flags %d role %s prev role %s next role %s\n", tdisk_name(tdisk), tdisk->mirror_state.mirror_flags, tdisk_get_role_str(tdisk), __tdisk_get_role_str(tdisk->mirror_state.prev_role), __tdisk_get_role_str(tdisk->mirror_state.next_role));
 	if (!tdisk_mirroring_configured(tdisk))
 		return 0;
 
 	tdisk_mirror_connect(tdisk);
 	if (unlikely(!tdisk->mirror_comm)) {
-		debug_warn("rep comm get failed for mirror ipaddr %u mirror_src_ipaddr %u\n", tdisk->mirror_state.mirror_ipaddr, tdisk->mirror_state.mirror_src_ipaddr);
+		debug_warn("rep comm get failed for mirror ipaddr %u mirror_src_ipaddr %u for tdisk %s role %s\n", tdisk->mirror_state.mirror_ipaddr, tdisk->mirror_state.mirror_src_ipaddr, tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		if (tdisk_mirror_master(tdisk))
 			return 1;
@@ -2067,12 +2097,12 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 	debug_info("mirror state flags %d\n", mirror_state->mirror_flags);
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_send_timeout, 0, &peer_state, sizeof(peer_state));
 	if (unlikely(retval != 0)) {
-		debug_warn("mirror state send page failed\n");
+		debug_warn("mirror state send page failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		node_msg_free(msg);
 		if (!tdisk_mirror_master(tdisk)) {
 			atomic_set_bit(MIRROR_FLAGS_WAIT_FOR_MASTER, &tdisk->mirror_state.mirror_flags);
-			debug_warn("peer unreachable when not master\n");
+			debug_warn("peer unreachable when not master for tdisk %s\n", tdisk_name(tdisk));
 			return -1;
 		}
 		if (tdisk->mirror_state.next_role != MIRROR_ROLE_MASTER) {
@@ -2089,7 +2119,7 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 	atomic_clear_bit(MIRROR_FLAGS_WAIT_FOR_PEER, &tdisk->mirror_state.mirror_flags);
 	retval = mirror_state_validate(tdisk, &tdisk->mirror_state, &peer_state, 1);
 	if (unlikely(retval != 0)) {
-		debug_warn("mirror state validate failed\n");
+		debug_warn("mirror state validate failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirror_load_done(tdisk, NODE_MSG_MIRROR_LOAD_ERROR, recovery);
 		atomic_set_bit(MIRROR_FLAGS_STATE_INVALID, &tdisk->mirror_state.mirror_flags);
 		tdisk_mirroring_disable(tdisk);
@@ -2101,6 +2131,7 @@ tdisk_mirror_startup(struct tdisk *tdisk, int recovery)
 		retval = tdisk_mirror_sync_reservations(tdisk);
 		if (unlikely(retval != 0)) {
 			tdisk_mirror_load_done(tdisk, NODE_MSG_MIRROR_LOAD_ERROR, recovery);
+			debug_warn("reservations sync failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 			tdisk_mirroring_disable(tdisk);
 			node_msg_free(msg);
 			return -1;
@@ -2274,7 +2305,7 @@ tdisk_mirror_end(struct tdisk *tdisk)
 		return 0;
 
 	if (tdisk_mirror_error(tdisk)) {
-		debug_warn("Mirror op ended with error\n");
+		debug_warn("Mirror op ended with error for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		return 0;
 	}
@@ -2289,7 +2320,7 @@ tdisk_mirror_end(struct tdisk *tdisk)
 	memcpy(msg->raw->data, mirror_state, sizeof(*mirror_state));
 	retval = node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	if (unlikely(retval != 0)) {
-		debug_warn("Failed to resync done message\n");
+		debug_warn("Failed to resync done message for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		goto sync;
 	}
@@ -2367,6 +2398,7 @@ tdisk_mirror_setup(struct tdisk *tdisk, struct clone_info *clone_info, char *sys
 	tdisk_mirror_connect(tdisk);
 	if (unlikely(!tdisk->mirror_comm)) {
 		bzero(&tdisk->mirror_state, sizeof(tdisk->mirror_state));
+		debug_warn("Connect to peer failed for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		node_msg_free(msg);
 		return 0;
@@ -2698,7 +2730,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		return;
 	}
 
-	debug_info("tdisk %s\n", tdisk_name(tdisk));
+	debug_info("tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 	debug_check(raw->dxfer_len != sizeof(*mirror_state));
 	msg = node_msg_alloc(raw->dxfer_len);
 	memcpy(msg->raw, raw, sizeof(*raw));
@@ -2731,6 +2763,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 	if (tdisk_mirror_master(tdisk)) {
 		if (tdisk_in_sync(tdisk))
 			tdisk_set_mirror_error(tdisk);
+		debug_print("disabling mirroring for tdisk %s on a peer shutdown and role\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_mirroring_disable(tdisk);
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
@@ -2740,8 +2773,8 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		goto send;
 	}
 
-	debug_info("peer shutdown setting role to master\n");
 	if (!tdisk_mirroring_need_resync(tdisk) && !atomic_test_bit(MIRROR_FLAGS_NEED_RESYNC, &mirror_state->mirror_flags)) {
+		debug_print("peer shutdown setting role to master for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		tdisk_set_mirror_role(tdisk, MIRROR_ROLE_MASTER);
 		tdisk_set_next_role(tdisk, MIRROR_ROLE_MASTER);
 		atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
@@ -2750,6 +2783,7 @@ node_mirror_peer_shutdown(struct node_sock *sock, struct raw_node_msg *raw)
 		status = NODE_STATUS_OK;
 	}
 	else {
+		debug_warn("Cannot switch over to master as resync is pending for tdisk %s flags %d peer mirror flags %d role %s\n", tdisk_name(tdisk), tdisk->mirror_state.mirror_flags, mirror_state->mirror_flags, tdisk_get_role_str(tdisk));
 		status = NODE_STATUS_ERROR;
 	}
 
@@ -2896,6 +2930,7 @@ node_mirror_load_error(struct node_sock *sock, struct raw_node_msg *raw)
 		return;
 	}
 
+	debug_warn("Received peer mirror load error for tdisk %s role %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 	tdisk_mirroring_set_invalid(tdisk);
 	tdisk_mirroring_disable(tdisk);
 	tdisk_put(tdisk);
@@ -3209,7 +3244,6 @@ node_mirror_state(struct node_sock *sock, struct raw_node_msg *raw)
 		return;
 	}
 
-	debug_info("received for tdisk %s\n", tdisk_name(tdisk));
 	debug_check(raw->dxfer_len != sizeof(*mirror_state));
 	msg = node_msg_alloc(raw->dxfer_len);
 	memcpy(msg->raw, raw, sizeof(*raw));

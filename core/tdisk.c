@@ -713,6 +713,7 @@ target_disk_stats(struct tdisk_info *tdisk_info, unsigned long arg)
 	if (!tdisk)
 		return -1; 
 
+	mtx_lock(tdisk->stats_lock);
 	memcpy(&tdisk_info->stats, &tdisk->stats, sizeof(tdisk->stats));
 	tdisk_info->stats.write_ticks = ticks_to_msecs(tdisk_info->stats.write_ticks);
 	tdisk_info->stats.read_ticks = ticks_to_msecs(tdisk_info->stats.read_ticks);
@@ -733,6 +734,7 @@ target_disk_stats(struct tdisk_info *tdisk_info, unsigned long arg)
 	
 	if (tdisk_mirror_error(tdisk))
 		tdisk_info->mirror_error = 1;
+	mtx_unlock(tdisk->stats_lock);
 
 #ifdef FREEBSD
 	memcpy((void *)arg, tdisk_info, offsetof(struct tdisk_info, q_entry));
@@ -7373,7 +7375,7 @@ is_unaligned_extended_copy(struct tdisk *src_tdisk, uint64_t src_lba, uint64_t d
 	return unaligned;
 }
 
-void 
+int
 extended_copy_mirror_check(struct tdisk *src_tdisk, struct qsio_scsiio *ctio, struct tdisk *dest_tdisk, uint64_t src_lba, uint64_t dest_lba, uint32_t num_blocks, int *mirror_enabled, int *use_refs, uint32_t *xchg_id)
 {
 	int retval;
@@ -7382,22 +7384,27 @@ extended_copy_mirror_check(struct tdisk *src_tdisk, struct qsio_scsiio *ctio, st
 		*mirror_enabled = 1;
 
 	if (!tdisk_mirroring_configured(src_tdisk))
-		return;
+		return 0;
 
 	if (src_tdisk->mirror_state.mirror_ipaddr != dest_tdisk->mirror_state.mirror_ipaddr)
-		return;
+		return 0;
 
 	if (tdisk_mirroring_disabled(src_tdisk) || tdisk_mirroring_disabled(dest_tdisk))
-		return;
+		return 0;
 
 	if (tdisk_mirroring_need_resync(src_tdisk) || tdisk_mirroring_need_resync(dest_tdisk))
-		return;
+		return 0;
 
 	retval = tdisk_mirror_extended_copy_read(src_tdisk, ctio, dest_tdisk, src_lba, dest_lba, num_blocks, xchg_id);
-	if (unlikely(retval != 0))
-		return;
+	if (unlikely(retval != 0)) {
+		if (retval < 0)
+			return retval;
+		else
+			return 0;
+	}
 
 	*use_refs = 1;
+	return 0;
 }
 
 static int 
@@ -7455,7 +7462,12 @@ extended_copy_run(struct qsio_scsiio *ctio, struct extended_copy *ecopy)
 		use_refs = 0;
 		lba_write = tdisk_add_lba_write(src_tdisk, src_lba, num_blocks, 0, QS_IO_READ, 0);
 		if (!unaligned) {
-			extended_copy_mirror_check(src_tdisk, ctio, dest_tdisk, src_lba, dest_lba, num_blocks, &mirror_enabled, &use_refs, &xchg_id);
+			retval = extended_copy_mirror_check(src_tdisk, ctio, dest_tdisk, src_lba, dest_lba, num_blocks, &mirror_enabled, &use_refs, &xchg_id);
+			if (unlikely(retval != 0)) {
+				tdisk_remove_lba_write(src_tdisk, &lba_write);
+				return 0;
+			}
+
 			retval = __tdisk_cmd_ref_int(src_tdisk, dest_tdisk, ctio, &pglist, &pglist_cnt, src_lba, num_blocks, &index_info_list, mirror_enabled, use_refs);
 			tdisk_remove_lba_write(src_tdisk, &lba_write);
 			if (unlikely(retval != 0))

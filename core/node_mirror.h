@@ -154,7 +154,7 @@ tdisk_set_next_role(struct tdisk *tdisk, int role)
 }
 
 static inline char *
-tdisk_get_role_str(int role)
+__tdisk_get_role_str(int role)
 {
 	switch (role) {
 	case MIRROR_ROLE_MASTER:
@@ -166,10 +166,16 @@ tdisk_get_role_str(int role)
 	}
 }
 
+static inline char *
+tdisk_get_role_str(struct tdisk *tdisk)
+{
+	return __tdisk_get_role_str(tdisk->mirror_state.mirror_role);
+}
+
 static inline void 
 tdisk_set_mirror_role(struct tdisk *tdisk, int role)
 {
-	debug_print("VDisk %s switching role from %s to %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk->mirror_state.mirror_role), tdisk_get_role_str(role));
+	debug_print("VDisk %s switching role from %s to %s\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk), __tdisk_get_role_str(role));
 	tdisk->mirror_state.prev_role = tdisk->mirror_state.mirror_role;
 	tdisk->mirror_state.mirror_role = role;
 	tdisk->mirror_state.next_role = 0;

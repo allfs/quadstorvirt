@@ -919,7 +919,12 @@ copy_to_dest_range(struct qsio_scsiio *ctio, struct tdisk *dest_tdisk, uint64_t 
 	else
 		amap_modified = 1;
 	if (!unaligned && !amap_modified) {
-		extended_copy_mirror_check(src_tdisk, ctio, dest_tdisk, src_lba, dest_lba, src_blocks, &mirror_enabled, &use_refs, &xchg_id);
+		retval = extended_copy_mirror_check(src_tdisk, ctio, dest_tdisk, src_lba, dest_lba, src_blocks, &mirror_enabled, &use_refs, &xchg_id);
+		if (unlikely(retval != 0)) {
+			tdisk_remove_lba_write(src_tdisk, &lba_write);
+			return -1;
+		}
+
 		retval = __tdisk_cmd_ref_int(src_tdisk, dest_tdisk, ctio, &pglist, &pglist_cnt, src_lba, src_blocks, &index_info_list, mirror_enabled, use_refs);
 		tdisk_remove_lba_write(src_tdisk, &lba_write);
 		if (unlikely(retval != 0))
