@@ -1601,7 +1601,7 @@ node_status(struct node_config *node_config)
 	node_config->sync_status = atomic_read(&sync_status);
 
 	bzero(node_config->nodes, sizeof(node_config->nodes));
-	if (node_get_role() == NODE_ROLE_MASTER) {
+	if (node_get_role() == NODE_ROLE_MASTER && root) {
 		max = (sizeof(node_config->nodes) / sizeof(node_config->nodes[0]));
 		i = 0;
 		node_comm_lock(root);

@@ -406,6 +406,12 @@ static int tdisk_delete_thread(void *data)
 
 	thread_start();
 
+	while (atomic_read(&tdisk->refs) > 1) {
+		pause("psg", 1000);
+		if (kernel_thread_check(&tdisk->flags, VDISK_DELETE_EXIT))
+			goto skip;
+	}
+
 	wlist = write_list_alloc(tdisk);
 	tdisk->clone_wlist = wlist;
 
@@ -473,6 +479,7 @@ exit:
 
 	thread_end();
 
+skip:
 	free(delete_info, M_QUADSTOR);
 	wait_on_chan_interruptible(tdisk->delete_wait, kernel_thread_check(&tdisk->flags, VDISK_DELETE_EXIT));
 #ifdef FREEBSD 

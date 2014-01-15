@@ -1800,6 +1800,10 @@ tdisk_mirror_checks_master(struct tdisk *tdisk)
 		return;
 	}
 
+	if (atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags))
+		debug_print("For tdisk %s mirror resync will start with write bitmap enabled\n", tdisk_name(tdisk));
+	else
+		debug_print("For tdisk %s mirror resync will start with write bitmap disabled\n", tdisk_name(tdisk));
 	tdisk_master_mirror_resync(tdisk);
 }
 
@@ -2283,6 +2287,7 @@ tdisk_mirror_remove(struct tdisk *tdisk, int attach)
 	node_mirror_send_page(tdisk, msg, NULL, 0, mirror_sync_timeout, 0, NULL, 0);
 	node_msg_free(msg);
 out:
+	tdisk_mirroring_disable_write_bitmap(tdisk);
 	bzero(&tdisk->mirror_state, sizeof(tdisk->mirror_state));
 	atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
 	retval = tdisk_sync(tdisk, 0);
@@ -2538,6 +2543,7 @@ node_mirror_remove(struct node_sock *sock, struct raw_node_msg *raw)
 		return;
 	}
 
+	tdisk_mirroring_disable_write_bitmap(tdisk);
 	bzero(&tdisk->mirror_state, sizeof(tdisk->mirror_state));
 	atomic_set_bit(VDISK_SYNC_START, &tdisk->flags);
 	tdisk_sync(tdisk, 0);

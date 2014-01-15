@@ -1006,7 +1006,7 @@ __vdisk_mirror(struct clone_config *config, int internal)
 		return -1;
 	}
 
-	if (tdisk_in_mirroring(tdisk) || tdisk_in_cloning(tdisk)) {
+	if (tdisk_in_mirroring(tdisk) || tdisk_in_cloning(tdisk) || tdisk_in_sync(tdisk)) {
 		sprintf(config->errmsg, "vdisk %s busy, possibly another replication/cloning in progress\n", tdisk_name(tdisk));
 		tdisk_put(tdisk);
 		return -1;

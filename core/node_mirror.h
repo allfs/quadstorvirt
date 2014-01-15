@@ -84,13 +84,44 @@ tdisk_mirror_master(struct tdisk *tdisk)
 	return (tdisk->mirror_state.mirror_role == MIRROR_ROLE_MASTER);
 }
 
+static inline char *
+__tdisk_get_role_str(int role)
+{
+	switch (role) {
+	case MIRROR_ROLE_MASTER:
+		return "Master";
+	case MIRROR_ROLE_PEER:
+		return "Slave";
+	default:
+		return "Unknown";
+	}
+}
+
+static inline char *
+tdisk_get_role_str(struct tdisk *tdisk)
+{
+	return __tdisk_get_role_str(tdisk->mirror_state.mirror_role);
+}
+
+static inline void
+tdisk_mirroring_disable_write_bitmap(struct tdisk *tdisk)
+{
+	if (atomic_test_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags)) {
+		debug_print("For tdisk %s role %s disabling write bitmap\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
+		tdisk_clear_write_bitmap(tdisk);
+		atomic_clear_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
+	}
+}
+
 static inline void
 tdisk_mirroring_resync_clear(struct tdisk *tdisk)
 {
 	atomic_clear_bit(MIRROR_FLAGS_NEED_RESYNC, &tdisk->mirror_state.mirror_flags);
 	atomic_clear_bit(MIRROR_FLAGS_IN_RESYNC, &tdisk->mirror_state.mirror_flags);
-	if (tdisk_mirror_master(tdisk))
+	if (tdisk_mirror_master(tdisk)) {
+		debug_print("For tdisk %s role %s enabling write bitmap\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 		atomic_set_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
+	}
 	tdisk_clear_write_bitmap(tdisk);
 }
 
@@ -108,6 +139,7 @@ tdisk_mirroring_enable_write_bitmap(struct tdisk *tdisk)
 		atomic_clear_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
 		return;
 	}
+	debug_print("For tdisk %s role %s enabling write bitmap\n", tdisk_name(tdisk), tdisk_get_role_str(tdisk));
 	atomic_set_bit(MIRROR_FLAGS_WRITE_BITMAP_VALID, &tdisk->mirror_state.mirror_flags);
 }
 
@@ -151,25 +183,6 @@ static inline void
 tdisk_set_next_role(struct tdisk *tdisk, int role)
 {
 	tdisk->mirror_state.next_role = role;
-}
-
-static inline char *
-__tdisk_get_role_str(int role)
-{
-	switch (role) {
-	case MIRROR_ROLE_MASTER:
-		return "Master";
-	case MIRROR_ROLE_PEER:
-		return "Slave";
-	default:
-		return "Unknown";
-	}
-}
-
-static inline char *
-tdisk_get_role_str(struct tdisk *tdisk)
-{
-	return __tdisk_get_role_str(tdisk->mirror_state.mirror_role);
 }
 
 static inline void 
