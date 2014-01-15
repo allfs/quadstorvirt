@@ -1,3 +1,13 @@
+Release 3.0.63
+	* Fix possible inconsistencies between master and slave due to write
+	  bitmap optimizations. Issue occurs when master has write bitmap
+	  enabled, mirror configuration is deleted and then reconfigured. 
+	  When mirror configuration is deleted, the write bitmap is no longer
+	  valid, however we refer the same bitmap on a sync to slave after the 
+	  reconfiguration
+	* When deleting a VDisk we need to wait for all references to the
+	  VDisk are first decremented
+
 Release 3.0.62
 	* When multiple vdisks have active IO pending and if the peer fails,
 	  some vdisk in 'Slave' role fail to switch over to 'Master' when
