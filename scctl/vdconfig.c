@@ -211,6 +211,7 @@ vdconfig_list_vdisks(void)
 	int name_len, pool_len;
 	char fmt[256];
 	char status[64];
+	char lunid[32];
 
 	retval = tl_client_list_vdisks(&tdisk_list, MSG_ID_LIST_TDISK);
 	if (retval != 0) {
@@ -219,8 +220,8 @@ vdconfig_list_vdisks(void)
 	}
 
 	tdisk_list_calc_format_length(&tdisk_list, &name_len, &pool_len);
-	sprintf(fmt, "%%-%ds %%-%ds %%-32s %%-8s %%-20s\n", name_len, pool_len); 
-	fprintf(stdout, fmt, "Name", "Pool", "Serial Number", "Size(GB)", "Status");
+	sprintf(fmt, "%%-%ds %%-%ds %%-32s %%-8s %%-5s %%-20s\n", name_len, pool_len); 
+	fprintf(stdout, fmt, "Name", "Pool", "Serial Number", "Size(GB)", "LUN", "Status");
 	TAILQ_FOREACH(tdisk_info, &tdisk_list, q_entry) {
 		if (tdisk_info->disabled == VDISK_DELETED)
 			continue;
@@ -258,7 +259,8 @@ vdconfig_list_vdisks(void)
 		else if (!tdisk_info->online)
 			strcpy(status, "Offline");
 		sprintf(databuf, "%llu", (unsigned long long)(tdisk_info->size / (1024 * 1024 * 1024)));
-		fprintf(stdout, fmt, tdisk_info->name, tdisk_info->group_name, tdisk_info->serialnumber, databuf, status);
+		sprintf(lunid, "%d", tdisk_info->tl_id + 1);
+		fprintf(stdout, fmt, tdisk_info->name, tdisk_info->group_name, tdisk_info->serialnumber, databuf, lunid, status);
 	}
 	tdisk_list_free(&tdisk_list);
 	return 0;

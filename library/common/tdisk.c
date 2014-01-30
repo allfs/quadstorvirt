@@ -174,6 +174,14 @@ tl_common_parse_tdisk(FILE *fp, struct tdisk_list *tdisk_list)
 			return -1;
 		}
 
+		retval = fscanf(fp, "tl_id: %u\n", &info->tl_id);
+		if (retval != 1)
+		{
+			DEBUG_INFO("Unable to get tl id");
+			free(info);
+			return -1;
+		}
+
 		retval = fscanf(fp, "name: %s\n", info->name);
 		if (retval != 1)
 		{

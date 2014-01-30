@@ -2320,6 +2320,7 @@ __list_tdisks(char *filepath)
 
 		fprintf(fp, "<tdisk>\n");
 		fprintf(fp, "target_id: %u\n", tdisk_info->target_id);
+		fprintf(fp, "tl_id: %u\n", tdisk_info->tl_id);
 		fprintf(fp, "name: %s\n", tdisk_info->name);
 		fprintf(fp, "group_name: %s\n", tdisk_info->group->name);
 		if (strlen(tdisk_info->serialnumber) > 0)
