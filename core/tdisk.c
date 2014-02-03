@@ -1278,10 +1278,14 @@ target_load_disk(struct tdisk_info *tdisk_info, unsigned long arg)
 	if (!atomic_read(&kern_inited))
 		return -1;
 
-	tl_id = get_next_device_id();
-	if (tl_id < 0) {
-		debug_warn("Failed to get a new device id\n");
-		return -1;
+	if (tdisk_info->tl_id <= FC_MAX_VISIBLE_LUN && !tdisks[tdisk_info->tl_id])
+		tl_id = tdisk_info->tl_id;
+	else {
+		tl_id = get_next_device_id();
+		if (tl_id < 0) {
+			debug_warn("Failed to get a new device id\n");
+			return -1;
+		}
 	}
 
 	tdisk = __uma_zalloc(tdisk_cache, Q_NOWAIT | Q_ZERO, sizeof(*tdisk));

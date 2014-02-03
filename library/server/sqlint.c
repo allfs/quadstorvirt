@@ -446,7 +446,7 @@ sql_query_tdisks(struct tdisk_info *tdisk_list[])
 	int retval, error = 0;
 	struct tdisk_info *tdisk_info;
 
-	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT TDISKID,NAME,DSIZE,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID FROM TDISK ORDER BY TDISKID");
+	snprintf(sqlcmd, sizeof(sqlcmd), "SELECT TDISKID,NAME,DSIZE,DISABLED,DEDUPLICATION,COMPRESSION,VERIFY,INLINE,LBASHIFT,GROUPID,LUNID FROM TDISK ORDER BY TDISKID");
 
 	res = pgsql_exec_query(sqlcmd, &conn);
 	if (res == NULL)
@@ -479,6 +479,7 @@ sql_query_tdisks(struct tdisk_info *tdisk_list[])
 		tdisk_info->force_inline = atoi(PQgetvalue(res, i, 7));
 		tdisk_info->lba_shift = atoi(PQgetvalue(res, i, 8));
 		tdisk_info->group_id = strtoull(PQgetvalue(res, i, 9), NULL, 10);
+		tdisk_info->tl_id = strtoul(PQgetvalue(res, i, 10), NULL, 10);
 		retval = sql_query_iscsiconf(tdisk_info->target_id, tdisk_info->name, &tdisk_info->iscsiconf);
 		if (retval != 0) {
 			free(tdisk_info);
@@ -674,6 +675,32 @@ sql_update_tdisk_size(PGconn *conn, struct tdisk_info *tdisk_info)
 		return -1;
 	}
 	return 0;
+}
+
+int
+sql_update_lunid(struct tdisk_info *tdisk_info)
+{
+	char sqlcmd[128];
+	int error = -1;
+
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET LUNID='%u' WHERE TDISKID='%u'", tdisk_info->tl_id, tdisk_info->target_id);
+	pgsql_exec_query2(sqlcmd, 0, &error, NULL, NULL);
+	if (error < 0)
+		DEBUG_ERR_SERVER("Error occurred in executing sqlcmd %s\n", sqlcmd);
+	return error;
+}
+
+int
+sql_update_lunid_conn(PGconn *conn, struct tdisk_info *tdisk_info)
+{
+	char sqlcmd[128];
+	int error = -1;
+
+	snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE TDISK SET LUNID='%u' WHERE TDISKID='%u'", tdisk_info->tl_id, tdisk_info->target_id);
+	pgsql_exec_query3(conn, sqlcmd, 0, &error, NULL, NULL);
+	if (error < 0)
+		DEBUG_ERR_SERVER("Error occurred in executing sqlcmd %s\n", sqlcmd);
+	return error;
 }
 
 int

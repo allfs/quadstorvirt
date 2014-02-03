@@ -610,6 +610,7 @@ load_tdisks(struct tl_blkdevinfo *blkdev)
 	int error, i;
 	struct tdisk_info *info;
 	struct group_info *group_info;
+	uint32_t tl_id;
 
 	for (i = 1; i < TL_MAX_TDISKS; i++) {
 		info = tdisk_list[i];
@@ -631,6 +632,7 @@ load_tdisks(struct tl_blkdevinfo *blkdev)
 
 			tdisk_group_insert(group_info, info);
 		}
+		tl_id = info->tl_id;
 		error = tl_ioctl(TLTARGIOCLOADTDISK, info);
 		if (error != 0) {
 			DEBUG_ERR_SERVER("Load vdisk ioctl failed for name %s id %d\n", info->name, info->target_id);
@@ -638,6 +640,8 @@ load_tdisks(struct tl_blkdevinfo *blkdev)
 				info->disabled = VDISK_DELETED;
 			continue;
 		}
+		if (info->tl_id <= FC_MAX_VISIBLE_LUN && tl_id != info->tl_id)
+			sql_update_lunid(info);
 	}
 	return 0;
 }
@@ -1286,6 +1290,9 @@ add_target(struct group_info *group_info, char *targetname, uint64_t targetsize,
 		sprintf(err, "Unable to set default iscsi settings\n");
 		goto errrsp;
 	}
+
+	if (tdisk_info->tl_id <= FC_MAX_VISIBLE_LUN)
+		sql_update_lunid_conn(conn, tdisk_info);
 
 	retval = pgsql_commit(conn);
 	if (retval != 0)

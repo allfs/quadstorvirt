@@ -49,5 +49,7 @@ int sql_delete_fc_rule(struct fc_rule *fc_rule);
 int sql_delete_tdisk_fc_rules(uint32_t target_id);
 int sql_query_fc_rules(struct fc_rule_list *fc_rule_list);
 int sql_update_blkdev_group_id(uint32_t bid, uint32_t group_id);
+int sql_update_lunid(struct tdisk_info *tdisk_info);
+int sql_update_lunid_conn(PGconn *conn, struct tdisk_info *tdisk_info);
 
 #endif

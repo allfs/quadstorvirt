@@ -536,5 +536,6 @@ enum {
 
 #define TDISK_UNMAP_LBA_COUNT				512 /* 2 MB */
 #define TDISK_UNMAP_LBA_COUNT_LEGACY			4096 /* 2 MB */
+#define FC_MAX_VISIBLE_LUN				255
 
 #endif /* COMMONDEFS_H_ */
