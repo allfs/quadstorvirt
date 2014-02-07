@@ -52,7 +52,7 @@ int main()
 	printf ("<tr>\n");
 	printf ("<td>512 byte Emulation:</td>\n");
 //	cgi_print_checkbox_input_td("512e", 1);
-	printf("<td><input type=\"checkbox\" name=\"512e\" class=\"inputt\"><i>For ESXi, XenServer, Hyper-V</i></td>");
+	printf("<td><input type=\"checkbox\" name=\"512e\" class=\"inputt\" checked=\"checked\"><i>For ESXi, XenServer, Hyper-V</i></td>");
 	printf ("</tr>\n");
 
 #if 0

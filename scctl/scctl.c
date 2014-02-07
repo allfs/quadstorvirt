@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "lud")) != -1) {
+	while ((c = getopt(argc, argv, "luf")) != -1) {
 		switch (c) {
 			case 'l':
 				load = 1;
