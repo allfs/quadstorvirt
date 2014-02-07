@@ -620,11 +620,17 @@ tdisk_replay_amap_block(struct log_entry *log_entry, struct amap_sync_list *amap
 		return 0;
 	}
 
-	amap_table_check_csum(amap_table);
 	if (atomic_test_bit_short(ATABLE_META_DATA_ERROR, &amap_table->flags)) {
 		amap_table_put(amap_table);
 		tdisk_put(tdisk);
 		return -1;
+	}
+
+	amap_table_check_csum(amap_table);
+	if (atomic_test_bit_short(ATABLE_META_DATA_ERROR, &amap_table->flags)) {
+		amap_table_put(amap_table);
+		tdisk_put(tdisk);
+		return 0;
 	}
 
 	amap_table_lock(amap_table);
@@ -636,12 +642,19 @@ tdisk_replay_amap_block(struct log_entry *log_entry, struct amap_sync_list *amap
 		return 0;
 	}
 
-	amap_check_csum(amap);
 	if (atomic_test_bit_short(AMAP_META_DATA_ERROR, &amap->flags)) {
 		amap_put(amap);
 		amap_table_put(amap_table);
 		tdisk_put(tdisk);
 		return -1;
+	}
+
+	amap_check_csum(amap);
+	if (atomic_test_bit_short(AMAP_META_DATA_ERROR, &amap->flags)) {
+		amap_put(amap);
+		amap_table_put(amap_table);
+		tdisk_put(tdisk);
+		return 0;
 	}
 
 	debug_check(log_entry->amap_write_id && !is_v2_tdisk(tdisk));

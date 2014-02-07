@@ -1030,7 +1030,7 @@ coremod_load_done(void)
 	else if (node_type_master()) {
 		node_master_ha_init();
 	}
-	return 0;
+	return retval;
 }
 
 static int
