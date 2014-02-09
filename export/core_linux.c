@@ -1778,6 +1778,9 @@ static int coremod_ioctl(vnode_t *i, struct file *f, uint32_t cmd, unsigned long
 	case TLTARGIOCLOADDONE:
 		retval = (*kcbs.coremod_load_done)();
 		break;
+	case TLTARGIOCQLOADDONE:
+		retval = (*kcbs.coremod_qload_done)();
+		break;
 	case TLTARGIOCRESETLOGS:
 		retval = (*kcbs.coremod_reset_logs)();
 		break;

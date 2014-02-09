@@ -3909,6 +3909,7 @@ tl_server_load_conf(struct tl_comm *comm, struct tl_msg *msg)
 
 	wait_for_attach();
 	ietadm_qload_done();
+	tl_ioctl_void(TLTARGIOCQLOADDONE);
 	tl_server_msg_success(comm, msg);
 }
 

@@ -6,8 +6,9 @@
 enum {
 	TARGET_INT_LOCAL  = 0x01,
 	TARGET_INT_ISCSI  = 0x02,
-	TARGET_INT_FC     = 0x03,
+	TARGET_INT_INV1   = 0x03,
 	TARGET_INT_MIRROR = 0x04,
+	TARGET_INT_FC     = 0x05,
 };
 
 enum {
@@ -37,6 +38,7 @@ struct qs_interface_cbs {
 	void (*ctio_exec) (struct qsio_scsiio *);
 	int interface; /* Type of interface */
 	atomic_t itf_enabled;
+	volatile int qload_done;
 	
 	/* set by core */
 	struct qsio_scsiio* (*ctio_new) (allocflags_t flags);
@@ -208,6 +210,7 @@ struct qs_kern_cbs {
 	int (*bdev_delete_group)(struct group_conf *);
 	int (*bdev_rename_group)(struct group_conf *);
 	int (*coremod_load_done)(void);
+	int (*coremod_qload_done)(void);
 	int (*coremod_reset_logs)(void);
 	int (*coremod_exit)(void);
 	int (*ddtable_load_status)(void);

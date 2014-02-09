@@ -509,14 +509,14 @@ fcbridge_check_interface(void)
 	struct tdisk *device;
 
 	sx_xlock(&itf_lock);
-	if (atomic_read(&icbs.itf_enabled)) {
+	if (atomic_read(&icbs.itf_enabled) && icbs.qload_done) {
 		sx_xunlock(&itf_lock);
 		return;
 	}
 
 	fcbridge_attach_interface();
 
-	if (!atomic_read(&icbs.itf_enabled)) {
+	if (!atomic_read(&icbs.itf_enabled) || !icbs.qload_done) {
 		sx_xunlock(&itf_lock);
 		return;
 	}
@@ -770,13 +770,13 @@ fcbridge_proc_cmd(void *bridge, void *iop)
 	}
 
 	if (lun) {
-		if (atomic_read(&icbs.itf_enabled) && !(ctio_cmd(ctio)->local_pool))
+		if (atomic_read(&icbs.itf_enabled) && icbs.qload_done && !(ctio_cmd(ctio)->local_pool))
 		{
 			return fcbridge_route_cmd(fcbridge, ctio);
 		}
 		else
 		{
-			ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, LOGICAL_UNIT_NOT_SUPPORTED_ASC, LOGICAL_UNIT_NOT_SUPPORTED_ASCQ);
+			ctio_construct_sense(ctio, SSD_CURRENT_ERROR, SSD_KEY_ILLEGAL_REQUEST, 0, LOGICAL_UNIT_IS_IN_PROCESS_OF_BECOMING_READY_ASC, LOGICAL_UNIT_IS_IN_PROCESS_OF_BECOMING_READY_ASCQ);
 			__device_send_ccb(ctio);
 			return 0;
 		}
@@ -841,6 +841,7 @@ fcbridge_detach_interface(void)
 	}
 
 	atomic_set(&icbs.itf_enabled, 0);
+	icbs.qload_done = 0;
 
 	while (atomic_read(&alloced_cmds)) {
 		sx_xunlock(&itf_lock);
@@ -895,6 +896,7 @@ fcbridge_detach_interface(void)
 	}
 
 	atomic_set(&icbs.itf_enabled, 0);
+	icbs.qload_done = 0;
 	while(atomic_read(&alloced_cmds)) {
 		sx_xunlock(&itf_lock);
 		wait_on_chan(alloced_cmds_wait, !atomic_read(&alloced_cmds));

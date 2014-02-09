@@ -146,6 +146,9 @@ coremod_ioctl(struct cdev *dev, unsigned long cmd, caddr_t arg, int fflag, struc
 	case TLTARGIOCLOADDONE:
 		retval = (*kcbs.coremod_load_done)();
 		break;
+	case TLTARGIOCQLOADDONE:
+		retval = (*kcbs.coremod_qload_done)();
+		break;
 	case TLTARGIOCRESETLOGS:
 		retval = (*kcbs.coremod_reset_logs)();
 		break;

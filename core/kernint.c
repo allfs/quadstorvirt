@@ -187,6 +187,7 @@ uma_t *sx_cache;
 struct mdaemon_info mdaemon_info;
 atomic_t kern_inited;
 atomic_t itf_enabled;
+atomic_t qload_done;
 
 struct interface_list cbs_list;
 sx_t *cbs_lock;
@@ -739,6 +740,7 @@ __kern_exit(void)
 		return 0;
 
 	atomic_set(&itf_enabled, 0);
+	atomic_set(&qload_done, 0);
 	atomic_set(&kern_inited, 0);
 	clone_info_list_complete();
 
@@ -993,6 +995,23 @@ init_globals(void)
 }
 
 static int
+coremod_qload_done(void)
+{
+	struct qs_interface_cbs *cbs;
+
+	if (!atomic_read(&kern_inited))
+		return -1;
+
+	sx_xlock(cbs_lock);
+	atomic_set(&qload_done, 1);
+	LIST_FOREACH(cbs, &cbs_list, i_list) {
+		cbs->qload_done = 1;
+	}
+	sx_xunlock(cbs_lock);
+	return 0;
+}
+
+static int
 coremod_load_done(void)
 {
 	int retval;
@@ -1076,6 +1095,7 @@ kern_interface_init(struct qs_kern_cbs *kern_cbs)
 	kern_cbs->bdev_delete_group = bdev_group_remove; 
 	kern_cbs->bdev_rename_group = bdev_group_rename; 
 	kern_cbs->coremod_load_done = coremod_load_done;
+	kern_cbs->coremod_qload_done = coremod_qload_done;
 	kern_cbs->coremod_reset_logs = coremod_reset_logs;
 	kern_cbs->coremod_exit = __kern_exit;
 	kern_cbs->ddtable_load_status = bdev_groups_ddtable_load_status;
@@ -1370,6 +1390,16 @@ __device_register_interface(struct qs_interface_cbs *cbs)
 		return -1;
 	}
 
+	switch (cbs->interface) {
+	case TARGET_INT_LOCAL:
+	case TARGET_INT_ISCSI:
+	case TARGET_INT_FC:
+		break;
+	default:
+		sx_xunlock(cbs_lock);
+		return -1;
+	}
+
 	new = zalloc(sizeof(*new), M_CBS, Q_WAITOK);
 	cbs->ctio_new = ctio_new;
 	cbs->ctio_allocate_buffer = ctio_allocate_buffer;
@@ -1402,6 +1432,7 @@ __device_register_interface(struct qs_interface_cbs *cbs)
 	cbs->device_free_initiator = device_free_initiator;
 	cbs->fc_initiator_check = fc_initiator_check;
 	cbs->get_tprt = node_get_tprt;
+	cbs->qload_done = atomic_read(&qload_done);
 
 	memcpy(new, cbs, sizeof(*new));
 	LIST_INSERT_HEAD(&cbs_list, new, i_list);
