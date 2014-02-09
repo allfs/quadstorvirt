@@ -1,3 +1,11 @@
+Release 3.0.64
+	* Show LUN numbers when listing VDisks
+	* Fix for incorrect FC rule ALLOW checks
+	* Present consistent LUN IDs across restarts/reboots
+	* Enable 512e by default in the 'Add VDisk' HTML page
+	* Report that LUN is not ready and initializing when startup isn't
+	  complete
+
 Release 3.0.63
 	* Fix possible inconsistencies between master and slave due to write
 	  bitmap optimizations. Issue occurs when master has write bitmap

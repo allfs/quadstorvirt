@@ -2,7 +2,7 @@
 
 Summary: QuadStor Storage Virtualization 
 Name: quadstor-itf
-Version: 3.0.63
+Version: 3.0.64
 Release: sles11sp1
 Source0: %{name}-%{version}.tar.gz
 License: None 
@@ -89,7 +89,7 @@ install -m 644 /quadstor/quadstor/scripts/quadstor-udev.rules $RPM_BUILD_ROOT/et
 	if [ ! -f /quadstor/etc/iet/ietd.conf ]; then
 		cp /quadstor/etc/iet/ietd.conf.sample /quadstor/etc/iet/ietd.conf
 	fi
-	echo "3.0.63 for SLES 11 SP1" > /quadstor/etc/quadstor-itf-version
+	echo "3.0.64 for SLES 11 SP1" > /quadstor/etc/quadstor-itf-version
 
 	echo "Building required kernel modules"
 	echo "Running /quadstor/bin/builditf"
